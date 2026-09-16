@@ -7,10 +7,12 @@ import { z } from 'zod';
 import { db, databaseEnabled } from './db';
 
 const app = Fastify({ logger: true });
+const commoditySymbols: Record<string, string> = { XAUUSDT: 'XAU/USD', XAGUSDT: 'XAG/USD', WTIUSDT: 'WTI/USD', BRENTUSDT: 'BRENT/USD' };
+const commodityConfigured = Boolean(process.env.TWELVEDATA_API_KEY);
 const demoMarkets = [
   { symbol: 'BTCUSDT', display: 'BTC/USDT', source: 'binance', live: true },
   { symbol: 'ETHUSDT', display: 'ETH/USDT', source: 'binance', live: true },
-  { symbol: 'XAUUSDT', display: 'XAU/USDT', source: 'provider-required', live: false },
+  ...Object.entries(commoditySymbols).map(([symbol]) => ({ symbol, display: symbol.replace('USDT', '/USDT'), source: commodityConfigured ? 'twelve-data' : 'provider-required', live: commodityConfigured })),
 ] as const;
 
 type Credential = { id: string; email: string; passwordHash: string; referralCode?: string };
@@ -19,242 +21,60 @@ const credentials = new Map<string, Credential>();
 const sessions = new Map<string, Session>();
 const adminSessions = new Map<string, number>();
 
-function hashPassword(password: string) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${hash}`;
-}
-function verifyPassword(password: string, stored: string) {
-  const [salt, expected] = stored.split(':');
-  if (!salt || !expected) return false;
-  const actual = crypto.scryptSync(password, salt, 64).toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
-}
+function hashPassword(password: string) { const salt = crypto.randomBytes(16).toString('hex'); const hash = crypto.scryptSync(password, salt, 64).toString('hex'); return `${salt}:${hash}`; }
+function verifyPassword(password: string, stored: string) { const [salt, expected] = stored.split(':'); if (!salt || !expected) return false; const actual = crypto.scryptSync(password, salt, 64).toString('hex'); return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected)); }
 function tokenHash(token: string) { return crypto.createHash('sha256').update(token).digest('hex'); }
-function issueSession(userId: string) {
-  const token = crypto.randomBytes(32).toString('base64url');
-  sessions.set(tokenHash(token), { userId, tokenHash: tokenHash(token), expiresAt: Date.now() + 86400000 });
-  return token;
-}
-function issueAdminSession() {
-  const token = crypto.randomBytes(32).toString('base64url');
-  adminSessions.set(tokenHash(token), Date.now() + 28800000);
-  return token;
-}
-function bearer(request: any) {
-  const value = request.headers?.authorization;
-  return typeof value === 'string' && value.startsWith('Bearer ') ? value.slice(7) : null;
-}
-function adminAuthenticated(request: any) {
-  const token = bearer(request); if (!token) return false;
-  const hash = tokenHash(token); const exp = adminSessions.get(hash);
-  if (!exp || exp <= Date.now()) { adminSessions.delete(hash); return false; }
-  return true;
-}
-function requireAdmin(request: any, reply: any) {
-  if (!adminAuthenticated(request)) { reply.code(401).send({ error: 'Administrator authentication required' }); return false; }
-  return true;
-}
-async function authenticatedUser(request: any) {
-  const token = bearer(request); if (!token) return null;
-  const session = sessions.get(tokenHash(token));
-  if (!session || session.expiresAt <= Date.now()) { if (session) sessions.delete(session.tokenHash); return null; }
-  if (databaseEnabled) return db.user.findUnique({ where: { id: session.userId } });
-  return credentials.get(session.userId) ?? null;
-}
+function issueSession(userId: string) { const token = crypto.randomBytes(32).toString('base64url'); sessions.set(tokenHash(token), { userId, tokenHash: tokenHash(token), expiresAt: Date.now() + 86400000 }); return token; }
+function issueAdminSession() { const token = crypto.randomBytes(32).toString('base64url'); adminSessions.set(tokenHash(token), Date.now() + 28800000); return token; }
+function bearer(request: any) { const value = request.headers?.authorization; return typeof value === 'string' && value.startsWith('Bearer ') ? value.slice(7) : null; }
+function adminAuthenticated(request: any) { const token = bearer(request); if (!token) return false; const hash = tokenHash(token); const exp = adminSessions.get(hash); if (!exp || exp <= Date.now()) { adminSessions.delete(hash); return false; } return true; }
+function requireAdmin(request: any, reply: any) { if (!adminAuthenticated(request)) { reply.code(401).send({ error: 'Administrator authentication required' }); return false; } return true; }
+async function authenticatedUser(request: any) { const token = bearer(request); if (!token) return null; const session = sessions.get(tokenHash(token)); if (!session || session.expiresAt <= Date.now()) { if (session) sessions.delete(session.tokenHash); return null; } if (databaseEnabled) return db.user.findUnique({ where: { id: session.userId } }); return credentials.get(session.userId) ?? null; }
 function decimal(value: string | number) { return new Prisma.Decimal(value); }
-async function createDatabaseUser(email: string, passwordHash: string, referralCode?: string) {
-  return db.$transaction(async tx => {
-    const asset = await tx.asset.upsert({ where: { symbol: 'USDT' }, update: {}, create: { symbol: 'USDT', decimals: 6 } });
-    const referrer = referralCode ? await tx.user.findUnique({ where: { referralCode } }) : null;
-    if (referralCode && !referrer) throw new Error('INVALID_REFERRAL_CODE');
-    const user = await tx.user.create({ data: { email, passwordHash, referralCode: `AST-${crypto.randomBytes(5).toString('hex').toUpperCase()}` } });
-    await tx.wallet.create({ data: { userId: user.id, assetId: asset.id, available: 0, locked: 0 } });
-    if (referrer && referrer.id !== user.id) await tx.referral.create({ data: { referrerId: referrer.id, refereeId: user.id } });
-    return user;
-  });
-}
+async function createDatabaseUser(email: string, passwordHash: string, referralCode?: string) { return db.$transaction(async tx => { const asset = await tx.asset.upsert({ where: { symbol: 'USDT' }, update: {}, create: { symbol: 'USDT', decimals: 6 } }); const referrer = referralCode ? await tx.user.findUnique({ where: { referralCode } }) : null; if (referralCode && !referrer) throw new Error('INVALID_REFERRAL_CODE'); const user = await tx.user.create({ data: { email, passwordHash, referralCode: `AST-${crypto.randomBytes(5).toString('hex').toUpperCase()}` } }); await tx.wallet.create({ data: { userId: user.id, assetId: asset.id, available: 0, locked: 0 } }); if (referrer && referrer.id !== user.id) await tx.referral.create({ data: { referrerId: referrer.id, refereeId: user.id } }); return user; }); }
 
 async function main() {
-  await app.register(helmet);
-  await app.register(cors, { origin: true });
-
-  app.get('/health', async () => ({ ok: true, service: 'aster-financials-api', environment: process.env.NODE_ENV ?? 'development', database: databaseEnabled ? 'configured' : 'memory-fallback', timestamp: new Date().toISOString() }));
-  app.get('/api/v1/system/status', async () => ({ api: 'online', trading: 'sandbox', blockchain: 'sandbox', database: databaseEnabled ? 'configured' : 'memory-fallback', message: 'Production integrations are intentionally disabled in this foundation.' }));
+  await app.register(helmet); await app.register(cors, { origin: true });
+  app.get('/health', async () => ({ ok: true, service: 'aster-financials-api', environment: process.env.NODE_ENV ?? 'development', database: databaseEnabled ? 'configured' : 'memory-fallback', commodityProvider: commodityConfigured ? 'twelve-data' : 'not-configured', timestamp: new Date().toISOString() }));
+  app.get('/api/v1/system/status', async () => ({ api: 'online', trading: 'sandbox', blockchain: 'sandbox', database: databaseEnabled ? 'configured' : 'memory-fallback', commodityProvider: commodityConfigured ? 'twelve-data' : 'not-configured', message: 'Production trading and blockchain integrations are intentionally disabled in this foundation.' }));
   app.get('/api/v1/markets', async () => ({ markets: demoMarkets }));
 
+  app.get('/api/v1/commodities/:symbol/time-series', async (request: any, reply: any) => {
+    const symbol = String(request.params.symbol).toUpperCase(); const providerSymbol = commoditySymbols[symbol];
+    if (!providerSymbol) return reply.code(404).send({ error: 'Commodity market not supported' });
+    const apiKey = process.env.TWELVEDATA_API_KEY; if (!apiKey) return reply.code(503).send({ error: 'Commodity market-data provider is not configured' });
+    const p = z.object({ interval: z.enum(['1min','5min','15min','30min','45min','1h','2h','4h','8h','1day','1week','1month']).default('1min'), outputsize: z.coerce.number().int().min(1).max(500).default(300) }).safeParse(request.query);
+    if (!p.success) return reply.code(400).send({ error: 'Invalid commodity interval or output size' });
+    const url = new URL('https://api.twelvedata.com/time_series'); url.searchParams.set('symbol', providerSymbol); url.searchParams.set('interval', p.data.interval); url.searchParams.set('outputsize', String(p.data.outputsize)); url.searchParams.set('timezone', 'UTC'); url.searchParams.set('apikey', apiKey);
+    try { const upstream = await fetch(url); const data: any = await upstream.json(); if (!upstream.ok || data?.status === 'error') { request.log.error({ status: upstream.status, providerMessage: data?.message }, 'Twelve Data commodity request failed'); return reply.code(upstream.status >= 400 && upstream.status < 500 ? 502 : 503).send({ error: data?.message ?? 'Commodity provider request failed' }); } const values = Array.isArray(data?.values) ? data.values : []; return { symbol, providerSymbol, source: 'Twelve Data', interval: p.data.interval, values: values.map((v: any) => ({ datetime: v.datetime, open: Number(v.open), high: Number(v.high), low: Number(v.low), close: Number(v.close) })).filter((v: any) => [v.open,v.high,v.low,v.close].every(Number.isFinite)) }; } catch (error) { request.log.error(error, 'Unable to reach Twelve Data'); return reply.code(503).send({ error: 'Commodity market-data provider is temporarily unavailable' }); }
+  });
+
   app.post('/api/v1/auth/register', async (request: any, reply: any) => {
-    const p = z.object({ email: z.string().email(), password: z.string().min(8), referralCode: z.string().min(4).max(64).optional() }).safeParse(request.body);
-    if (!p.success) return reply.code(400).send({ error: 'Valid email and password of at least 8 characters are required' });
-    const email = p.data.email.toLowerCase(); const passwordHash = hashPassword(p.data.password);
-    try {
-      if (databaseEnabled) {
-        if (await db.user.findUnique({ where: { email } })) return reply.code(409).send({ error: 'Account already exists' });
-        const user = await createDatabaseUser(email, passwordHash, p.data.referralCode);
-        return reply.code(201).send({ user: { id: user.id, email: user.email, status: 'ACTIVE', referralCode: user.referralCode }, token: issueSession(user.id), sandbox: true, persistence: 'database' });
-      }
-      if ([...credentials.values()].some(x => x.email === email)) return reply.code(409).send({ error: 'Account already exists' });
-      const id = crypto.randomUUID(); const referral = `AST-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
-      credentials.set(id, { id, email, passwordHash, referralCode: referral });
-      return reply.code(201).send({ user: { id, email, status: 'ACTIVE', referralCode: referral }, token: issueSession(id), sandbox: true, persistence: 'memory' });
-    } catch (e) {
-      if (e instanceof Error && e.message === 'INVALID_REFERRAL_CODE') return reply.code(400).send({ error: 'Invalid referral code' });
-      request.log.error(e); return reply.code(500).send({ error: 'Unable to create account' });
-    }
+    const p = z.object({ email: z.string().email(), password: z.string().min(8), referralCode: z.string().min(4).max(64).optional() }).safeParse(request.body); if (!p.success) return reply.code(400).send({ error: 'Valid email and password of at least 8 characters are required' }); const email = p.data.email.toLowerCase(); const passwordHash = hashPassword(p.data.password);
+    try { if (databaseEnabled) { if (await db.user.findUnique({ where: { email } })) return reply.code(409).send({ error: 'Account already exists' }); const user = await createDatabaseUser(email, passwordHash, p.data.referralCode); return reply.code(201).send({ user: { id: user.id, email: user.email, status: 'ACTIVE', referralCode: user.referralCode }, token: issueSession(user.id), sandbox: true, persistence: 'database' }); } if ([...credentials.values()].some(x => x.email === email)) return reply.code(409).send({ error: 'Account already exists' }); const id = crypto.randomUUID(); const referral = `AST-${crypto.randomBytes(5).toString('hex').toUpperCase()}`; credentials.set(id, { id, email, passwordHash, referralCode: referral }); return reply.code(201).send({ user: { id, email, status: 'ACTIVE', referralCode: referral }, token: issueSession(id), sandbox: true, persistence: 'memory' }); } catch (e) { if (e instanceof Error && e.message === 'INVALID_REFERRAL_CODE') return reply.code(400).send({ error: 'Invalid referral code' }); request.log.error(e); return reply.code(500).send({ error: 'Unable to create account' }); }
   });
-
-  app.post('/api/v1/auth/login', async (request: any, reply: any) => {
-    const p = z.object({ email: z.string().email(), password: z.string() }).safeParse(request.body);
-    if (!p.success) return reply.code(400).send({ error: 'Invalid credentials format' });
-    const email = p.data.email.toLowerCase();
-    try {
-      const user: any = databaseEnabled ? await db.user.findUnique({ where: { email } }) : [...credentials.values()].find(x => x.email === email) ?? null;
-      if (!user || !verifyPassword(p.data.password, user.passwordHash)) return reply.code(401).send({ error: 'Invalid email or password' });
-      return { user: { id: user.id, email: user.email, status: 'ACTIVE', referralCode: user.referralCode ?? null }, token: issueSession(user.id), sandbox: true, persistence: databaseEnabled ? 'database' : 'memory' };
-    } catch (e) { request.log.error(e); return reply.code(500).send({ error: 'Unable to sign in' }); }
-  });
+  app.post('/api/v1/auth/login', async (request: any, reply: any) => { const p = z.object({ email: z.string().email(), password: z.string() }).safeParse(request.body); if (!p.success) return reply.code(400).send({ error: 'Invalid credentials format' }); const email = p.data.email.toLowerCase(); try { const user: any = databaseEnabled ? await db.user.findUnique({ where: { email } }) : [...credentials.values()].find(x => x.email === email) ?? null; if (!user || !verifyPassword(p.data.password, user.passwordHash)) return reply.code(401).send({ error: 'Invalid email or password' }); return { user: { id: user.id, email: user.email, status: 'ACTIVE', referralCode: user.referralCode ?? null }, token: issueSession(user.id), sandbox: true, persistence: databaseEnabled ? 'database' : 'memory' }; } catch (e) { request.log.error(e); return reply.code(500).send({ error: 'Unable to sign in' }); } });
   app.post('/api/v1/auth/logout', async (request: any) => { const t = bearer(request); if (t) sessions.delete(tokenHash(t)); return { ok: true }; });
-
-  app.get('/api/v1/me', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    if (!databaseEnabled) return { user: { id: u.id, email: u.email, status: 'ACTIVE', referralCode: u.referralCode ?? null }, wallets: [{ asset: 'USDT', available: '0.00', locked: '0.00' }], sandbox: true, persistence: 'memory' };
-    const ws = await db.wallet.findMany({ where: { userId: u.id }, include: { asset: true } });
-    return { user: { id: u.id, email: u.email, status: 'ACTIVE', referralCode: u.referralCode }, wallets: ws.map(w => ({ asset: w.asset.symbol, available: w.available.toString(), locked: w.locked.toString() })), sandbox: true, persistence: 'database' };
-  });
-  app.get('/api/v1/wallets', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    if (!databaseEnabled) return { wallets: [{ asset: 'USDT', available: '0.00', locked: '0.00' }], sandbox: true };
-    const ws = await db.wallet.findMany({ where: { userId: u.id }, include: { asset: true } });
-    return { wallets: ws.map(w => ({ id: w.id, asset: w.asset.symbol, available: w.available.toString(), locked: w.locked.toString() })), sandbox: true };
-  });
-  app.get('/api/v1/wallets/activity', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    if (!databaseEnabled) return { deposits: [], withdrawals: [], ledger: [], sandbox: true };
-    const [deposits, withdrawals, ledger] = await Promise.all([
-      db.deposit.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 50 }),
-      db.withdrawal.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 50 }),
-      db.ledgerEntry.findMany({ where: { account: u.id }, orderBy: { createdAt: 'desc' }, take: 100 }),
-    ]);
-    return { deposits, withdrawals, ledger, sandbox: true };
-  });
-
-  app.post('/api/v1/deposits/request', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    const p = z.object({ asset: z.literal('USDT'), amount: z.coerce.number().positive().max(100000000), txHash: z.string().min(8).max(200).optional() }).safeParse(request.body);
-    if (!p.success) return reply.code(400).send({ error: 'USDT amount must be positive and valid' });
-    if (!databaseEnabled) return { id: crypto.randomUUID(), status: 'PENDING', sandbox: true, message: 'Database is not configured; request was not persisted.' };
-    const d = await db.deposit.create({ data: { userId: u.id, asset: 'USDT', amount: decimal(p.data.amount), txHash: p.data.txHash } });
-    return reply.code(201).send({ id: d.id, asset: d.asset, amount: d.amount.toString(), status: d.status, sandbox: true, message: 'Deposit request recorded. Confirmation is manual in this foundation.' });
-  });
-
-  app.post('/api/v1/withdrawals/request', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    const p = z.object({ asset: z.literal('USDT'), amount: z.coerce.number().positive().max(100000000), address: z.string().min(10).max(200) }).safeParse(request.body);
-    if (!p.success) return reply.code(400).send({ error: 'USDT amount and destination address are required' });
-    if (!databaseEnabled) return { id: crypto.randomUUID(), status: 'PENDING', sandbox: true, message: 'Database is not configured; request was not persisted.' };
-    try {
-      const w = await db.$transaction(async tx => {
-        const wallet = await tx.wallet.findFirst({ where: { userId: u.id, asset: { symbol: 'USDT' } } });
-        if (!wallet) throw new Error('WALLET_NOT_FOUND'); const amount = decimal(p.data.amount);
-        if (wallet.available.lt(amount)) throw new Error('INSUFFICIENT_BALANCE');
-        await tx.wallet.update({ where: { id: wallet.id }, data: { available: { decrement: amount }, locked: { increment: amount } } });
-        const withdrawal = await tx.withdrawal.create({ data: { userId: u.id, asset: 'USDT', amount, address: p.data.address, status: 'PENDING' } });
-        const reference = `withdrawal:${withdrawal.id}`;
-        await tx.ledgerEntry.createMany({ data: [{ reference, account: u.id, assetSymbol: 'USDT', direction: 'DEBIT', amount }, { reference, account: 'ASTER_WITHDRAWAL_CLEARING', assetSymbol: 'USDT', direction: 'CREDIT', amount }] });
-        return withdrawal;
-      });
-      return reply.code(201).send({ id: w.id, asset: w.asset, amount: w.amount.toString(), status: w.status, sandbox: true, message: 'Withdrawal queued for manual approval. No blockchain transaction was sent.' });
-    } catch (e) {
-      if (e instanceof Error && e.message === 'INSUFFICIENT_BALANCE') return reply.code(400).send({ error: 'Insufficient available USDT balance' });
-      if (e instanceof Error && e.message === 'WALLET_NOT_FOUND') return reply.code(404).send({ error: 'USDT wallet not found' });
-      request.log.error(e); return reply.code(500).send({ error: 'Unable to create withdrawal request' });
-    }
-  });
-
-  app.get('/api/v1/earn/staking', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    if (!databaseEnabled) return { positions: [], available: '0.00', locked: '0.00', sandbox: true, message: 'Staking requires database persistence.' };
-    const [positions, wallet] = await Promise.all([db.stake.findMany({ where: { userId: u.id }, orderBy: { startedAt: 'desc' }, take: 50 }), db.wallet.findFirst({ where: { userId: u.id, asset: { symbol: 'USDT' } } })]);
-    return { positions, available: wallet?.available.toString() ?? '0', locked: wallet?.locked.toString() ?? '0', sandbox: true, productStatus: 'SANDBOX' };
-  });
-  app.post('/api/v1/earn/staking/preview', async (request: any, reply: any) => {
-    const u = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    const p = z.object({ amount: z.coerce.number().positive().max(100000000), durationDays: z.coerce.number().int().min(1).max(365) }).safeParse(request.body);
-    if (!p.success) return reply.code(400).send({ error: 'Valid amount and duration are required' });
-    const rateBps = 500; const projected = p.data.amount * (rateBps / 10000) * (p.data.durationDays / 365);
-    return { sandbox: true, accepted: false, reason: 'Preview only; no funds are locked', asset: 'USDT', amount: p.data.amount.toFixed(6), durationDays: p.data.durationDays, rateBps, projectedReward: projected.toFixed(6) };
-  });
-  app.post('/api/v1/earn/staking/create', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    const p = z.object({ amount: z.coerce.number().positive().max(100000000), durationDays: z.coerce.number().int().min(1).max(365) }).safeParse(request.body);
-    if (!p.success) return reply.code(400).send({ error: 'Valid amount and duration are required' });
-    if (!databaseEnabled) return reply.code(503).send({ error: 'Database persistence is required for staking' });
-    try {
-      const stake = await db.$transaction(async tx => {
-        const wallet = await tx.wallet.findFirst({ where: { userId: u.id, asset: { symbol: 'USDT' } } });
-        if (!wallet) throw new Error('WALLET_NOT_FOUND'); const amount = decimal(p.data.amount);
-        if (wallet.available.lt(amount)) throw new Error('INSUFFICIENT_BALANCE');
-        const endsAt = new Date(Date.now() + p.data.durationDays * 86400000); const rateBps = 500;
-        await tx.wallet.update({ where: { id: wallet.id }, data: { available: { decrement: amount }, locked: { increment: amount } } });
-        const s = await tx.stake.create({ data: { userId: u.id, asset: 'USDT', amount, rateBps, endsAt } });
-        await tx.ledgerEntry.createMany({ data: [{ reference: `stake:${s.id}`, account: u.id, assetSymbol: 'USDT', direction: 'DEBIT', amount }, { reference: `stake:${s.id}`, account: 'ASTER_STAKING_POOL', assetSymbol: 'USDT', direction: 'CREDIT', amount }] });
-        return s;
-      });
-      return reply.code(201).send({ id: stake.id, asset: stake.asset, amount: stake.amount.toString(), rateBps: stake.rateBps, startedAt: stake.startedAt, endsAt: stake.endsAt, sandbox: true, message: 'Sandbox stake created. Reward settlement is not automatic yet.' });
-    } catch (e) {
-      if (e instanceof Error && e.message === 'INSUFFICIENT_BALANCE') return reply.code(400).send({ error: 'Insufficient available USDT balance' });
-      if (e instanceof Error && e.message === 'WALLET_NOT_FOUND') return reply.code(404).send({ error: 'USDT wallet not found' });
-      request.log.error(e); return reply.code(500).send({ error: 'Unable to create stake' });
-    }
-  });
-  app.get('/api/v1/earn/referral', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    if (!databaseEnabled) return { referralCode: u.referralCode ?? null, referralCount: 0, referrals: [], rewards: [], sandbox: true, rewardStatus: 'NOT_AUTOMATIC' };
-    const [account, referrals, rewards] = await Promise.all([db.user.findUnique({ where: { id: u.id }, select: { referralCode: true } }), db.referral.findMany({ where: { referrerId: u.id }, orderBy: { createdAt: 'desc' }, take: 100 }), db.reward.findMany({ where: { userId: u.id, type: 'REFERRAL' }, orderBy: { createdAt: 'desc' }, take: 100 })]);
-    return { referralCode: account?.referralCode ?? null, referralCount: referrals.length, referrals: referrals.map(r => ({ id: r.refereeId, joinedAt: r.createdAt })), rewards, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' };
-  });
-  app.get('/api/v1/rewards', async (request: any, reply: any) => {
-    const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    if (!databaseEnabled) return { rewards: [], totals: { all: '0', staking: '0', referral: '0', trading: '0', promotion: '0' }, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' };
-    const rewards = await db.reward.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 100 });
-    const totals = { all: '0', staking: '0', referral: '0', trading: '0', promotion: '0' } as Record<string, string>;
-    for (const r of rewards) { const n = new Prisma.Decimal(totals.all).plus(r.amount).toString(); totals.all = n; const k = r.type.toLowerCase(); if (k in totals) totals[k] = new Prisma.Decimal(totals[k]).plus(r.amount).toString(); }
-    return { rewards, totals, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' };
-  });
-  app.post('/api/v1/trades/preview', async (request: any, reply: any) => {
-    const u = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' });
-    const p = z.object({ market: z.enum(['BTCUSDT', 'ETHUSDT', 'XAUUSDT']), direction: z.enum(['HIGHER', 'LOWER']), amount: z.coerce.number().positive().max(100000000), expiry: z.coerce.number().int().min(10).max(86400) }).safeParse(request.body);
-    if (!p.success) return reply.code(400).send({ error: 'Valid market, direction, amount and expiry are required' });
-    return { sandbox: true, accepted: false, market: p.data.market, direction: p.data.direction, amount: p.data.amount.toFixed(6), expiry: p.data.expiry, message: 'Preview only. No binary trade was executed.' };
-  });
-
-  app.post('/api/v1/admin/login', async (request: any, reply: any) => {
-    const p = z.object({ email: z.string().email(), password: z.string() }).safeParse(request.body);
-    if (!p.success) return reply.code(400).send({ error: 'Invalid admin credentials format' });
-    if (p.data.email.toLowerCase() !== (process.env.ADMIN_EMAIL ?? '').toLowerCase() || p.data.password !== (process.env.ADMIN_PASSWORD ?? '')) return reply.code(401).send({ error: 'Invalid administrator credentials' });
-    return { token: issueAdminSession(), expiresIn: 28800, sandbox: true };
-  });
+  app.get('/api/v1/me', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); if (!databaseEnabled) return { user: { id: u.id, email: u.email, status: 'ACTIVE', referralCode: u.referralCode ?? null }, wallets: [{ asset: 'USDT', available: '0.00', locked: '0.00' }], sandbox: true, persistence: 'memory' }; const ws = await db.wallet.findMany({ where: { userId: u.id }, include: { asset: true } }); return { user: { id: u.id, email: u.email, status: 'ACTIVE', referralCode: u.referralCode }, wallets: ws.map(w => ({ asset: w.asset.symbol, available: w.available.toString(), locked: w.locked.toString() })), sandbox: true, persistence: 'database' }); });
+  app.get('/api/v1/wallets', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); if (!databaseEnabled) return { wallets: [{ asset: 'USDT', available: '0.00', locked: '0.00' }], sandbox: true }; const ws = await db.wallet.findMany({ where: { userId: u.id }, include: { asset: true } }); return { wallets: ws.map(w => ({ id: w.id, asset: w.asset.symbol, available: w.available.toString(), locked: w.locked.toString() })), sandbox: true }); });
+  app.get('/api/v1/wallets/activity', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); if (!databaseEnabled) return { deposits: [], withdrawals: [], ledger: [], sandbox: true }; const [deposits, withdrawals, ledger] = await Promise.all([db.deposit.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 50 }), db.withdrawal.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 50 }), db.ledgerEntry.findMany({ where: { account: u.id }, orderBy: { createdAt: 'desc' }, take: 100 })]); return { deposits, withdrawals, ledger, sandbox: true }; });
+  app.post('/api/v1/deposits/request', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); const p = z.object({ asset: z.literal('USDT'), amount: z.coerce.number().positive().max(100000000), txHash: z.string().min(8).max(200).optional() }).safeParse(request.body); if (!p.success) return reply.code(400).send({ error: 'USDT amount must be positive and valid' }); if (!databaseEnabled) return { id: crypto.randomUUID(), status: 'PENDING', sandbox: true, message: 'Database is not configured; request was not persisted.' }; const d = await db.deposit.create({ data: { userId: u.id, asset: 'USDT', amount: decimal(p.data.amount), txHash: p.data.txHash } }); return reply.code(201).send({ id: d.id, asset: d.asset, amount: d.amount.toString(), status: d.status, sandbox: true, message: 'Deposit request recorded. Confirmation is manual in this foundation.' }); });
+  app.post('/api/v1/withdrawals/request', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); const p = z.object({ asset: z.literal('USDT'), amount: z.coerce.number().positive().max(100000000), address: z.string().min(10).max(200) }).safeParse(request.body); if (!p.success) return reply.code(400).send({ error: 'USDT amount and destination address are required' }); if (!databaseEnabled) return { id: crypto.randomUUID(), status: 'PENDING', sandbox: true, message: 'Database is not configured; request was not persisted.' }; try { const w = await db.$transaction(async tx => { const wallet = await tx.wallet.findFirst({ where: { userId: u.id, asset: { symbol: 'USDT' } } }); if (!wallet) throw new Error('WALLET_NOT_FOUND'); const amount = decimal(p.data.amount); if (wallet.available.lt(amount)) throw new Error('INSUFFICIENT_BALANCE'); await tx.wallet.update({ where: { id: wallet.id }, data: { available: { decrement: amount }, locked: { increment: amount } } }); const withdrawal = await tx.withdrawal.create({ data: { userId: u.id, asset: 'USDT', amount, address: p.data.address, status: 'PENDING' } }); const reference = `withdrawal:${withdrawal.id}`; await tx.ledgerEntry.createMany({ data: [{ reference, account: u.id, assetSymbol: 'USDT', direction: 'DEBIT', amount }, { reference, account: 'ASTER_WITHDRAWAL_CLEARING', assetSymbol: 'USDT', direction: 'CREDIT', amount }] }); return withdrawal; }); return reply.code(201).send({ id: w.id, asset: w.asset, amount: w.amount.toString(), status: w.status, sandbox: true, message: 'Withdrawal queued for manual approval. No blockchain transaction was sent.' }); } catch (e) { if (e instanceof Error && e.message === 'INSUFFICIENT_BALANCE') return reply.code(400).send({ error: 'Insufficient available USDT balance' }); if (e instanceof Error && e.message === 'WALLET_NOT_FOUND') return reply.code(404).send({ error: 'USDT wallet not found' }); request.log.error(e); return reply.code(500).send({ error: 'Unable to create withdrawal request' }); } });
+  app.get('/api/v1/earn/staking', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); if (!databaseEnabled) return { positions: [], available: '0.00', locked: '0.00', sandbox: true, message: 'Staking requires database persistence.' }; const [positions, wallet] = await Promise.all([db.stake.findMany({ where: { userId: u.id }, orderBy: { startedAt: 'desc' }, take: 50 }), db.wallet.findFirst({ where: { userId: u.id, asset: { symbol: 'USDT' } } })]); return { positions, available: wallet?.available.toString() ?? '0', locked: wallet?.locked.toString() ?? '0', sandbox: true, productStatus: 'SANDBOX' }; });
+  app.post('/api/v1/earn/staking/preview', async (request: any, reply: any) => { const u = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); const p = z.object({ amount: z.coerce.number().positive().max(100000000), durationDays: z.coerce.number().int().min(1).max(365) }).safeParse(request.body); if (!p.success) return reply.code(400).send({ error: 'Valid amount and duration are required' }); const rateBps = 500; const projected = p.data.amount * (rateBps / 10000) * (p.data.durationDays / 365); return { sandbox: true, accepted: false, reason: 'Preview only; no funds are locked', asset: 'USDT', amount: p.data.amount.toFixed(6), durationDays: p.data.durationDays, rateBps, projectedReward: projected.toFixed(6) }; });
+  app.post('/api/v1/earn/staking/create', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); const p = z.object({ amount: z.coerce.number().positive().max(100000000), durationDays: z.coerce.number().int().min(1).max(365) }).safeParse(request.body); if (!p.success) return reply.code(400).send({ error: 'Valid amount and duration are required' }); if (!databaseEnabled) return reply.code(503).send({ error: 'Database persistence is required for staking' }); try { const stake = await db.$transaction(async tx => { const wallet = await tx.wallet.findFirst({ where: { userId: u.id, asset: { symbol: 'USDT' } } }); if (!wallet) throw new Error('WALLET_NOT_FOUND'); const amount = decimal(p.data.amount); if (wallet.available.lt(amount)) throw new Error('INSUFFICIENT_BALANCE'); const endsAt = new Date(Date.now() + p.data.durationDays * 86400000); const rateBps = 500; await tx.wallet.update({ where: { id: wallet.id }, data: { available: { decrement: amount }, locked: { increment: amount } } }); const s = await tx.stake.create({ data: { userId: u.id, asset: 'USDT', amount, rateBps, endsAt } }); await tx.ledgerEntry.createMany({ data: [{ reference: `stake:${s.id}`, account: u.id, assetSymbol: 'USDT', direction: 'DEBIT', amount }, { reference: `stake:${s.id}`, account: 'ASTER_STAKING_POOL', assetSymbol: 'USDT', direction: 'CREDIT', amount }] }); return s; }); return reply.code(201).send({ id: stake.id, asset: stake.asset, amount: stake.amount.toString(), rateBps: stake.rateBps, startedAt: stake.startedAt, endsAt: stake.endsAt, sandbox: true, message: 'Sandbox stake created. Reward settlement is not automatic yet.' }); } catch (e) { if (e instanceof Error && e.message === 'INSUFFICIENT_BALANCE') return reply.code(400).send({ error: 'Insufficient available USDT balance' }); if (e instanceof Error && e.message === 'WALLET_NOT_FOUND') return reply.code(404).send({ error: 'USDT wallet not found' }); request.log.error(e); return reply.code(500).send({ error: 'Unable to create stake' }); } });
+  app.get('/api/v1/earn/referral', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); if (!databaseEnabled) return { referralCode: u.referralCode ?? null, referralCount: 0, referrals: [], rewards: [], sandbox: true, rewardStatus: 'NOT_AUTOMATIC' }; const [account, referrals, rewards] = await Promise.all([db.user.findUnique({ where: { id: u.id }, select: { referralCode: true } }), db.referral.findMany({ where: { referrerId: u.id }, orderBy: { createdAt: 'desc' }, take: 100 }), db.reward.findMany({ where: { userId: u.id, type: 'REFERRAL' }, orderBy: { createdAt: 'desc' }, take: 100 })]); return { referralCode: account?.referralCode ?? null, referralCount: referrals.length, referrals: referrals.map(r => ({ id: r.refereeId, joinedAt: r.createdAt })), rewards, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' }; });
+  app.get('/api/v1/rewards', async (request: any, reply: any) => { const u: any = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); if (!databaseEnabled) return { rewards: [], totals: { all: '0', staking: '0', referral: '0', trading: '0', promotion: '0' }, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' }; const rewards = await db.reward.findMany({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, take: 100 }); const totals = { all: '0', staking: '0', referral: '0', trading: '0', promotion: '0' } as Record<string, string>; for (const r of rewards) { const n = new Prisma.Decimal(totals.all).plus(r.amount).toString(); totals.all = n; const k = r.type.toLowerCase(); if (k in totals) totals[k] = new Prisma.Decimal(totals[k]).plus(r.amount).toString(); } return { rewards, totals, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' }; });
+  app.post('/api/v1/trades/preview', async (request: any, reply: any) => { const u = await authenticatedUser(request); if (!u) return reply.code(401).send({ error: 'Authentication required' }); const p = z.object({ market: z.enum(['BTCUSDT','ETHUSDT','XAUUSDT','XAGUSDT','WTIUSDT','BRENTUSDT']), direction: z.enum(['HIGHER','LOWER']), amount: z.coerce.number().positive().max(100000000), expiry: z.coerce.number().int().min(10).max(86400) }).safeParse(request.body); if (!p.success) return reply.code(400).send({ error: 'Valid market, direction, amount and expiry are required' }); return { sandbox: true, accepted: false, market: p.data.market, direction: p.data.direction, amount: p.data.amount.toFixed(6), expiry: p.data.expiry, message: 'Preview only. No binary trade was executed.' }; });
+  app.post('/api/v1/admin/login', async (request: any, reply: any) => { const p = z.object({ email: z.string().email(), password: z.string() }).safeParse(request.body); if (!p.success) return reply.code(400).send({ error: 'Invalid admin credentials format' }); if (p.data.email.toLowerCase() !== (process.env.ADMIN_EMAIL ?? '').toLowerCase() || p.data.password !== (process.env.ADMIN_PASSWORD ?? '')) return reply.code(401).send({ error: 'Invalid administrator credentials' }); return { token: issueAdminSession(), expiresIn: 28800, sandbox: true }; });
   app.post('/api/v1/admin/logout', async (request: any) => { const t = bearer(request); if (t) adminSessions.delete(tokenHash(t)); return { ok: true }; });
-  app.get('/api/v1/admin/overview', async (request: any, reply: any) => {
-    if (!requireAdmin(request, reply)) return;
-    if (!databaseEnabled) return { users: credentials.size, pendingDeposits: 0, pendingWithdrawals: 0, activeStakes: 0, sandbox: true };
-    const [users, pendingDeposits, pendingWithdrawals, activeStakes] = await Promise.all([db.user.count(), db.deposit.count({ where: { status: 'PENDING' } }), db.withdrawal.count({ where: { status: 'PENDING' } }), db.stake.count({ where: { endsAt: { gt: new Date() } } })]);
-    return { users, pendingDeposits, pendingWithdrawals, activeStakes, sandbox: true };
-  });
+  app.get('/api/v1/admin/overview', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { users: credentials.size, pendingDeposits: 0, pendingWithdrawals: 0, activeStakes: 0, sandbox: true }; const [users, pendingDeposits, pendingWithdrawals, activeStakes] = await Promise.all([db.user.count(), db.deposit.count({ where: { status: 'PENDING' } }), db.withdrawal.count({ where: { status: 'PENDING' } }), db.stake.count({ where: { endsAt: { gt: new Date() } } })]); return { users, pendingDeposits, pendingWithdrawals, activeStakes, sandbox: true }; });
   app.get('/api/v1/admin/users', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { users: [...credentials.values()].map(u => ({ id: u.id, email: u.email, createdAt: null })) }; return { users: await db.user.findMany({ take: 500, orderBy: { createdAt: 'desc' }, select: { id: true, email: true, referralCode: true, createdAt: true, updatedAt: true } }) }; });
-  app.get('/api/v1/admin/deposits', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { deposits: [] }; return { deposits: await db.deposit.findMany({ take: 500, orderBy: { createdAt: 'desc' }, include: { user: { select: { id: true, email: true } } } }) }; });
-  app.get('/api/v1/admin/withdrawals', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { withdrawals: [] }; return { withdrawals: await db.withdrawal.findMany({ take: 500, orderBy: { createdAt: 'desc' }, include: { user: { select: { id: true, email: true } } } }) }; });
-  app.post('/api/v1/admin/withdrawals/:id/approve', async (request: any, reply: any) => {
-    if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return reply.code(503).send({ error: 'Database persistence is required' });
-    const id = String(request.params.id); const w = await db.withdrawal.findUnique({ where: { id } });
-    if (!w) return reply.code(404).send({ error: 'Withdrawal not found' }); if (w.status !== 'PENDING') return reply.code(409).send({ error: `Withdrawal is already ${w.status}` });
-    const updated = await db.withdrawal.update({ where: { id }, data: { status: 'APPROVED' } });
-    return { withdrawal: updated, sandbox: true, message: 'Approved for manual processing. No blockchain transaction was sent.' };
-  });
-  app.get('/api/v1/admin/stakes', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { stakes: [] }; return { stakes: await db.stake.findMany({ take: 500, orderBy: { startedAt: 'desc' }, include: { user: { select: { id: true, email: true } } } }) }; });
-  app.get('/api/v1/admin/ledger', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { ledger: [] }; return { ledger: await db.ledgerEntry.findMany({ take: 500, orderBy: { createdAt: 'desc' } }) }; });
-
-  const port = Number(process.env.PORT ?? 3000);
-  await app.listen({ port, host: '0.0.0.0' });
+  app.get('/api/v1/admin/deposits', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { deposits: [] }; return { deposits: await db.deposit.findMany({ take: 500, orderBy: { createdAt: 'desc' }, include: { user: { select: { id: true, email: true } } } }) }); });
+  app.get('/api/v1/admin/withdrawals', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { withdrawals: [] }; return { withdrawals: await db.withdrawal.findMany({ take: 500, orderBy: { createdAt: 'desc' }, include: { user: { select: { id: true, email: true } } } }) }); });
+  app.post('/api/v1/admin/withdrawals/:id/approve', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return reply.code(503).send({ error: 'Database persistence is required' }); const id = String(request.params.id); const w = await db.withdrawal.findUnique({ where: { id } }); if (!w) return reply.code(404).send({ error: 'Withdrawal not found' }); if (w.status !== 'PENDING') return reply.code(409).send({ error: `Withdrawal is already ${w.status}` }); const updated = await db.withdrawal.update({ where: { id }, data: { status: 'APPROVED' } }); return { withdrawal: updated, sandbox: true, message: 'Approved for manual processing. No blockchain transaction was sent.' }; });
+  app.get('/api/v1/admin/stakes', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { stakes: [] }; return { stakes: await db.stake.findMany({ take: 500, orderBy: { startedAt: 'desc' }, include: { user: { select: { id: true, email: true } } } }) }); });
+  app.get('/api/v1/admin/ledger', async (request: any, reply: any) => { if (!requireAdmin(request, reply)) return; if (!databaseEnabled) return { ledger: [] }; return { ledger: await db.ledgerEntry.findMany({ take: 500, orderBy: { createdAt: 'desc' } }) }); });
+  const port = Number(process.env.PORT ?? 3000); await app.listen({ port, host: '0.0.0.0' });
 }
 main().catch(err => { app.log.error(err); process.exit(1); });
