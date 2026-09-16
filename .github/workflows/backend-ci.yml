@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [ main, aster-v1 ]
 
+env:
+  # Prisma schema validation/generation only needs a syntactically valid URL.
+  # CI does not connect to a production database.
+  DATABASE_URL: postgresql://aster:aster_ci_password@localhost:5432/aster_ci?schema=public
+
 jobs:
   build-backend:
     name: TypeScript + Prisma build
