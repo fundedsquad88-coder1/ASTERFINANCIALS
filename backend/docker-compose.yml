@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aster
+      POSTGRES_PASSWORD: aster_dev_password
+      POSTGRES_DB: aster
+    ports:
+      - "5432:5432"
+    volumes:
+      - aster-postgres:/var/lib/postgresql/data
+
+volumes:
+  aster-postgres:
