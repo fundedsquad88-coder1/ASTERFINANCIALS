@@ -24,7 +24,12 @@ Aster Financials is a GitHub-ready Android app plus a TypeScript/Fastify backend
 - Staking positions and referral relationships persisted in Prisma
 - Sandbox staking preview and sandbox stake creation
 - Referral code generation and referral relationship tracking
+- Admin authentication and review console APIs
 - No blockchain transaction execution or automatic reward settlement yet
+
+## Admin console
+
+The static administrator dashboard is in `admin/index.html`. Enter the deployed backend URL on the sign-in screen, then use the `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables configured on the backend. The console supports overview metrics, user/deposit/withdrawal/staking/ledger views, and a sandbox/manual withdrawal approval queue.
 
 ## Build the APK on GitHub
 
