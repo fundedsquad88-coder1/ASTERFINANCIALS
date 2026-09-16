@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import crypto from 'node:crypto';
 import { z } from 'zod';
+import { db, databaseEnabled } from './db';
 
 const app = Fastify({ logger: true });
 const demoMarkets = [
@@ -33,7 +34,7 @@ function issueSession(userId: string) {
   sessions.set(tokenHash, { userId, tokenHash, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
   return token;
 }
-function authenticatedUser(request: { headers: Record<string, string | string[] | undefined> }) {
+async function authenticatedUser(request: { headers: Record<string, string | string[] | undefined> }) {
   const header = request.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) return null;
   const token = header.slice(7);
@@ -43,35 +44,86 @@ function authenticatedUser(request: { headers: Record<string, string | string[] 
     sessions.delete(hash);
     return null;
   }
+  if (databaseEnabled) {
+    return db.user.findUnique({ where: { id: session.userId } });
+  }
   return credentials.get(session.userId) ?? null;
+}
+
+async function createDatabaseUser(email: string, passwordHash: string) {
+  const asset = await db.asset.upsert({
+    where: { symbol: 'USDT' },
+    update: {},
+    create: { symbol: 'USDT', decimals: 6 }
+  });
+  return db.$transaction(async tx => {
+    const user = await tx.user.create({ data: { email, passwordHash } });
+    await tx.wallet.create({ data: { userId: user.id, assetId: asset.id, available: 0, locked: 0 } });
+    return user;
+  });
 }
 
 async function main() {
   await app.register(helmet);
-  // Development-only CORS for the WebView client. Restrict this to the app/web origin before production.
   await app.register(cors, { origin: true });
 
-  app.get('/health', async () => ({ ok: true, service: 'aster-financials-api', environment: process.env.NODE_ENV ?? 'development', timestamp: new Date().toISOString() }));
-  app.get('/api/v1/system/status', async () => ({ api: 'online', trading: 'sandbox', blockchain: 'sandbox', message: 'Production integrations are intentionally disabled in this foundation.' }));
+  app.get('/health', async () => ({
+    ok: true,
+    service: 'aster-financials-api',
+    environment: process.env.NODE_ENV ?? 'development',
+    database: databaseEnabled ? 'configured' : 'memory-fallback',
+    timestamp: new Date().toISOString()
+  }));
+
+  app.get('/api/v1/system/status', async () => ({
+    api: 'online',
+    trading: 'sandbox',
+    blockchain: 'sandbox',
+    database: databaseEnabled ? 'configured' : 'memory-fallback',
+    message: 'Production integrations are intentionally disabled in this foundation.'
+  }));
+
   app.get('/api/v1/markets', async () => ({ markets: demoMarkets }));
 
   app.post('/api/v1/auth/register', async (request, reply) => {
     const parsed = z.object({ email: z.string().email(), password: z.string().min(8) }).safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'Valid email and password of at least 8 characters are required' });
     const email = parsed.data.email.toLowerCase();
-    if ([...credentials.values()].some(x => x.email === email)) return reply.code(409).send({ error: 'Account already exists' });
-    const id = crypto.randomUUID();
-    credentials.set(id, { id, email, passwordHash: hashPassword(parsed.data.password) });
-    const token = issueSession(id);
-    return reply.code(201).send({ user: { id, email, status: 'ACTIVE' }, token, sandbox: true });
+    const passwordHash = hashPassword(parsed.data.password);
+
+    try {
+      if (databaseEnabled) {
+        const existing = await db.user.findUnique({ where: { email } });
+        if (existing) return reply.code(409).send({ error: 'Account already exists' });
+        const user = await createDatabaseUser(email, passwordHash);
+        return reply.code(201).send({ user: { id: user.id, email: user.email, status: 'ACTIVE' }, token: issueSession(user.id), sandbox: true, persistence: 'database' });
+      }
+
+      if ([...credentials.values()].some(x => x.email === email)) return reply.code(409).send({ error: 'Account already exists' });
+      const id = crypto.randomUUID();
+      credentials.set(id, { id, email, passwordHash });
+      return reply.code(201).send({ user: { id, email, status: 'ACTIVE' }, token: issueSession(id), sandbox: true, persistence: 'memory' });
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(500).send({ error: 'Unable to create account' });
+    }
   });
 
   app.post('/api/v1/auth/login', async (request, reply) => {
     const parsed = z.object({ email: z.string().email(), password: z.string() }).safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'Invalid credentials format' });
-    const user = [...credentials.values()].find(x => x.email === parsed.data.email.toLowerCase());
-    if (!user || !verifyPassword(parsed.data.password, user.passwordHash)) return reply.code(401).send({ error: 'Invalid email or password' });
-    return { user: { id: user.id, email: user.email, status: 'ACTIVE' }, token: issueSession(user.id), sandbox: true };
+    const email = parsed.data.email.toLowerCase();
+
+    try {
+      const user = databaseEnabled
+        ? await db.user.findUnique({ where: { email } })
+        : [...credentials.values()].find(x => x.email === email) ?? null;
+      if (!user || !verifyPassword(parsed.data.password, user.passwordHash)) return reply.code(401).send({ error: 'Invalid email or password' });
+      return { user: { id: user.id, email: user.email, status: 'ACTIVE' }, token: issueSession(user.id), sandbox: true, persistence: databaseEnabled ? 'database' : 'memory' };
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(500).send({ error: 'Unable to sign in' });
+    }
   });
 
   app.post('/api/v1/auth/logout', async (request) => {
@@ -84,27 +136,47 @@ async function main() {
   });
 
   app.get('/api/v1/me', async (request, reply) => {
-    const user = authenticatedUser(request);
+    const user = await authenticatedUser(request);
     if (!user) return reply.code(401).send({ error: 'Authentication required' });
-    return { user: { id: user.id, email: user.email, status: 'ACTIVE' }, wallets: [{ asset: 'USDT', available: '0.00', locked: '0.00' }], sandbox: true };
+
+    if (databaseEnabled) {
+      const wallets = await db.wallet.findMany({ where: { userId: user.id }, include: { asset: true } });
+      return {
+        user: { id: user.id, email: user.email, status: 'ACTIVE' },
+        wallets: wallets.map(w => ({ asset: w.asset.symbol, available: w.available.toString(), locked: w.locked.toString() })),
+        sandbox: true,
+        persistence: 'database'
+      };
+    }
+    return { user: { id: user.id, email: user.email, status: 'ACTIVE' }, wallets: [{ asset: 'USDT', available: '0.00', locked: '0.00' }], sandbox: true, persistence: 'memory' };
   });
 
   app.get('/api/v1/account/:id', async (request, reply) => {
     const parsed = z.object({ id: z.string().min(1) }).safeParse(request.params);
     if (!parsed.success) return reply.code(400).send({ error: 'Invalid account id' });
-    const requester = authenticatedUser(request);
+    const requester = await authenticatedUser(request);
     if (!requester || requester.id !== parsed.data.id) return reply.code(401).send({ error: 'Authentication required' });
-    return { id: requester.id, email: requester.email, status: 'ACTIVE', wallets: [{ asset: 'USDT', available: '0.00', locked: '0.00' }], sandbox: true };
+    return { id: requester.id, email: requester.email, status: 'ACTIVE', sandbox: true };
   });
 
   app.post('/api/v1/trades/preview', async (request, reply) => {
-    const user = authenticatedUser(request);
+    const user = await authenticatedUser(request);
     if (!user) return reply.code(401).send({ error: 'Authentication required' });
-    const parsed = z.object({ symbol: z.enum(['BTCUSDT', 'ETHUSDT', 'XAUUSDT']), side: z.enum(['HIGHER', 'LOWER']), amount: z.number().positive(), expirySeconds: z.number().int().min(30).max(86400) }).safeParse(request.body);
+    const parsed = z.object({
+      symbol: z.enum(['BTCUSDT', 'ETHUSDT', 'XAUUSDT']),
+      side: z.enum(['HIGHER', 'LOWER']),
+      amount: z.number().positive(),
+      expirySeconds: z.number().int().min(30).max(86400)
+    }).safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'Invalid trade preview request' });
     return { sandbox: true, accepted: false, reason: 'Preview only; no real-money order is submitted', userId: user.id, ...parsed.data };
   });
 
   await app.listen({ host: '0.0.0.0', port: Number(process.env.PORT ?? 3000) });
 }
-main().catch((error) => { app.log.error(error); process.exit(1); });
+
+main().catch(async error => {
+  app.log.error(error);
+  await db.$disconnect().catch(() => undefined);
+  process.exit(1);
+});
