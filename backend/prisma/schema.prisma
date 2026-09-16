@@ -1,20 +1,51 @@
-generator client { provider = "prisma-client-js" }
+generator client {
+  provider = "prisma-client-js"
+}
 
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
-enum LedgerDirection { DEBIT CREDIT }
-enum TradeStatus { PENDING OPEN WON LOST CANCELLED }
-enum DepositStatus { PENDING CONFIRMED FAILED }
-enum WithdrawalStatus { PENDING APPROVED SENT REJECTED }
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
 
-enum RewardType { REFERRAL STAKING TRADING PROMOTION }
+enum TradeStatus {
+  PENDING
+  OPEN
+  WON
+  LOST
+  CANCELLED
+}
+
+enum DepositStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  SENT
+  REJECTED
+}
+
+enum RewardType {
+  REFERRAL
+  STAKING
+  TRADING
+  PROMOTION
+}
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
+  id           String       @id @default(cuid())
+  email        String       @unique
   passwordHash String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   wallets      Wallet[]
   trades       Trade[]
   stakes       Stake[]
@@ -24,20 +55,21 @@ model User {
 }
 
 model Asset {
-  id        String   @id @default(cuid())
-  symbol    String   @unique
-  decimals  Int      @default(6)
-  wallets   Wallet[]
+  id       String   @id @default(cuid())
+  symbol   String   @unique
+  decimals Int      @default(6)
+  wallets  Wallet[]
 }
 
 model Wallet {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   userId    String
   assetId   String
-  available Decimal  @default(0) @db.Decimal(36, 18)
-  locked    Decimal  @default(0) @db.Decimal(36, 18)
-  user      User     @relation(fields: [userId], references: [id])
-  asset     Asset    @relation(fields: [assetId], references: [id])
+  available Decimal @default(0) @db.Decimal(36, 18)
+  locked    Decimal @default(0) @db.Decimal(36, 18)
+  user      User    @relation(fields: [userId], references: [id])
+  asset     Asset   @relation(fields: [assetId], references: [id])
+
   @@unique([userId, assetId])
 }
 
@@ -49,6 +81,7 @@ model LedgerEntry {
   direction   LedgerDirection
   amount      Decimal        @db.Decimal(36, 18)
   createdAt   DateTime       @default(now())
+
   @@index([reference])
   @@index([account, assetSymbol])
 }
@@ -86,7 +119,7 @@ model Trade {
   openedAt  DateTime    @default(now())
   expiresAt DateTime
   settledAt DateTime?
-  user      User        @relation(fields: [userId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
 }
 
 model Stake {
