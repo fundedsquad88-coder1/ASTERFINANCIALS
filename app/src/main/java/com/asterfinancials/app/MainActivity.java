@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
                     view.evaluateJavascript(readAsset("trade-sync.js"), null);
                     view.evaluateJavascript(readAsset("polish.js"), null);
                     view.evaluateJavascript(readAsset("coin-icons.js"), null);
+                    view.evaluateJavascript(readAsset("chart-fix.js"), null);
                 } catch (Exception ignored) {}
             }
         });
