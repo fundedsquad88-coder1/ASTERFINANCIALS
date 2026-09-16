@@ -172,7 +172,7 @@ async function main() {
 
   app.post('/api/v1/earn/staking/preview', async (request, reply) => {
     const user = await authenticatedUser(request); if (!user) return reply.code(401).send({ error: 'Authentication required' });
-    const parsed = z.object({ amount: z.coerce.number().positive().max(100000000), durationDays: z.number().int().min(1).max(365) }).safeParse(request.body);
+    const parsed = z.object({ amount: z.coerce.number().positive().max(100000000), durationDays: z.coerce.number().int().min(1).max(365) }).safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'Valid amount and duration are required' });
     const sandboxRateBps = 500;
     const projectedReward = parsed.data.amount * (sandboxRateBps / 10000) * (parsed.data.durationDays / 365);
@@ -181,7 +181,7 @@ async function main() {
 
   app.post('/api/v1/earn/staking/create', async (request, reply) => {
     const user = await authenticatedUser(request); if (!user) return reply.code(401).send({ error: 'Authentication required' });
-    const parsed = z.object({ amount: z.coerce.number().positive().max(100000000), durationDays: z.number().int().min(1).max(365) }).safeParse(request.body);
+    const parsed = z.object({ amount: z.coerce.number().positive().max(100000000), durationDays: z.coerce.number().int().min(1).max(365) }).safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'Valid amount and duration are required' });
     if (!databaseEnabled) return reply.code(503).send({ error: 'Database persistence is required for staking' });
     try {
@@ -212,6 +212,20 @@ async function main() {
       db.reward.findMany({ where: { userId: user.id, type: 'REFERRAL' }, orderBy: { createdAt: 'desc' }, take: 100 })
     ]);
     return { referralCode: account?.referralCode ?? null, referralCount: referrals.length, referrals: referrals.map(r => ({ id: r.referee.id, joinedAt: r.createdAt })), rewards, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' };
+  });
+
+  app.get('/api/v1/rewards', async (request, reply) => {
+    const user = await authenticatedUser(request); if (!user) return reply.code(401).send({ error: 'Authentication required' });
+    if (!databaseEnabled) return { rewards: [], totals: { all: '0', staking: '0', referral: '0', trading: '0', promotion: '0' }, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' };
+    const rewards = await db.reward.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 100 });
+    const totals = { all: '0', staking: '0', referral: '0', trading: '0', promotion: '0' };
+    for (const reward of rewards) {
+      const amount = reward.amount.toString();
+      const key = reward.type.toLowerCase() as 'staking' | 'referral' | 'trading' | 'promotion';
+      totals[key] = new Prisma.Decimal(totals[key]).add(reward.amount).toString();
+      totals.all = new Prisma.Decimal(totals.all).add(reward.amount).toString();
+    }
+    return { rewards, totals, sandbox: true, rewardStatus: 'NOT_AUTOMATIC' };
   });
 
   app.post('/api/v1/trades/preview', async (request, reply) => {
