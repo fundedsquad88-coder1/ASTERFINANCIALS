@@ -9,16 +9,13 @@
     ['APTUSDT','APT/USDT','Aptos'],['ATOMUSDT','ATOM/USDT','Cosmos']
   ];
   const commodities = [
-    ['XAUUSDT','XAU/USDT','Gold','PROVIDER REQUIRED'],
-    ['XAGUSDT','XAG/USDT','Silver','PROVIDER REQUIRED'],
-    ['WTIUSDT','WTI/USDT','WTI Crude Oil','PROVIDER REQUIRED'],
-    ['BRENTUSDT','BRENT/USDT','Brent Crude Oil','PROVIDER REQUIRED']
+    ['XAUUSDT','XAU/USDT','Gold','PROVIDER REQUIRED'],['XAGUSDT','XAG/USDT','Silver','PROVIDER REQUIRED'],
+    ['WTIUSDT','WTI/USDT','WTI Crude Oil','PROVIDER REQUIRED'],['BRENTUSDT','BRENT/USDT','Brent Crude Oil','PROVIDER REQUIRED']
   ];
   let active='BTCUSDT', interval='1m', c=null, s=null, ws=null;
   const $=id=>document.getElementById(id);
+  const labelFor=sym=>(crypto.concat(commodities).find(x=>x[0]===sym)||['',sym])[1];
   function toast2(m){ if(window.toast) window.toast(m); }
-  crypto.forEach(([sym,label])=>{ if(window.symbols) window.symbols[sym]=label; });
-  commodities.forEach(([sym,label])=>{ if(window.symbols) window.symbols[sym]=label; });
   function marketHtml(sym,label,name,status){
     const provider=status==='PROVIDER REQUIRED';
     return `<div class="market" style="cursor:pointer" onclick="startMarket('${sym}');show('trade')"><span><b>${label}</b><br><small class="muted">${name}</small></span><span class="${provider?'muted':'status'}" id="enh-${sym}">${provider?'PROVIDER REQUIRED':'LIVE'}</span></div>`;
@@ -29,11 +26,11 @@
     if($('homeMarkets')) $('homeMarkets').innerHTML=crypto.slice(0,8).map(x=>marketHtml(x[0],x[1],x[2])).join('')+commodities.map(x=>marketHtml(x[0],x[1],x[2],x[3])).join('');
   }
   function addAuthEntryPoints(){
-    if($('authEntry')) return;
-    const home=$('home');
-    const card=document.createElement('div'); card.id='authEntry'; card.className='card';
-    card.innerHTML='<b>Account</b><p class="muted">Sign in to sync your wallet, deposits, withdrawals and Earn activity.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="goldbtn" onclick="openAuth();setAuthMode(\'login\')">Sign in</button><button class="outlinebtn" onclick="openAuth();setAuthMode(\'register\')">Create account</button></div><br><button class="outlinebtn" onclick="show(\'wallet\');setTimeout(openWallet,50,\'deposit\')">Deposit funds</button>';
-    home.appendChild(card);
+    if(!$('authEntry')){
+      const home=$('home'); const card=document.createElement('div'); card.id='authEntry'; card.className='card';
+      card.innerHTML='<b>Account</b><p class="muted">Sign in to sync your wallet, deposits, withdrawals and Earn activity.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="goldbtn" onclick="openAuth();setAuthMode(\'login\')">Sign in</button><button class="outlinebtn" onclick="openAuth();setAuthMode(\'register\')">Create account</button></div><br><button class="outlinebtn" onclick="show(\'wallet\');setTimeout(openWallet,50,\'deposit\')">Deposit funds</button>';
+      home.appendChild(card);
+    }
     const profile=$('profile');
     if(profile && !$('profileAuth')){
       const p=document.createElement('div'); p.id='profileAuth'; p.className='card';
@@ -42,49 +39,30 @@
     }
   }
   function ensureDepositInfo(){
-    const sheet=document.querySelector('#walletModal .sheet'); if(!sheet || $('depositInfo')) return;
-    const box=document.createElement('div'); box.id='depositInfo'; box.className='card'; box.style.margin='12px 0 0';
-    box.innerHTML='<b>Deposit USDT</b><p class="muted">Choose the network carefully. Only send USDT on the selected network. Blockchain transfers are irreversible.</p><div class="field"><label>USDT-TRC20</label><input id="depTrc" readonly value="TMrK4d1r2cGye2TwX3JfjCaUDWvZy6aoXD"><button class="smallbtn" style="margin-top:8px;padding:10px 14px" onclick="copyDeposit(\'depTrc\')">Copy address</button></div><br><div class="field"><label>USDT-BEP20 (BNB Smart Chain)</label><input id="depBep" readonly value="0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5"><button class="smallbtn" style="margin-top:8px;padding:10px 14px" onclick="copyDeposit(\'depBep\')">Copy address</button></div><p class="notice">Verify the network and address in your wallet before confirming the transfer. A deposit is credited only after the transaction is detected and manually/automatically confirmed by the backend.</p>';
-    sheet.querySelector('.form').prepend(box);
+    const sheet=document.querySelector('#walletModal .sheet'); if(!sheet)return;
+    let box=$('depositInfo');
+    if(!box){
+      box=document.createElement('div'); box.id='depositInfo'; box.className='card'; box.style.margin='12px 0 0';
+      box.innerHTML='<b>Deposit USDT</b><p class="muted">Choose the network carefully. Only send USDT on the selected network. Blockchain transfers are irreversible.</p><div class="field"><label>USDT-TRC20</label><input id="depTrc" readonly value="TMrK4d1r2cGye2TwX3JfjCaUDWvZy6aoXD"><button class="smallbtn" style="margin-top:8px;padding:10px 14px" onclick="copyDeposit(\'depTrc\')">Copy address</button></div><br><div class="field"><label>USDT-BEP20 (BNB Smart Chain)</label><input id="depBep" readonly value="0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5"><button class="smallbtn" style="margin-top:8px;padding:10px 14px" onclick="copyDeposit(\'depBep\')">Copy address</button></div><p class="notice">Verify the network and address in your wallet before confirming the transfer. A deposit is credited only after the transaction is detected and manually/automatically confirmed by the backend.</p>';
+      sheet.querySelector('.form').prepend(box);
+    }
+    box.style.display='block';
   }
-  window.copyDeposit=function(id){ const v=$(id)?.value; if(!v)return; navigator.clipboard?.writeText(v).then(()=>toast2('Address copied.')).catch(()=>toast2(v)); };
+  window.copyDeposit=function(id){const v=$(id)?.value;if(!v)return;navigator.clipboard?.writeText(v).then(()=>toast2('Address copied.')).catch(()=>toast2(v));};
   async function startEnhanced(sym){
-    active=sym;
-    if(window.symbols && window.symbols[sym]) $('pair').textContent=window.symbols[sym];
-    if(ws){try{ws.close()}catch(e){}}
+    active=sym; $('pair').textContent=labelFor(sym); if(ws){try{ws.close()}catch(e){}}
     const provider=!crypto.some(x=>x[0]===sym);
-    if(provider){ $('feed').textContent='PROVIDER REQUIRED'; $('price').textContent='—'; if(c){try{c.remove()}catch(e){}}; return; }
+    if(provider){$('feed').textContent='PROVIDER REQUIRED';$('price').textContent='—';if(c){try{c.remove()}catch(e){}};return;}
     if(c){try{c.remove()}catch(e){}}
-    const L=window.LightweightCharts; if(!L){$('feed').textContent='CHART LIBRARY UNAVAILABLE';return;}
+    const L=window.LightweightCharts;if(!L){$('feed').textContent='CHART LIBRARY UNAVAILABLE';return;}
     c=L.createChart($('chart'),{autoSize:true,layout:{background:{type:'solid',color:'#070808'},textColor:'#858585'},grid:{vertLines:{color:'#171818'},horzLines:{color:'#171818'}},rightPriceScale:{borderColor:'#282828'},timeScale:{borderColor:'#282828',timeVisible:true,secondsVisible:false}});
-    s=c.addSeries(L.CandlestickSeries,{upColor:'#20c77a',downColor:'#ef5555',borderVisible:false,wickUpColor:'#20c77a',wickDownColor:'#ef5555'});
-    $('feed').textContent='CONNECTING';
-    try{
-      const data=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=300`).then(r=>r.json());
-      if(!Array.isArray(data)) throw Error('Pair unavailable');
-      const bars=data.map(k=>({time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
-      s.setData(bars); $('price').textContent=bars.at(-1)?.close.toLocaleString()||'—'; $('feed').textContent='LIVE';
-      ws=new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@kline_${interval}`);
-      ws.onmessage=e=>{const k=JSON.parse(e.data).k;const b={time:Math.floor(k.t/1000),open:+k.o,high:+k.h,low:+k.l,close:+k.c};s.update(b);$('price').textContent=b.close.toLocaleString()};
-      ws.onclose=()=>{if(active===sym)$('feed').textContent='DISCONNECTED'};
-    }catch(e){$('feed').textContent='UNAVAILABLE';$('price').textContent='—';}
+    s=c.addSeries(L.CandlestickSeries,{upColor:'#20c77a',downColor:'#ef5555',borderVisible:false,wickUpColor:'#20c77a',wickDownColor:'#ef5555'});$('feed').textContent='CONNECTING';
+    try{const data=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=300`).then(r=>r.json());if(!Array.isArray(data))throw Error('Pair unavailable');const bars=data.map(k=>({time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));s.setData(bars);$('price').textContent=bars.at(-1)?.close.toLocaleString()||'—';$('feed').textContent='LIVE';ws=new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@kline_${interval}`);ws.onmessage=e=>{const k=JSON.parse(e.data).k;const b={time:Math.floor(k.t/1000),open:+k.o,high:+k.h,low:+k.l,close:+k.c};s.update(b);$('price').textContent=b.close.toLocaleString()};ws.onclose=()=>{if(active===sym)$('feed').textContent='DISCONNECTED'};}catch(e){$('feed').textContent='UNAVAILABLE';$('price').textContent='—';}
   }
   window.startMarket=startEnhanced;
-  window.previewTrade=async function(side){
-    const token=localStorage.getItem('aster_token')||'';
-    if(!token){openAuth();return;}
-    const amount=Number($('amount').value), expirySeconds=Number($('expiry').value);
-    if(!(amount>0)){toast2('Enter a valid amount.');return;}
-    try{
-      if(!window.api) throw Error('Set your backend URL in Profile first.');
-      const d=await window.api('/api/v1/trades/preview',{method:'POST',body:JSON.stringify({symbol:active,side,amount,expirySeconds})});
-      toast2(d.reason||'Trade preview submitted.');
-    }catch(e){toast2(e.message)}
-  };
-  const oldOpenWallet=window.openWallet;
-  window.openWallet=function(mode){ if(typeof oldOpenWallet==='function') oldOpenWallet(mode); ensureDepositInfo(); };
-  const oldShow=window.show;
-  window.show=function(id){ if(typeof oldShow==='function') oldShow(id); if(id==='wallet') setTimeout(ensureDepositInfo,80); if(id==='markets') setTimeout(render,30); };
-  function init(){ render(); addAuthEntryPoints(); ensureDepositInfo(); setTimeout(()=>{ if($('apiBase')) $('apiBase').value=localStorage.getItem('aster_api_base')||''; },50); }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+  window.previewTrade=async function(side){const token=localStorage.getItem('aster_token')||'';if(!token){openAuth();return;}const amount=Number($('amount').value),expirySeconds=Number($('expiry').value);if(!(amount>0)){toast2('Enter a valid amount.');return;}try{if(!window.api)throw Error('Set your backend URL in Profile first.');const d=await window.api('/api/v1/trades/preview',{method:'POST',body:JSON.stringify({symbol:active,side,amount,expirySeconds})});toast2(d.reason||'Trade preview submitted.');}catch(e){toast2(e.message)}};
+  const oldOpenWallet=window.openWallet; window.openWallet=function(mode){if(typeof oldOpenWallet==='function')oldOpenWallet(mode);ensureDepositInfo();};
+  const oldShow=window.show; window.show=function(id){if(typeof oldShow==='function')oldShow(id);if(id==='wallet')setTimeout(ensureDepositInfo,80);if(id==='markets')setTimeout(render,30);};
+  function init(){render();addAuthEntryPoints();ensureDepositInfo();}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
