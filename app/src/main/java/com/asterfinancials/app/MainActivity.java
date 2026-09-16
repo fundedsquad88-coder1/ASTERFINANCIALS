@@ -8,6 +8,10 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+
 public class MainActivity extends Activity {
     public final class NativeConfig {
         @JavascriptInterface
@@ -20,6 +24,15 @@ public class MainActivity extends Activity {
         }
     }
 
+    private String readAsset(String name) throws Exception {
+        try (InputStream in = getAssets().open(name); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int n;
+            while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
+            return out.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+
     @Override
     public void onCreate(Bundle b) {
         super.onCreate(b);
@@ -28,7 +41,17 @@ public class MainActivity extends Activity {
 
         WebView w = new WebView(this);
         w.setBackgroundColor(Color.rgb(5, 6, 6));
-        w.setWebViewClient(new WebViewClient());
+        w.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                try {
+                    view.evaluateJavascript(readAsset("enhancements.js"), null);
+                } catch (Exception ignored) {
+                    // Keep the core app usable if the optional enhancement asset fails to load.
+                }
+            }
+        });
         WebSettings s = w.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
