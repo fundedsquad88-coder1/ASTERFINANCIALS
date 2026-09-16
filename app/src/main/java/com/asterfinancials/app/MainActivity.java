@@ -47,8 +47,9 @@ public class MainActivity extends Activity {
                 super.onPageFinished(view, url);
                 try {
                     view.evaluateJavascript(readAsset("enhancements.js"), null);
+                    view.evaluateJavascript(readAsset("wallet-auth.js"), null);
                 } catch (Exception ignored) {
-                    // Keep the core app usable if the optional enhancement asset fails to load.
+                    // Keep the core app usable if an optional enhancement asset fails to load.
                 }
             }
         });
