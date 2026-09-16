@@ -7,11 +7,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum LedgerDirection { DEBIT CREDIT }
-enum TradeStatus { PENDING OPEN WON LOST CANCELLED }
-enum DepositStatus { PENDING CONFIRMED FAILED }
-enum WithdrawalStatus { PENDING APPROVED SENT REJECTED }
-enum RewardType { REFERRAL STAKING TRADING PROMOTION }
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum TradeStatus {
+  PENDING
+  OPEN
+  WON
+  LOST
+  CANCELLED
+}
+
+enum DepositStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  SENT
+  REJECTED
+}
+
+enum RewardType {
+  REFERRAL
+  STAKING
+  TRADING
+  PROMOTION
+}
 
 model User {
   id           String       @id @default(cuid())
