@@ -1,0 +1,112 @@
+generator client { provider = "prisma-client-js" }
+
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+enum LedgerDirection { DEBIT CREDIT }
+enum TradeStatus { PENDING OPEN WON LOST CANCELLED }
+enum DepositStatus { PENDING CONFIRMED FAILED }
+enum WithdrawalStatus { PENDING APPROVED SENT REJECTED }
+
+enum RewardType { REFERRAL STAKING TRADING PROMOTION }
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  wallets      Wallet[]
+  trades       Trade[]
+  stakes       Stake[]
+  rewards      Reward[]
+  deposits     Deposit[]
+  withdrawals  Withdrawal[]
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  symbol    String   @unique
+  decimals  Int      @default(6)
+  wallets   Wallet[]
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String
+  assetId   String
+  available Decimal  @default(0) @db.Decimal(36, 18)
+  locked    Decimal  @default(0) @db.Decimal(36, 18)
+  user      User     @relation(fields: [userId], references: [id])
+  asset     Asset    @relation(fields: [assetId], references: [id])
+  @@unique([userId, assetId])
+}
+
+model LedgerEntry {
+  id          String         @id @default(cuid())
+  reference   String
+  account     String
+  assetSymbol String
+  direction   LedgerDirection
+  amount      Decimal        @db.Decimal(36, 18)
+  createdAt   DateTime       @default(now())
+  @@index([reference])
+  @@index([account, assetSymbol])
+}
+
+model Deposit {
+  id        String        @id @default(cuid())
+  userId    String
+  asset     String
+  amount    Decimal       @db.Decimal(36, 18)
+  txHash    String?
+  status    DepositStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id])
+}
+
+model Withdrawal {
+  id        String           @id @default(cuid())
+  userId    String
+  asset     String
+  amount    Decimal          @db.Decimal(36, 18)
+  address   String
+  txHash    String?
+  status    WithdrawalStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+}
+
+model Trade {
+  id        String      @id @default(cuid())
+  userId    String
+  market    String
+  direction String
+  amount    Decimal     @db.Decimal(36, 18)
+  status    TradeStatus @default(PENDING)
+  openedAt  DateTime    @default(now())
+  expiresAt DateTime
+  settledAt DateTime?
+  user      User        @relation(fields: [userId], references: [id])
+}
+
+model Stake {
+  id        String   @id @default(cuid())
+  userId    String
+  asset     String
+  amount    Decimal  @db.Decimal(36, 18)
+  rateBps   Int
+  startedAt DateTime @default(now())
+  endsAt    DateTime
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Reward {
+  id        String     @id @default(cuid())
+  userId    String
+  type      RewardType
+  amount    Decimal    @db.Decimal(36, 18)
+  asset     String
+  reference String?
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id])
+}
