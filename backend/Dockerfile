@@ -5,6 +5,7 @@ RUN npm install
 COPY prisma ./prisma
 COPY tsconfig.json ./tsconfig.json
 COPY src ./src
+COPY scripts ./scripts
 RUN npx prisma generate && npm run build
 
 FROM node:22-bookworm-slim AS runtime
