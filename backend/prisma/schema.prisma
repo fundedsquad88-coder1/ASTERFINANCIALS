@@ -7,43 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum LedgerDirection {
-  DEBIT
-  CREDIT
-}
-
-enum TradeStatus {
-  PENDING
-  OPEN
-  WON
-  LOST
-  CANCELLED
-}
-
-enum DepositStatus {
-  PENDING
-  CONFIRMED
-  FAILED
-}
-
-enum WithdrawalStatus {
-  PENDING
-  APPROVED
-  SENT
-  REJECTED
-}
-
-enum RewardType {
-  REFERRAL
-  STAKING
-  TRADING
-  PROMOTION
-}
+enum LedgerDirection { DEBIT CREDIT }
+enum TradeStatus { PENDING OPEN WON LOST CANCELLED }
+enum DepositStatus { PENDING CONFIRMED FAILED }
+enum WithdrawalStatus { PENDING APPROVED SENT REJECTED }
+enum RewardType { REFERRAL STAKING TRADING PROMOTION }
 
 model User {
   id           String       @id @default(cuid())
   email        String       @unique
   passwordHash String
+  referralCode String?      @unique
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   wallets      Wallet[]
@@ -52,6 +26,18 @@ model User {
   rewards      Reward[]
   deposits     Deposit[]
   withdrawals  Withdrawal[]
+  referralsOut Referral[]   @relation("Referrer")
+  referralIn   Referral?    @relation("Referee")
+}
+
+model Referral {
+  id         String   @id @default(cuid())
+  referrerId String
+  refereeId  String   @unique
+  createdAt  DateTime @default(now())
+  referrer   User     @relation("Referrer", fields: [referrerId], references: [id])
+  referee    User     @relation("Referee", fields: [refereeId], references: [id])
+  @@index([referrerId])
 }
 
 model Asset {
@@ -69,7 +55,6 @@ model Wallet {
   locked    Decimal @default(0) @db.Decimal(36, 18)
   user      User    @relation(fields: [userId], references: [id])
   asset     Asset   @relation(fields: [assetId], references: [id])
-
   @@unique([userId, assetId])
 }
 
@@ -81,7 +66,6 @@ model LedgerEntry {
   direction   LedgerDirection
   amount      Decimal        @db.Decimal(36, 18)
   createdAt   DateTime       @default(now())
-
   @@index([reference])
   @@index([account, assetSymbol])
 }
@@ -134,12 +118,12 @@ model Stake {
 }
 
 model Reward {
-  id        String     @id @default(cuid())
-  userId    String
-  type      RewardType
-  amount    Decimal    @db.Decimal(36, 18)
-  asset     String
-  reference String?
-  createdAt DateTime   @default(now())
-  user      User       @relation(fields: [userId], references: [id])
+  id         String     @id @default(cuid())
+  userId     String
+  type       RewardType
+  amount     Decimal    @db.Decimal(36, 18)
+  asset      String
+  reference  String?
+  createdAt  DateTime   @default(now())
+  user       User       @relation(fields: [userId], references: [id])
 }
