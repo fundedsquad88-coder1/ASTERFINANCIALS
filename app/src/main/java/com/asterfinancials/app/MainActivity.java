@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
                     view.evaluateJavascript(readAsset("wallet-auth.js"), null);
                     view.evaluateJavascript(readAsset("trade-sync.js"), null);
                     view.evaluateJavascript(readAsset("polish.js"), null);
+                    view.evaluateJavascript(readAsset("coin-icons.js"), null);
                 } catch (Exception ignored) {}
             }
         });
