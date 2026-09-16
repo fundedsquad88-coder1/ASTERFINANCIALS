@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
                 try {
                     view.evaluateJavascript(readAsset("enhancements.js"), null);
                     view.evaluateJavascript(readAsset("wallet-auth.js"), null);
+                    view.evaluateJavascript(readAsset("trade-sync.js"), null);
                 } catch (Exception ignored) {
                     // Keep the core app usable if an optional enhancement asset fails to load.
                 }
