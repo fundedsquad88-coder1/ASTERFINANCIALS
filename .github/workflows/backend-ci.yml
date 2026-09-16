@@ -31,5 +31,9 @@ jobs:
         run: npx prisma validate --schema=prisma/schema.prisma
       - name: Generate Prisma client
         run: npx prisma generate --schema=prisma/schema.prisma
+      - name: Verify migration state
+        run: npx prisma migrate status --schema=prisma/schema.prisma
       - name: TypeScript build
         run: npm run build
+      - name: Verify seed compiles
+        run: npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck prisma/seed.ts
