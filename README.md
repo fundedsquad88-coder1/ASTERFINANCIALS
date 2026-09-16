@@ -5,7 +5,8 @@ Aster Financials is a GitHub-ready Android app plus a TypeScript/Fastify backend
 ## Current app
 
 - Native Android Studio/Gradle project
-- Aster black/gold UI and reference logo
+- Aster black/gold UI and Aster launcher branding
+- Custom Aster gold launcher icon configured for Android home screens
 - Live public BTC/USDT and ETH/USDT market charts via Binance data
 - XAU/USDT explicitly marked provider-required; no fake market data
 - Account registration/sign-in with bearer session
@@ -43,7 +44,7 @@ The admin withdrawal approval currently changes the sandbox database state only.
 1. Open **Actions** in the repository.
 2. Select **Build Aster APK**.
 3. Run the workflow on `aster-v1`.
-4. When green, open the run and download `aster-financials-debug-apk`.
+4. When green, open the run and download `aster-financials-v1-debug-apk`.
 5. The artifact contains `app-debug.apk`.
 
 ## Backend CI
