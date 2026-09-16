@@ -11,6 +11,20 @@ jobs:
   build-backend:
     name: TypeScript + Prisma build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aster
+          POSTGRES_PASSWORD: aster_ci_password
+          POSTGRES_DB: aster_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U aster -d aster_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     defaults:
       run:
         working-directory: backend
@@ -31,6 +45,8 @@ jobs:
         run: npx prisma validate --schema=prisma/schema.prisma
       - name: Generate Prisma client
         run: npx prisma generate --schema=prisma/schema.prisma
+      - name: Apply migrations
+        run: npx prisma migrate deploy --schema=prisma/schema.prisma
       - name: Verify migration state
         run: npx prisma migrate status --schema=prisma/schema.prisma
       - name: TypeScript build
