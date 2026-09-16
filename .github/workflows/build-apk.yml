@@ -2,8 +2,16 @@ name: Build Aster APK
 
 on:
   workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: 'HTTPS URL of the deployed Aster API (optional for sandbox builds)'
+        required: false
+        type: string
   push:
     branches: [ main, aster-v1 ]
+
+env:
+  ASTER_API_BASE_URL: ${{ inputs.api_base_url || '' }}
 
 jobs:
   build:
@@ -35,7 +43,7 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Build Android APK
-        run: gradle assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace -PasterApiBaseUrl="$ASTER_API_BASE_URL"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
