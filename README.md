@@ -1,25 +1,43 @@
-# Aster Financials — Android App (GitHub-ready)
+# Aster Financials — Android + API foundation
 
-This is a complete Android Studio/Gradle project for the Aster Financials mobile app prototype.
+Aster Financials is a GitHub-ready Android app plus a TypeScript/Fastify backend foundation.
 
-## Project structure
+## Current app
 
-- `app/` — Android application module
-- `app/src/main/assets/` — Aster UI and logo
-- `app/src/main/java/.../MainActivity.java` — WebView launcher
-- `app/src/main/res/values/styles.xml` — app theme
-- `.github/workflows/build-apk.yml` — automatic GitHub Actions APK build
-- `build.gradle` / `settings.gradle` — root Gradle configuration
+- Native Android Studio/Gradle project
+- Aster black/gold UI and reference logo
+- Live public BTC/USDT and ETH/USDT market charts via Binance data
+- XAU/USDT explicitly marked provider-required; no fake market data
+- Account registration/sign-in with bearer session
+- Backend-synced USDT wallet balance and activity
+- Deposit requests and withdrawal requests
+- Trade preview endpoint; no real-money execution
+- Earn backend foundation for staking and referrals
+
+## Backend
+
+- Fastify API with Helmet and CORS
+- PostgreSQL + Prisma persistence
+- Password hashing with Node scrypt
+- Session tokens stored as hashes in the API process
+- Wallet and ledger records designed as the accounting source of truth
+- Staking positions and referral relationships persisted in Prisma
+- Sandbox staking preview and sandbox stake creation
+- Referral code generation and referral relationship tracking
+- No blockchain transaction execution or automatic reward settlement yet
 
 ## Build the APK on GitHub
 
-1. Create/open your GitHub repository.
-2. Upload the **contents of this folder while preserving the folders exactly as shown above**. Do not upload all files into the repository root individually.
-3. Confirm that the repository root contains `app`, `.github`, `build.gradle`, and `settings.gradle`.
-4. Open **Actions** → **Build Aster APK** → **Run workflow**.
-5. When the run is green, open it and download the artifact `aster-financials-debug-apk`.
-6. The downloaded artifact contains `app-debug.apk`.
+1. Open **Actions** in the repository.
+2. Select **Build Aster APK**.
+3. Run the workflow on `aster-v1`.
+4. When green, open the run and download `aster-financials-debug-apk`.
+5. The artifact contains `app-debug.apk`.
 
-## Important
+## Backend CI
 
-The current app is a UI prototype. Dashboard balances, prices, returns, transactions, and trading controls are demo interface values. No live funds, wallet custody, authentication, market execution, or real-money trading backend is connected.
+The **Backend CI** workflow validates the Prisma schema, generates the Prisma client, and runs the TypeScript build. CI uses a syntactically valid PostgreSQL URL and does not connect to a production database.
+
+## Production boundary
+
+This repository is intentionally a sandbox foundation. Real-money trading, binary-options settlement, custody, deposits/withdrawals on-chain, automatic yield/reward settlement, KYC/AML, limits, audit controls, and administrative controls require separate production architecture, security review, market-data/settlement design, and applicable regulatory/licensing work. Do not treat sandbox balances, projected rewards, or trade previews as real customer funds or returns.
