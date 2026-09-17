@@ -283,19 +283,13 @@ function receivePrices(json){try{const data=JSON.parse(json);data.forEach(x=>pri
 function receiveNews(json){try{window.news=JSON.parse(json);renderHome();renderMarkets()}catch(e){}}
 function selectStrategy(x){selectedStrategy=x;document.querySelectorAll('.strategy').forEach(s=>s.style.boxShadow='');const el=document.querySelector('.strategy'+(x==='growth'?'.growth':''));if(el)el.style.boxShadow='0 0 0 1px #e1b63e inset'}
 function freq(b,x){selectedFreq=x;document.querySelectorAll('.freq button').forEach(y=>y.classList.remove('selected'));b.classList.add('selected');calc()}
-function calc(){const a=Number(document.getElementById('amount')?.value||0);const rate=Number(document.getElementById('weeklyRate')?.value||20)/100;const weeks=Number(document.getElementById('weeks')?.value||4);const el=document.getElementById('calcValue');if(el)el.textContent=')}
+function calc(){const a=Number(document.getElementById('amount')?.value||0);const rate=Number(document.getElementById('weeklyRate')?.value||20)/100;const weeks=Number(document.getElementById('weeks')?.value||4);const el=document.getElementById('calcValue');if(el)el.textContent='$'+(a*Math.pow(1+rate,weeks)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function showAuth(title){document.getElementById('modalTitle').textContent=title;document.getElementById('modal').classList.add('open')}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 function saveApi(){const v=document.getElementById('apiUrl').value.trim();if(v)localStorage.setItem('asterApiUrl',v)}
 function showInfo(title){document.getElementById('modalTitle').textContent=title;document.getElementById('modal').classList.add('open')}
 function toggleTheme(){document.body.classList.toggle('whiteTheme');const w=document.getElementById('themeSwitch');if(w)w.classList.toggle('whiteMode');localStorage.setItem('asterTheme',document.body.classList.contains('whiteTheme')?'white':'black')}
 function loadTheme(){const white=localStorage.getItem('asterTheme')==='white';document.body.classList.toggle('whiteTheme',white);const w=document.getElementById('themeSwitch');if(w)w.classList.toggle('whiteMode',white)}
-window.v3ApplyPrices=receivePrices;window.v3ApplyNews=receiveNews;window.v3Boot=function(){const saved=localStorage.getItem('asterApiUrl');if(saved&&document.getElementById('apiUrl'))document.getElementById('apiUrl').value=saved;loadTheme();renderHome();renderMarkets();refreshAll();setInterval(refreshAll,30000)};window.news=[];calc();v3Boot();
-</script>
-</body></html>+(a*Math.pow(1+rate,weeks)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})})}
-function showAuth(title){document.getElementById('modalTitle').textContent=title;document.getElementById('modal').classList.add('open')}
-function closeModal(){document.getElementById('modal').classList.remove('open')}
-function saveApi(){const v=document.getElementById('apiUrl').value.trim();if(v)localStorage.setItem('asterApiUrl',v)}
-window.v3ApplyPrices=receivePrices;window.v3ApplyNews=receiveNews;window.v3Boot=function(){const saved=localStorage.getItem('asterApiUrl');if(saved)document.getElementById('apiUrl').value=saved;renderHome();renderMarkets();refreshAll();setInterval(refreshAll,30000)};window.news=[];calc();v3Boot();
+window.v3ApplyPrices=receivePrices;window.v3ApplyNews=receiveNews;window.v3Boot=function(){const saved=localStorage.getItem('asterApiUrl');if(saved&&document.getElementById('apiUrl'))document.getElementById('apiUrl').value=saved;loadTheme();renderHome();renderMarkets();refreshAll();setInterval(refreshAll,30000)};window.news=[];v3Boot();calc();
 </script>
 </body></html>
