@@ -12,6 +12,8 @@ enum TradeStatus { PENDING OPEN WON LOST CANCELLED }
 enum DepositStatus { PENDING CONFIRMED FAILED }
 enum WithdrawalStatus { PENDING APPROVED SENT REJECTED }
 enum RewardType { REFERRAL STAKING TRADING PROMOTION }
+enum Network { TRC20 BEP20 }
+enum CustodyTxStatus { OBSERVED CONFIRMED REJECTED }
 
 model User {
   id String @id @default(cuid())
@@ -29,13 +31,15 @@ model User {
   referralsOut Referral[] @relation("Referrer")
   referralIn Referral? @relation("Referee")
   sessions Session[]
+  depositAddresses DepositAddress[]
+  custodyTransactions CustodyTransaction[]
 }
 model Referral { id String @id @default(cuid()); referrerId String; refereeId String @unique; createdAt DateTime @default(now()); referrer User @relation("Referrer", fields: [referrerId], references: [id]); referee User @relation("Referee", fields: [refereeId], references: [id]); @@index([referrerId]) }
 model Asset { id String @id @default(cuid()); symbol String @unique; decimals Int @default(6); wallets Wallet[] }
 model Wallet { id String @id @default(cuid()); userId String; assetId String; available Decimal @default(0) @db.Decimal(36,18); locked Decimal @default(0) @db.Decimal(36,18); user User @relation(fields: [userId], references: [id]); asset Asset @relation(fields: [assetId], references: [id]); @@unique([userId,assetId]) }
 model LedgerEntry { id String @id @default(cuid()); reference String; account String; assetSymbol String; direction LedgerDirection; amount Decimal @db.Decimal(36,18); createdAt DateTime @default(now()); @@index([reference]); @@index([account,assetSymbol]) }
-model Deposit { id String @id @default(cuid()); userId String; asset String; amount Decimal @db.Decimal(36,18); txHash String?; status DepositStatus @default(PENDING); createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id]) }
-model Withdrawal { id String @id @default(cuid()); userId String; asset String; amount Decimal @db.Decimal(36,18); address String; txHash String?; status WithdrawalStatus @default(PENDING); createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id]) }
+model Deposit { id String @id @default(cuid()); userId String; asset String; network Network?; amount Decimal @db.Decimal(36,18); txHash String?; depositAddressId String?; confirmations Int @default(0); status DepositStatus @default(PENDING); confirmedAt DateTime?; createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id]); depositAddress DepositAddress? @relation(fields:[depositAddressId],references:[id]); custodyTransaction CustodyTransaction? }
+model Withdrawal { id String @id @default(cuid()); userId String; asset String; network Network?; amount Decimal @db.Decimal(36,18); address String; txHash String?; status WithdrawalStatus @default(PENDING); createdAt DateTime @default(now()); approvedAt DateTime?; sentAt DateTime?; user User @relation(fields:[userId],references:[id]) }
 model Trade { id String @id @default(cuid()); userId String; market String; direction String; amount Decimal @db.Decimal(36,18); status TradeStatus @default(PENDING); openedAt DateTime @default(now()); expiresAt DateTime; settledAt DateTime?; user User @relation(fields:[userId],references:[id]) }
 model Stake { id String @id @default(cuid()); userId String; asset String; amount Decimal @db.Decimal(36,18); rateBps Int; startedAt DateTime @default(now()); endsAt DateTime; user User @relation(fields:[userId],references:[id]) }
 model Reward { id String @id @default(cuid()); userId String; type RewardType; amount Decimal @db.Decimal(36,18); asset String; reference String?; createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id]) }
@@ -44,3 +48,5 @@ model AdminUser { id String @id @default(cuid()); email String @unique; password
 model AdminSession { id String @id @default(cuid()); adminUserId String; tokenHash String @unique; expiresAt DateTime; createdAt DateTime @default(now()); lastSeenAt DateTime @default(now()); adminUser AdminUser @relation(fields:[adminUserId],references:[id],onDelete:Cascade); @@index([adminUserId]); @@index([expiresAt]) }
 model SecurityAuditEvent { id String @id @default(cuid()); action String; requestId String?; subjectId String?; ip String?; metadata Json?; createdAt DateTime @default(now()); @@index([createdAt]); @@index([subjectId]); @@index([action]) }
 model IdempotencyKey { id String @id @default(cuid()); scope String; key String; requestHash String; responseStatus Int?; responseBody Json?; createdAt DateTime @default(now()); expiresAt DateTime; @@unique([scope,key]); @@index([expiresAt]) }
+model DepositAddress { id String @id @default(cuid()); userId String; network Network; address String; label String?; active Boolean @default(true); createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id],onDelete:Cascade); deposits Deposit[]; @@unique([network,address]); @@index([userId,network]); @@index([network,active]) }
+model CustodyTransaction { id String @id @default(cuid()); network Network; txHash String; asset String; amount Decimal @db.Decimal(36,18); fromAddress String?; toAddress String; blockNumber BigInt?; confirmations Int @default(0); status CustodyTxStatus @default(OBSERVED); userId String?; depositId String? @unique; observedAt DateTime @default(now()); confirmedAt DateTime?; raw Json?; user User? @relation(fields:[userId],references:[id]); deposit Deposit? @relation(fields:[depositId],references:[id]); @@unique([network,txHash]); @@index([network,toAddress]); @@index([status]); @@index([userId]) }
