@@ -1,0 +1,48 @@
+name: Publish Aster Android Release
+
+on:
+  push:
+    branches: [aster-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish Android APK
+    runs-on: ubuntu-latest
+    env:
+      ASTER_API_BASE_URL: ${{ vars.ASTER_API_BASE_URL || 'https://api.example.invalid' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare Android SDK
+        shell: bash
+        run: |
+          set -e
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -1 || true)
+          test -n "$SDKMANAGER"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build Android APK
+        run: gradle assembleDebug --stacktrace -PasterApiBaseUrl="$ASTER_API_BASE_URL"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          cp app/build/outputs/apk/debug/app-debug.apk aster-financials.apk
+          TAG="android-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" aster-financials.apk --title "Aster Android ${TAG}" --generate-notes
