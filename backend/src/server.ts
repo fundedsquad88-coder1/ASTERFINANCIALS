@@ -5,8 +5,27 @@ import crypto from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { db, databaseEnabled } from './db';
+import { createRequestId, isProduction, productionConfigStatus } from './production-guard';
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: true, requestIdHeader: 'x-request-id', genReqId: () => createRequestId() });
+const production = isProduction();
+const configuredOrigins = new Set((process.env.ALLOWED_ORIGINS ?? '').split(',').map(x => x.trim()).filter(Boolean));
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT = 120;
+const AUTH_RATE_LIMIT = 20;
+function clientIp(request: any) { return String(request.ip ?? request.headers?.['x-forwarded-for']?.split(',')[0] ?? 'unknown'); }
+function rateLimitKey(request: any) { return `${clientIp(request)}:${request.routerPath ?? request.url.split('?')[0]}`; }
+function consumeRateLimit(request: any, limit = RATE_LIMIT) {
+  const now = Date.now();
+  const key = rateLimitKey(request);
+  const existing = rateBuckets.get(key);
+  if (!existing || existing.resetAt <= now) { rateBuckets.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS }); return { allowed: true, remaining: limit - 1, resetAt: now + RATE_WINDOW_MS }; }
+  if (existing.count >= limit) return { allowed: false, remaining: 0, resetAt: existing.resetAt };
+  existing.count += 1;
+  return { allowed: true, remaining: limit - existing.count, resetAt: existing.resetAt };
+}
+setInterval(() => { const now = Date.now(); for (const [key, bucket] of rateBuckets) if (bucket.resetAt <= now) rateBuckets.delete(key); }, RATE_WINDOW_MS).unref();
 const commoditySymbols: Record<string, string> = { XAUUSDT: 'XAU/USD', XAGUSDT: 'XAG/USD', WTIUSDT: 'WTI/USD', BRENTUSDT: 'BRENT/USD' };
 const commodityConfigured = Boolean(process.env.TWELVEDATA_API_KEY);
 const demoMarkets = [
@@ -33,9 +52,20 @@ function decimal(value: string | number) { return new Prisma.Decimal(value); }
 async function createDatabaseUser(email: string, passwordHash: string, referralCode?: string) { return db.$transaction(async tx => { const asset = await tx.asset.upsert({ where: { symbol: 'USDT' }, update: {}, create: { symbol: 'USDT', decimals: 6 } }); const referrer = referralCode ? await tx.user.findUnique({ where: { referralCode } }) : null; if (referralCode && !referrer) throw new Error('INVALID_REFERRAL_CODE'); const user = await tx.user.create({ data: { email, passwordHash, referralCode: `AST-${crypto.randomBytes(5).toString('hex').toUpperCase()}` } }); await tx.wallet.create({ data: { userId: user.id, assetId: asset.id, available: 0, locked: 0 } }); if (referrer && referrer.id !== user.id) await tx.referral.create({ data: { referrerId: referrer.id, refereeId: user.id } }); return user; }); }
 
 async function main() {
-  await app.register(helmet); await app.register(cors, { origin: true });
-  app.get('/health', async () => ({ ok: true, service: 'aster-financials-api', environment: process.env.NODE_ENV ?? 'development', database: databaseEnabled ? 'configured' : 'memory-fallback', commodityProvider: commodityConfigured ? 'twelve-data' : 'not-configured', timestamp: new Date().toISOString() }));
-  app.get('/api/v1/system/status', async () => ({ api: 'online', trading: 'sandbox', blockchain: 'sandbox', database: databaseEnabled ? 'configured' : 'memory-fallback', commodityProvider: commodityConfigured ? 'twelve-data' : 'not-configured' }));
+  await app.register(helmet);
+  await app.register(cors, { origin: (origin, cb) => { if (!origin || !production) return cb(null, true); if (configuredOrigins.has(origin)) return cb(null, true); return cb(new Error('Origin not allowed'), false); }, credentials: false });
+  app.addHook('onRequest', async (request: any, reply: any) => {
+    const requestId = request.id || createRequestId();
+    reply.header('x-request-id', requestId);
+    const limit = request.url.startsWith('/api/v1/auth/') || request.url.startsWith('/api/v1/admin/login') ? AUTH_RATE_LIMIT : RATE_LIMIT;
+    const result = consumeRateLimit(request, limit);
+    reply.header('x-ratelimit-limit', String(limit));
+    reply.header('x-ratelimit-remaining', String(result.remaining));
+    reply.header('x-ratelimit-reset', String(Math.ceil(result.resetAt / 1000)));
+    if (!result.allowed) return reply.code(429).send({ error: 'Too many requests', requestId });
+  });
+  app.get('/health', async () => ({ ok: true, service: 'aster-financials-api', environment: process.env.NODE_ENV ?? 'development', database: databaseEnabled ? 'configured' : 'memory-fallback', commodityProvider: commodityConfigured ? 'twelve-data' : 'not-configured', productionConfig: productionConfigStatus(), timestamp: new Date().toISOString() }));
+  app.get('/api/v1/system/status', async () => ({ api: 'online', trading: 'sandbox', blockchain: 'sandbox', database: databaseEnabled ? 'configured' : 'memory-fallback', commodityProvider: commodityConfigured ? 'twelve-data' : 'not-configured', productionConfig: productionConfigStatus() }));
   app.get('/api/v1/markets', async () => ({ markets: demoMarkets }));
   app.get('/api/v1/commodities/:symbol/time-series', async (request: any, reply: any) => { const symbol = String(request.params.symbol).toUpperCase(); const providerSymbol = commoditySymbols[symbol]; if (!providerSymbol) return reply.code(404).send({ error: 'Commodity market not supported' }); const apiKey = process.env.TWELVEDATA_API_KEY; if (!apiKey) return reply.code(503).send({ error: 'Commodity market-data provider is not configured' }); const parsed = z.object({ interval: z.enum(['1min','5min','15min','30min','45min','1h','2h','4h','8h','1day','1week','1month']).default('1min'), outputsize: z.coerce.number().int().min(1).max(500).default(300) }).safeParse(request.query); if (!parsed.success) return reply.code(400).send({ error: 'Invalid commodity interval or output size' }); const url = new URL('https://api.twelvedata.com/time_series'); url.searchParams.set('symbol', providerSymbol); url.searchParams.set('interval', parsed.data.interval); url.searchParams.set('outputsize', String(parsed.data.outputsize)); url.searchParams.set('timezone', 'UTC'); url.searchParams.set('apikey', apiKey); try { const upstream = await fetch(url); const data: any = await upstream.json(); if (!upstream.ok || data?.status === 'error') return reply.code(502).send({ error: data?.message ?? 'Commodity provider request failed' }); const values = Array.isArray(data?.values) ? data.values : []; return { symbol, providerSymbol, source: 'Twelve Data', interval: parsed.data.interval, values: values.map((v: any) => ({ datetime: v.datetime, open: Number(v.open), high: Number(v.high), low: Number(v.low), close: Number(v.close) })).filter((v: any) => [v.open,v.high,v.low,v.close].every(Number.isFinite)) }; } catch (error) { request.log.error(error); return reply.code(503).send({ error: 'Commodity market-data provider is temporarily unavailable' }); } });
   app.post('/api/v1/auth/register', async (request: any, reply: any) => { const parsed = z.object({ email: z.string().email(), password: z.string().min(8), referralCode: z.string().min(4).max(64).optional() }).safeParse(request.body); if (!parsed.success) return reply.code(400).send({ error: 'Valid email and password of at least 8 characters are required' }); const email = parsed.data.email.toLowerCase(); const passwordHash = hashPassword(parsed.data.password); try { if (databaseEnabled) { if (await db.user.findUnique({ where: { email } })) return reply.code(409).send({ error: 'Account already exists' }); const user = await createDatabaseUser(email, passwordHash, parsed.data.referralCode); return reply.code(201).send({ user: { id: user.id, email: user.email, status: 'ACTIVE', referralCode: user.referralCode }, token: issueSession(user.id), sandbox: true, persistence: 'database' }); } if ([...credentials.values()].some(x => x.email === email)) return reply.code(409).send({ error: 'Account already exists' }); const id = crypto.randomUUID(); const referralCode = `AST-${crypto.randomBytes(5).toString('hex').toUpperCase()}`; credentials.set(id, { id, email, passwordHash, referralCode }); return reply.code(201).send({ user: { id, email, status: 'ACTIVE', referralCode }, token: issueSession(id), sandbox: true, persistence: 'memory' }); } catch (error) { if (error instanceof Error && error.message === 'INVALID_REFERRAL_CODE') return reply.code(400).send({ error: 'Invalid referral code' }); request.log.error(error); return reply.code(500).send({ error: 'Unable to create account' }); } });
