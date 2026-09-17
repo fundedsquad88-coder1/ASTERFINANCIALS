@@ -1,59 +1,49 @@
 # Aster Financials backend deployment
 
-This repository contains a deployment template for the sandbox backend. The API currently provides account, wallet, staking, referral, admin queue, market-data and trade-preview functionality. It does **not** execute real-money binary trades or submit blockchain transactions.
+This repository contains a sandbox backend foundation and a production deployment template. Real-money binary execution and blockchain transaction submission remain disabled.
 
-## Production prerequisites
+## Production baseline
 
-- A server with Docker Engine and Docker Compose.
-- A real PostgreSQL storage volume or managed PostgreSQL service.
-- HTTPS termination/reverse proxy in front of the API.
-- A domain name for the API.
-- Strong production values for `POSTGRES_PASSWORD` and `ADMIN_PASSWORD`.
-- A Twelve Data API key configured as `TWELVEDATA_API_KEY` if Gold, Silver, WTI and Brent charts are to be enabled. Twelve Data documents real-time commodity spot data and 1-minute time-series data for commodities including gold, silver and crude oil. citeturn0search0turn1search0
-- Secrets stored outside Git; do not commit `.env.production`.
-- Appropriate legal/regulatory review before enabling any real-money financial functionality.
+Before exposing the API publicly, provision:
 
-## Commodity data
+- Managed PostgreSQL or a dedicated PostgreSQL server with automated backups and tested restore procedures.
+- A private Docker network and an HTTPS reverse proxy/load balancer in front of the API.
+- A DNS name dedicated to the API.
+- Production secrets supplied by the hosting provider/secret manager, never committed to Git.
+- A Twelve Data API key if commodity charts are enabled; keep the provider key server-side.
+- Monitoring for API availability, database health, authentication failures, withdrawal queues and application errors.
+- A documented incident-response and credential-rotation procedure.
 
-The app keeps the commodity provider key on the backend. The Android client never receives `TWELVEDATA_API_KEY`; it requests Aster's `/api/v1/commodities/:symbol/time-series` endpoint instead. Without the key, the app intentionally shows **PROVIDER REQUIRED** rather than fabricated prices. With the key configured, the API exposes Gold, Silver, WTI and Brent data through the chart screen.
+The existing Compose configuration binds the API to `127.0.0.1:3000` and keeps PostgreSQL on the internal Docker network; PostgreSQL should not be published directly to the Internet.
 
-Twelve Data advertises commercial/business use of its commodity data and lists plans starting at $29/month, but the exact plan and redistribution rights should be confirmed with the provider before production launch. citeturn0search0
+## Secrets
 
-## Quick deployment with Docker Compose
+Copy `backend/.env.production.example` to the deployment host and replace every placeholder. Generate long random values for database and administrator credentials. Do not place production credentials in GitHub source, Dockerfiles, Android assets or the APK.
 
-1. Copy `backend/.env.production.example` to `backend/.env.production` on the server.
-2. Replace every placeholder credential with a long random secret and set `TWELVEDATA_API_KEY` to the provider key.
-3. From `backend/`, run:
+For an actual deployment, prefer a managed secret store rather than a plaintext `.env.production` file. Rotate credentials immediately if they are exposed.
 
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-```
+## Database
 
-The API container applies committed Prisma migrations before starting the server. PostgreSQL data is stored in the `aster-postgres-prod` Docker volume.
-
-4. Check the API locally on the server:
+The API uses Prisma migrations. Deploy with:
 
 ```bash
-curl http://127.0.0.1:3000/health
-```
-
-The health response reports whether the commodity provider is configured, without exposing the API key.
-
-5. Put an HTTPS reverse proxy (for example, Caddy or Nginx) in front of `127.0.0.1:3000`. Do not expose PostgreSQL to the public internet.
-
-## Updating the backend
-
-Pull the desired Git revision and rebuild:
-
-```bash
-git pull
 docker compose -f backend/docker-compose.prod.yml up -d --build
 ```
 
-Migrations run automatically during API container startup.
+The container applies committed migrations before starting the API. Configure automated PostgreSQL backups independently of the application container and periodically perform a restore test.
 
-## Secrets and security
+## HTTPS and proxy
 
-Never put production credentials in GitHub source files, Dockerfiles, Android assets, or the APK. Use the deployment host's secret/environment mechanism. Rotate admin credentials if they are ever exposed.
+Terminate TLS at a reverse proxy/load balancer and forward only the API traffic to the container. Use HSTS once HTTPS is confirmed working. Do not expose port 5432 publicly.
 
-Before real-money use, add a dedicated secret manager, rate limiting, structured audit logs, role-based admin authorization, secure session/token storage, withdrawal approval controls, monitoring/alerts, backups and restore testing, and a proper custody/blockchain integration.
+Restrict CORS to the production website/app origins rather than allowing arbitrary origins when the public deployment is configured.
+
+## Observability
+
+Use the API `/health` endpoint for availability checks. Request IDs are intended to make application logs traceable across a request path. Alert on repeated 5xx responses, database connectivity failures, authentication abuse and unusual financial-queue activity.
+
+## Financial safety boundary
+
+The current API deliberately remains a sandbox. Deposits and withdrawals are records/queues, staking is sandbox functionality, and trade endpoints are previews/records rather than real-money execution. Do not remove that boundary until custody, settlement, accounting, security, compliance and applicable regulatory requirements have been independently reviewed and implemented.
+
+The admin foundation also requires production authorization, MFA, approval workflows and durable audit storage before real-money operations.
