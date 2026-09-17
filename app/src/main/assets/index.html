@@ -24,7 +24,8 @@ button,input{font:inherit}
 .pills{display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}
 .pill{border:1px solid #2b2d34;border-radius:999px;padding:10px 14px;color:#a4a8b1;font-size:11px;background:rgba(17,18,22,.65)}
 .pill b{color:#f1c95e}
-.balance{border:1px solid #25282f;border-radius:28px;padding:23px 27px;margin:0 0 18px;background:linear-gradient(145deg,#0d0f14,#090a0d)}
+.balance{border:1px solid #25282f;border-radius:28px;padding:23px 27px;margin:0 0 18px;background:linear-gradient(145deg,#0d0f14,#090a0d)}.heroBalance{padding:27px 29px;margin-top:7px;border-color:rgba(218,173,55,.35);background:radial-gradient(circle at 100% 0,rgba(218,173,55,.13),transparent 35%),linear-gradient(145deg,#10131a,#090b0e)}.heroBalance .label{letter-spacing:2px;font-size:11px;font-weight:700}.heroBalance .amount{font-size:48px}.balanceActions{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:19px}.balanceActions .primary,.balanceActions .outline{margin-top:0;min-height:54px}.homeWelcome{padding:34px 5px 15px}.homeWelcome .eyebrow{font-size:11px;letter-spacing:3px;color:#d9b44f;font-weight:700;margin-bottom:13px}.homeWelcome .h1{font-size:34px}.homeCards{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:10px}.homeFeature{position:relative;overflow:hidden;min-height:315px;border:1px solid #292c34;border-radius:28px;padding:23px 21px;background:radial-gradient(circle at 100% 0,rgba(93,70,190,.27),transparent 43%),linear-gradient(145deg,#11131d,#0a0d12)}.homeFeature:after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;right:-75px;top:-65px;background:rgba(112,79,245,.12)}.goldFeature{border-color:rgba(218,173,55,.45);background:radial-gradient(circle at 100% 0,rgba(218,173,55,.17),transparent 43%),linear-gradient(145deg,#12130f,#0b0d11)}.goldFeature:after{background:rgba(218,173,55,.09)}.homeFeature>*{position:relative;z-index:1}.featureNo{font-size:9px;letter-spacing:2px;color:#d9b44f;font-weight:700}.homeFeature h2{font-size:24px;line-height:1.05;letter-spacing:-.8px;margin:86px 0 12px}.homeFeature h2 span{color:#f1c95e}.homeFeature .sub{font-size:11px;line-height:1.45;min-height:64px}.homeFeature button{width:100%;padding:13px 8px;border-radius:15px;font-size:11px;margin-top:12px}.homePanel{border:1px solid #25282e;border-radius:28px;padding:25px;margin-top:16px;background:linear-gradient(145deg,#0d1016,#090a0d)}.homePanel h2{font-size:24px;margin:8px 0 8px}.homeStats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:20px}.homeStats div{border:1px solid #202329;border-radius:17px;padding:13px 10px;background:#0a0b0e}.homeStats b{display:block;color:#f1c95e;font-size:19px}.homeStats span{display:block;color:#777d87;font-size:9px;margin-top:5px;line-height:1.25}.homeShortcut{display:flex;align-items:center;justify-content:space-between;border:1px solid #25282e;border-radius:23px;padding:19px 21px;margin-top:14px;margin-bottom:10px}.homeShortcut h2{font-size:18px;margin:5px 0 0}.homeShortcut button{margin:0;width:auto;padding:12px 18px}.homeFeature button b,.homeShortcut b{font-size:15px;margin-left:5px}
+
 .label{font-size:14px;color:#838894}
 .amount{font-size:46px;font-weight:700;letter-spacing:-1.5px;margin:8px 0}
 .amount small{font-size:15px;color:#858a95;letter-spacing:0}
@@ -70,35 +71,60 @@ body.whiteTheme,body.whiteTheme .app{background:#f7f6f1;color:#141414}body.white
 <div class="app">
 
 <div id="home" class="screen active">
-  <div class="top"><img class="brand" src="file:///android_asset/aster-logo-reference.svg" onerror="this.style.display='none'"><button class="theme">☼</button></div>
-  <div class="sandbox">SANDBOX • LIVE MARKET DATA • NO REAL-MONEY EXECUTION</div>
+  <div class="top">
+    <img class="brand" src="file:///android_asset/aster-logo-reference.svg" onerror="this.style.display='none'">
+    <button class="theme" onclick="toggleTheme()">☼</button>
+  </div>
+
   <div class="page">
-    <div class="hero">
-      <div class="eyebrow">ASTER FINANCIALS / V23</div>
-      <h1 class="h1">Markets, made<br><span>simpler.</span></h1>
-      <p class="sub">Live market visibility, Auto-Invest and your account tools in one premium mobile experience.</p>
-      <div class="pills"><span class="pill"><b>LIVE</b> markets</span><span class="pill"><b>15%</b> referral</span><span class="pill"><b>2</b> strategies</span></div>
-    </div>
-    <div class="hero">
-      <div class="eyebrow">ASTER FINANCIALS / PREMIUM</div>
-      <h1 class="h1">Everything you need.<br><span>Nothing you don't.</span></h1>
-      <p class="sub">Live market visibility, Auto-Invest and account tools — focused into one faster mobile experience.</p>
-      <div class="pills"><span class="pill"><b>LIVE</b> markets</span><span class="pill"><b>15%</b> referral</span><span class="pill"><b>24/7</b> access</span></div>
-    </div>
-    <div class="balance">
-      <div class="label">USDT Available</div>
+    <div class="balance heroBalance">
+      <div class="label">TOTAL BALANCE</div>
       <div class="amount">0.00 <small>USDT</small></div>
-      <div class="balancefoot">Guest mode — sign in to sync your account</div>
+      <div class="balancefoot"><span class="gold">●</span> Guest account · Sign in to sync your balance</div>
+      <div class="balanceActions">
+        <button class="primary" onclick="showAuth('Deposit USDT')">Deposit</button>
+        <button class="outline" onclick="showAuth('Withdraw USDT')">Withdraw</button>
+      </div>
     </div>
-    <div class="quick">
-      <button onclick="go('markets')"><span class="icon">▥</span><span>Markets</span></button>
-      <button onclick="go('auto')"><span class="icon">✦</span><span>Auto-Invest</span></button>
-      <button onclick="go('wallet')"><span class="icon">₮</span><span>Wallet</span></button>
+
+    <div class="homeWelcome">
+      <div class="eyebrow">ASTER FINANCIALS</div>
+      <h1 class="h1">Everything you need.<br><span>Nothing you don't.</span></h1>
+      <p class="sub">One focused account experience for your capital, your plans and your wallet.</p>
     </div>
-    <div class="sectionhead"><h2>Live Markets</h2><button class="refresh" onclick="refreshAll()">View all ›</button></div>
-    <div id="homeMarkets" class="marketlist"></div>
-    <div class="sectionhead"><h2>Market News</h2><span class="link" onclick="go('markets');marketTab('news')">View all ›</span></div>
-    <div id="homeNews" class="news"></div>
+
+    <div class="homeCards">
+      <div class="homeFeature">
+        <div class="featureNo">01 / ACCOUNT</div>
+        <h2>Markets made<br><span>simpler.</span></h2>
+        <p class="sub">Follow live prices and financial context from the dedicated Markets experience.</p>
+        <button class="outline" onclick="go('markets')">Open Markets <b>→</b></button>
+      </div>
+      <div class="homeFeature goldFeature">
+        <div class="featureNo">02 / AUTOMATION</div>
+        <h2>Put your capital<br><span>to work.</span></h2>
+        <p class="sub">Build an Auto-Invest plan, review your allocation and explore compounding scenarios.</p>
+        <button class="primary" onclick="go('auto')">Open Auto-Invest <b>→</b></button>
+      </div>
+    </div>
+
+    <div class="homePanel">
+      <div>
+        <div class="eyebrow">YOUR ASTER EXPERIENCE</div>
+        <h2>Built around your account.</h2>
+        <p class="sub">Markets stay in Markets. Auto-Invest stays in Auto-Invest. Your Home stays focused on what matters to you.</p>
+      </div>
+      <div class="homeStats">
+        <div><b>24/7</b><span>Account access</span></div>
+        <div><b>15%</b><span>Referral programme</span></div>
+        <div><b>2</b><span>Investment categories</span></div>
+      </div>
+    </div>
+
+    <div class="homeShortcut">
+      <div><span class="eyebrow">QUICK ACCESS</span><h2>Manage your account</h2></div>
+      <button class="outline" onclick="go('profile')">Profile <b>→</b></button>
+    </div>
   </div>
 </div>
 
