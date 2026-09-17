@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
                     view.evaluateJavascript(readAsset("coin-icons.js"), null);
                     view.evaluateJavascript(readAsset("chart-fix.js"), null);
                     view.evaluateJavascript(readAsset("market-terminal.js"), null);
+                    view.evaluateJavascript(readAsset("app-polish-v23.js"), null);
                 } catch (Exception ignored) {}
             }
         });
