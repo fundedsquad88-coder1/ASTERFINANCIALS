@@ -1,0 +1,12 @@
+ASTER V4 — RELEASE 24 FOUNDATION
+Base: android-24 / ca89683b19495dac5bcde2c1fa712f16c37d8067
+Branch: aster-v4-release24
+
+V4 rule:
+- Built directly from android-24.
+- main is untouched.
+- V3 is not the foundation.
+- Release 24 product UI is retained and polished, not replaced.
+- Markets is upgraded with live crypto prices, coin logos, asset detail, and news.
+- Auto-Invest, Wallet, Profile and account-access flows remain in the Release 24 product direction.
+- No fabricated connected-account balances.
