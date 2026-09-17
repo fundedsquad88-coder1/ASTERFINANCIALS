@@ -1,0 +1,1 @@
+ASTER V3 baseline: built directly from Android Release 24 (tag android-24, commit ca89683b19495dac5bcde2c1fa712f16c37d8067). Do not modify main. V3-only upgrade: preserve the Release 24 core and improve Markets with live market data, coin logos, news/analysis, and improve Auto-Invest. No V2 branch or main code is used as the V3 base.
