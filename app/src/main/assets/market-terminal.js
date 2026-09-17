@@ -74,6 +74,8 @@
     } catch (_) { text('feed', 'UNAVAILABLE'); }
   }
   async function start(symbol) {
+    const selectedInterval = document.querySelector('#periods button[data-i].sel')?.dataset.i;
+    if (intervals.includes(selectedInterval)) state.interval = selectedInterval;
     state.symbol = symbol || 'BTCUSDT'; state.generation += 1; const g = state.generation;
     if (state.socket) { try { state.socket.close(); } catch (_) {} state.socket = null; }
     [state.depthTimer, state.tradesTimer, state.tickerTimer].forEach(x => x && clearInterval(x));
@@ -101,7 +103,6 @@
   }
   function install() {
     window.__ASTER_MARKET_TERMINAL__ = { start, state }; upgradeMarkup(); window.startMarket = start;
-    const periods = $('periods'); if (periods && !periods.dataset.asterTerminalBound) { periods.dataset.asterTerminalBound = '1'; periods.addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b || !intervals.includes(b.dataset.i)) return; state.interval = b.dataset.i; periods.querySelectorAll('button[data-i]').forEach(x => x.classList.toggle('sel', x === b)); void start(state.symbol); }); }
     void start(state.symbol);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true }); else install();
