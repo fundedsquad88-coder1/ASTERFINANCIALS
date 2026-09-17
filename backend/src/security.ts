@@ -15,11 +15,17 @@ const auditEvents: SecurityAuditEvent[] = [];
 const IDEMPOTENCY_TTL_MS = 10 * 60 * 1000;
 const idempotency = new Map<string, { expiresAt: number; response: unknown }>();
 
-export function audit(action: string, data: Omit<SecurityAuditEvent, 'id' | 'action' | 'createdAt'> = {}) {
-  const event = { id: crypto.randomUUID(), action, createdAt: new Date().toISOString(), ...data };
+function normalizeAuditMetadata(metadata?: Record<string, unknown>): Record<string, string> | undefined {
+  if (!metadata) return undefined;
+  return Object.fromEntries(Object.entries(metadata).map(([key, value]) => [key, String(value)]));
+}
+
+export function audit(action: string, data: Omit<SecurityAuditEvent, 'id' | 'action' | 'createdAt'> & { metadata?: Record<string, unknown> } = {}) {
+  const normalizedMetadata = normalizeAuditMetadata(data.metadata);
+  const event: SecurityAuditEvent = { id: crypto.randomUUID(), action, createdAt: new Date().toISOString(), ...data, metadata: normalizedMetadata };
   auditEvents.push(event);
   if (auditEvents.length > 5000) auditEvents.splice(0, auditEvents.length - 5000);
-  void persistAuditEvent({ action, requestId: data.requestId, subjectId: data.subjectId, ip: data.ip, metadata: data.metadata }).catch(() => undefined);
+  void persistAuditEvent({ action, requestId: data.requestId, subjectId: data.subjectId, ip: data.ip, metadata: normalizedMetadata }).catch(() => undefined);
   return event;
 }
 
