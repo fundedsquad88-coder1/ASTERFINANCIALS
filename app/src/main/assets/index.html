@@ -119,27 +119,34 @@ button,input{font:inherit}
 
 <div id="auto" class="screen">
   <div class="page">
-    <div class="topbar"><h1>Auto-Invest</h1><p class="sub">Create a recurring allocation with a strategy, amount and frequency. Real execution requires the connected Aster investment backend.</p></div>
+    <div class="topbar"><h1>Auto-Invest</h1></div>
+    <div class="hero autoHero">
+      <div class="eyebrow">01 / AUTOMATED STRATEGIES</div>
+      <h1 class="h1">Put your capital<br>to <span>work.</span></h1>
+      <p class="sub">Choose a market category and follow your account progression from one focused experience.</p>
+      <div class="pills"><span class="pill"><b>CRYPTO</b></span><span class="pill"><b>FOREX</b></span><span class="pill"><b>WEEKLY</b> tracking</span></div>
+    </div>
     <div class="strategy">
-      <div class="strategytop"><h3>Core Digital Assets</h3><span class="badge">CORE</span></div>
-      <div class="alloc">BTC 45% · ETH 30% · SOL 15% · BNB 10%</div>
-      <div class="bar"><i style="width:68%"></i></div>
-      <div class="twocol"><div class="info"><b>Balanced</b><small>Diversified allocation</small></div><div class="info"><b>4 assets</b><small>BTC · ETH · SOL · BNB</small></div></div>
-      <button class="outline" onclick="selectStrategy('core')">Select Core</button>
+      <div class="strategytop"><div></div><span class="badge">CRYPTO</span></div>
+      <div class="strategyIcon">₿</div>
+      <h3>Crypto Auto-Invest</h3>
+      <div class="alloc">BTC ETH SOL BNB</div>
     </div>
     <div class="strategy growth">
-      <div class="strategytop"><h3>Growth Momentum</h3><span class="badge">GROWTH</span></div>
-      <div class="alloc">BTC 35% · ETH 30% · SOL 25% · XRP 10%</div>
-      <div class="bar"><i style="width:82%"></i></div>
-      <div class="twocol"><div class="info"><b>Higher volatility</b><small>Growth-focused mix</small></div><div class="info"><b>4 assets</b><small>BTC · ETH · SOL · XRP</small></div></div>
-      <button class="outline" onclick="selectStrategy('growth')">Select Growth</button>
+      <div class="strategytop"><div></div><span class="badge">FOREX</span></div>
+      <div class="strategyIcon">FX</div>
+      <h3>Forex Auto-Invest</h3>
+      <div class="alloc">EUR/USD GBP/USD USD/JPY</div>
     </div>
     <div class="settings">
-      <div class="eyebrow">PLAN SETTINGS</div>
-      <input id="amount" type="number" min="1" value="100" oninput="calc()">
-      <div class="freq"><button onclick="freq(this,'daily')">Daily</button><button onclick="freq(this,'weekly')">Weekly</button><button class="selected" onclick="freq(this,'monthly')">Monthly</button></div>
-      <div class="calc"><div class="label">Illustrative compound preview</div><div id="calcValue" class="calcvalue">$108.00</div><div class="status">Preview only. Returns are not guaranteed and this screen does not place an investment order.</div></div>
-      <button class="primary" onclick="showAuth('Create Auto-Invest Plan')">Create Auto-Invest Plan</button>
+      <div class="eyebrow">COMPOUNDING PREVIEW</div>
+      <label class="calcLabel">Starting balance</label>
+      <input id="amount" type="number" min="0" value="1000" oninput="calc()">
+      <label class="calcLabel">Weekly rate (%)</label>
+      <input id="weeklyRate" type="number" min="0" value="20" oninput="calc()">
+      <label class="calcLabel">Weeks</label>
+      <input id="weeks" type="number" min="1" value="4" oninput="calc()">
+      <div class="calc"><div class="label">Illustrative end balance</div><div id="calcValue" class="calcvalue">$2,073.60</div><div class="status">Illustrative only. Targets are not guarantees and are not APR. Final product terms, eligibility and withdrawal conditions must be established before live funds are enabled.</div></div>
     </div>
   </div>
 </div>
@@ -206,7 +213,13 @@ function receivePrices(json){try{const data=JSON.parse(json);data.forEach(x=>pri
 function receiveNews(json){try{window.news=JSON.parse(json);renderHome();renderMarkets()}catch(e){}}
 function selectStrategy(x){selectedStrategy=x;document.querySelectorAll('.strategy').forEach(s=>s.style.boxShadow='');const el=document.querySelector('.strategy'+(x==='growth'?'.growth':''));if(el)el.style.boxShadow='0 0 0 1px #e1b63e inset'}
 function freq(b,x){selectedFreq=x;document.querySelectorAll('.freq button').forEach(y=>y.classList.remove('selected'));b.classList.add('selected');calc()}
-function calc(){const a=Number(document.getElementById('amount').value||0);const rate=selectedFreq==='daily'?0.007:selectedFreq==='weekly'?0.02:0.08;const periods=selectedFreq==='daily'?4:selectedFreq==='weekly'?4:1;document.getElementById('calcValue').textContent='$'+(a*Math.pow(1+rate,periods)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function calc(){const a=Number(document.getElementById('amount')?.value||0);const rate=Number(document.getElementById('weeklyRate')?.value||20)/100;const weeks=Number(document.getElementById('weeks')?.value||4);const el=document.getElementById('calcValue');if(el)el.textContent=')}
+function showAuth(title){document.getElementById('modalTitle').textContent=title;document.getElementById('modal').classList.add('open')}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function saveApi(){const v=document.getElementById('apiUrl').value.trim();if(v)localStorage.setItem('asterApiUrl',v)}
+window.v3ApplyPrices=receivePrices;window.v3ApplyNews=receiveNews;window.v3Boot=function(){const saved=localStorage.getItem('asterApiUrl');if(saved)document.getElementById('apiUrl').value=saved;renderHome();renderMarkets();refreshAll();setInterval(refreshAll,30000)};window.news=[];calc();v3Boot();
+</script>
+</body></html>+(a*Math.pow(1+rate,weeks)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})})}
 function showAuth(title){document.getElementById('modalTitle').textContent=title;document.getElementById('modal').classList.add('open')}
 function closeModal(){document.getElementById('modal').classList.remove('open')}
 function saveApi(){const v=document.getElementById('apiUrl').value.trim();if(v)localStorage.setItem('asterApiUrl',v)}
