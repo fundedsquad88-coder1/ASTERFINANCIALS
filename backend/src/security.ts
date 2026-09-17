@@ -20,7 +20,7 @@ function normalizeAuditMetadata(metadata?: Record<string, unknown>): Record<stri
   return Object.fromEntries(Object.entries(metadata).map(([key, value]) => [key, String(value)]));
 }
 
-export function audit(action: string, data: Omit<SecurityAuditEvent, 'id' | 'action' | 'createdAt'> & { metadata?: Record<string, unknown> } = {}) {
+export function audit(action: string, data: Omit<SecurityAuditEvent, 'id' | 'action' | 'createdAt' | 'metadata'> & { metadata?: Record<string, unknown> } = {}) {
   const normalizedMetadata = normalizeAuditMetadata(data.metadata);
   const event: SecurityAuditEvent = { id: crypto.randomUUID(), action, createdAt: new Date().toISOString(), ...data, metadata: normalizedMetadata };
   auditEvents.push(event);
