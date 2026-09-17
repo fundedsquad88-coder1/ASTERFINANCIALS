@@ -1,1 +1,0 @@
-window.__ASTER_TERMINAL_SMOKE__ = true;
