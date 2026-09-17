@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { getPersistentAudit, persistAuditEvent } from './security-persistence';
 
 export type SecurityAuditEvent = {
   id: string;
@@ -18,10 +19,13 @@ export function audit(action: string, data: Omit<SecurityAuditEvent, 'id' | 'act
   const event = { id: crypto.randomUUID(), action, createdAt: new Date().toISOString(), ...data };
   auditEvents.push(event);
   if (auditEvents.length > 5000) auditEvents.splice(0, auditEvents.length - 5000);
+  void persistAuditEvent({ action, requestId: data.requestId, subjectId: data.subjectId, ip: data.ip, metadata: data.metadata }).catch(() => undefined);
   return event;
 }
 
-export function getSecurityAudit(limit = 100) {
+export async function getSecurityAudit(limit = 100) {
+  const persistent = await getPersistentAudit(limit).catch(() => []);
+  if (persistent.length) return persistent;
   return auditEvents.slice(-Math.min(Math.max(limit, 1), 500)).reverse();
 }
 
