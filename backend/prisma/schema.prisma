@@ -7,150 +7,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum LedgerDirection {
-  DEBIT
-  CREDIT
-}
-
-enum TradeStatus {
-  PENDING
-  OPEN
-  WON
-  LOST
-  CANCELLED
-}
-
-enum DepositStatus {
-  PENDING
-  CONFIRMED
-  FAILED
-}
-
-enum WithdrawalStatus {
-  PENDING
-  APPROVED
-  SENT
-  REJECTED
-}
-
-enum RewardType {
-  REFERRAL
-  STAKING
-  TRADING
-  PROMOTION
-}
+enum LedgerDirection { DEBIT CREDIT }
+enum TradeStatus { PENDING OPEN WON LOST CANCELLED }
+enum DepositStatus { PENDING CONFIRMED FAILED }
+enum WithdrawalStatus { PENDING APPROVED SENT REJECTED }
+enum RewardType { REFERRAL STAKING TRADING PROMOTION }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
+  id String @id @default(cuid())
+  email String @unique
   passwordHash String
-  referralCode String?      @unique
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  wallets      Wallet[]
-  trades       Trade[]
-  stakes       Stake[]
-  rewards      Reward[]
-  deposits     Deposit[]
-  withdrawals  Withdrawal[]
-  referralsOut Referral[]   @relation("Referrer")
-  referralIn   Referral?    @relation("Referee")
+  referralCode String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  wallets Wallet[]
+  trades Trade[]
+  stakes Stake[]
+  rewards Reward[]
+  deposits Deposit[]
+  withdrawals Withdrawal[]
+  referralsOut Referral[] @relation("Referrer")
+  referralIn Referral? @relation("Referee")
+  sessions Session[]
 }
-
-model Referral {
-  id         String   @id @default(cuid())
-  referrerId String
-  refereeId  String   @unique
-  createdAt  DateTime @default(now())
-  referrer   User     @relation("Referrer", fields: [referrerId], references: [id])
-  referee    User     @relation("Referee", fields: [refereeId], references: [id])
-  @@index([referrerId])
-}
-
-model Asset {
-  id       String   @id @default(cuid())
-  symbol   String   @unique
-  decimals Int      @default(6)
-  wallets  Wallet[]
-}
-
-model Wallet {
-  id        String  @id @default(cuid())
-  userId    String
-  assetId   String
-  available Decimal @default(0) @db.Decimal(36, 18)
-  locked    Decimal @default(0) @db.Decimal(36, 18)
-  user      User    @relation(fields: [userId], references: [id])
-  asset     Asset   @relation(fields: [assetId], references: [id])
-  @@unique([userId, assetId])
-}
-
-model LedgerEntry {
-  id          String         @id @default(cuid())
-  reference   String
-  account     String
-  assetSymbol String
-  direction   LedgerDirection
-  amount      Decimal        @db.Decimal(36, 18)
-  createdAt   DateTime       @default(now())
-  @@index([reference])
-  @@index([account, assetSymbol])
-}
-
-model Deposit {
-  id        String        @id @default(cuid())
-  userId    String
-  asset     String
-  amount    Decimal       @db.Decimal(36, 18)
-  txHash    String?
-  status    DepositStatus @default(PENDING)
-  createdAt DateTime      @default(now())
-  user      User          @relation(fields: [userId], references: [id])
-}
-
-model Withdrawal {
-  id        String           @id @default(cuid())
-  userId    String
-  asset     String
-  amount    Decimal          @db.Decimal(36, 18)
-  address   String
-  txHash    String?
-  status    WithdrawalStatus @default(PENDING)
-  createdAt DateTime         @default(now())
-  user      User             @relation(fields: [userId], references: [id])
-}
-
-model Trade {
-  id        String      @id @default(cuid())
-  userId    String
-  market    String
-  direction String
-  amount    Decimal     @db.Decimal(36, 18)
-  status    TradeStatus @default(PENDING)
-  openedAt  DateTime    @default(now())
-  expiresAt DateTime
-  settledAt DateTime?
-  user      User       @relation(fields: [userId], references: [id])
-}
-
-model Stake {
-  id        String   @id @default(cuid())
-  userId    String
-  asset     String
-  amount    Decimal  @db.Decimal(36, 18)
-  rateBps   Int
-  startedAt DateTime @default(now())
-  endsAt    DateTime
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model Reward {
-  id         String     @id @default(cuid())
-  userId     String
-  type       RewardType
-  amount     Decimal    @db.Decimal(36, 18)
-  asset      String
-  reference  String?
-  createdAt  DateTime   @default(now())
-  user       User       @relation(fields: [userId], references: [id])
-}
+model Referral { id String @id @default(cuid()); referrerId String; refereeId String @unique; createdAt DateTime @default(now()); referrer User @relation("Referrer", fields: [referrerId], references: [id]); referee User @relation("Referee", fields: [refereeId], references: [id]); @@index([referrerId]) }
+model Asset { id String @id @default(cuid()); symbol String @unique; decimals Int @default(6); wallets Wallet[] }
+model Wallet { id String @id @default(cuid()); userId String; assetId String; available Decimal @default(0) @db.Decimal(36,18); locked Decimal @default(0) @db.Decimal(36,18); user User @relation(fields: [userId], references: [id]); asset Asset @relation(fields: [assetId], references: [id]); @@unique([userId,assetId]) }
+model LedgerEntry { id String @id @default(cuid()); reference String; account String; assetSymbol String; direction LedgerDirection; amount Decimal @db.Decimal(36,18); createdAt DateTime @default(now()); @@index([reference]); @@index([account,assetSymbol]) }
+model Deposit { id String @id @default(cuid()); userId String; asset String; amount Decimal @db.Decimal(36,18); txHash String?; status DepositStatus @default(PENDING); createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id]) }
+model Withdrawal { id String @id @default(cuid()); userId String; asset String; amount Decimal @db.Decimal(36,18); address String; txHash String?; status WithdrawalStatus @default(PENDING); createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id]) }
+model Trade { id String @id @default(cuid()); userId String; market String; direction String; amount Decimal @db.Decimal(36,18); status TradeStatus @default(PENDING); openedAt DateTime @default(now()); expiresAt DateTime; settledAt DateTime?; user User @relation(fields:[userId],references:[id]) }
+model Stake { id String @id @default(cuid()); userId String; asset String; amount Decimal @db.Decimal(36,18); rateBps Int; startedAt DateTime @default(now()); endsAt DateTime; user User @relation(fields:[userId],references:[id]) }
+model Reward { id String @id @default(cuid()); userId String; type RewardType; amount Decimal @db.Decimal(36,18); asset String; reference String?; createdAt DateTime @default(now()); user User @relation(fields:[userId],references:[id]) }
+model Session { id String @id @default(cuid()); userId String; tokenHash String @unique; expiresAt DateTime; createdAt DateTime @default(now()); lastSeenAt DateTime @default(now()); user User @relation(fields:[userId],references:[id],onDelete:Cascade); @@index([userId]); @@index([expiresAt]) }
+model AdminUser { id String @id @default(cuid()); email String @unique; passwordHash String; role String @default("SUPPORT"); mfaRequired Boolean @default(true); enabled Boolean @default(true); createdAt DateTime @default(now()); updatedAt DateTime @updatedAt; sessions AdminSession[]; @@index([role]) }
+model AdminSession { id String @id @default(cuid()); adminUserId String; tokenHash String @unique; expiresAt DateTime; createdAt DateTime @default(now()); lastSeenAt DateTime @default(now()); adminUser AdminUser @relation(fields:[adminUserId],references:[id],onDelete:Cascade); @@index([adminUserId]); @@index([expiresAt]) }
+model SecurityAuditEvent { id String @id @default(cuid()); action String; requestId String?; subjectId String?; ip String?; metadata Json?; createdAt DateTime @default(now()); @@index([createdAt]); @@index([subjectId]); @@index([action]) }
+model IdempotencyKey { id String @id @default(cuid()); scope String; key String; requestHash String; responseStatus Int?; responseBody Json?; createdAt DateTime @default(now()); expiresAt DateTime; @@unique([scope,key]); @@index([expiresAt]) }
