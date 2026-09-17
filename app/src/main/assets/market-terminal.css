@@ -1,0 +1,18 @@
+/* Visual tokens borrowed from Grok's terminal surface and adapted to Aster's WebView UI. */
+.terminal-meta{display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px}
+.terminal-up{color:#20c77a!important}.terminal-down{color:#ef5555!important}
+.terminal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.terminal-panel{border:1px solid #222;border-radius:10px;background:#0a0b0b;padding:10px}
+.terminal-head{display:grid;grid-template-columns:1fr 1fr 1fr;color:#666;font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:0 4px 5px}
+.terminal-book{font:10px ui-monospace,monospace;min-height:184px;overflow:hidden}
+.terminal-book-row{position:relative;display:grid;grid-template-columns:1fr 1fr 1fr;padding:2px 4px;line-height:1.35;overflow:hidden}
+.terminal-book-row i{position:absolute;right:0;top:0;bottom:0;z-index:0;opacity:.16}
+.terminal-book-row span{position:relative;z-index:1}
+.terminal-book-row.ask span:first-of-type{color:#ef5555}.terminal-book-row.ask i{background:#ef5555}
+.terminal-book-row.bid span:first-of-type{color:#20c77a}.terminal-book-row.bid i{background:#20c77a}
+.terminal-mid{display:flex;justify-content:space-between;background:#101111;border-radius:7px;padding:5px 7px;margin:5px 0;color:#e8bd50;font:10px ui-monospace,monospace}
+.terminal-trades{max-height:180px;overflow:auto;font:10px ui-monospace,monospace}
+.terminal-trade-row{display:grid;grid-template-columns:1fr 1fr 1fr;padding:2px 4px}
+.terminal-trade-row span:nth-child(2),.terminal-trade-row span:nth-child(3){text-align:right}
+.terminal-trade-row.up span:first-child{color:#20c77a}.terminal-trade-row.down span:first-child{color:#ef5555}
+@media(max-width:520px){.terminal-grid{grid-template-columns:1fr}.terminal-trades{max-height:150px}}
