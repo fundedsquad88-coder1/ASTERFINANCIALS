@@ -2,8 +2,8 @@ import crypto from 'node:crypto';
 
 /**
  * Production safety boundary.
- * Real-money execution remains disabled until the deployment explicitly
- * satisfies the required controls. This module deliberately fails closed.
+ * Real-money execution remains disabled until custody, settlement,
+ * authorization, compliance and regulatory controls are separately approved.
  */
 export const PRODUCTION_REQUIREMENTS = [
   'DATABASE_URL',
@@ -16,8 +16,11 @@ export function productionConfigStatus() {
   const configured = Object.fromEntries(
     PRODUCTION_REQUIREMENTS.map(key => [key, Boolean(process.env[key])])
   );
-  const allConfigured = Object.values(configured).every(Boolean);
-  return { configured, allConfigured, realMoneyExecution: false };
+  return {
+    configured,
+    allConfigured: Object.values(configured).every(Boolean),
+    realMoneyExecution: false as const
+  };
 }
 
 export function createRequestId() {
@@ -28,7 +31,7 @@ export function isProduction() {
   return process.env.NODE_ENV === 'production';
 }
 
-/** Never use this as an authorization check for financial execution. */
+/** Deliberately does not authorize financial execution. */
 export function assertSandboxOnly() {
   return { allowed: true, realMoneyExecution: false } as const;
 }
