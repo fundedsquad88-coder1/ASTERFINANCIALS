@@ -43,6 +43,7 @@ public class MainActivity extends Activity {
                     view.evaluateJavascript(readAsset("app-polish-v23.js"), null);
                     view.evaluateJavascript(readAsset("app-navigation-v23.js"), null);
                     view.evaluateJavascript(readAsset("app-polish-v24.js"), null);
+                    view.evaluateJavascript(readAsset("markets-v25.js"), null);
                 } catch (Exception ignored) {}
             }
         });
