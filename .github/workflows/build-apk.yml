@@ -3,7 +3,7 @@ name: Build Aster V2 APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, aster-v2-release24 ]
+    branches: [ aster-v2-release24 ]
 
 jobs:
   build:
