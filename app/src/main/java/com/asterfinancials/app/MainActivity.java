@@ -31,7 +31,6 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(Color.rgb(5,6,6));
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(5,6,6));
-        webView.setWebViewClient(new WebViewClient());
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -39,26 +38,9 @@ public class MainActivity extends Activity {
         s.setAllowContentAccess(true);
         s.setAllowUniversalAccessFromFileURLs(true);
         webView.addJavascriptInterface(new AsterBridge(), "asterNative");
+        webView.setWebViewClient(new WebViewClient());
         webView.loadUrl("file:///android_asset/index.html");
-        webView.setWebViewClient(new WebViewClient(){
-            @Override public void onPageFinished(WebView v, String url){
-                super.onPageFinished(v,url);
-                loadAssetScript("v3-upgrade.js");
-            }
-        });
         setContentView(webView);
-    }
-
-    private void loadAssetScript(String name){
-        try{
-            InputStream in=getAssets().open(name);
-            BufferedReader r=new BufferedReader(new InputStreamReader(in));
-            StringBuilder sb=new StringBuilder(); String line;
-            while((line=r.readLine())!=null) sb.append(line).append('\n');
-            r.close();
-            final String script=sb.toString();
-            webView.post(()->webView.evaluateJavascript(script+"\nwindow.v3Boot&&window.v3Boot();",null));
-        }catch(Exception ignored){}
     }
 
     private void runJs(String js){ webView.post(()->webView.evaluateJavascript(js,null)); }
