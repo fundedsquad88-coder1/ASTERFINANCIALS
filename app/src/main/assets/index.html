@@ -65,6 +65,125 @@ button,input{font:inherit}
 .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:30;padding:20px}.modal.open{display:flex;align-items:flex-end}.sheet{width:100%;border:1px solid #51431f;border-radius:25px 25px 10px 10px;background:#111214;padding:22px}.sheet h2{margin:0 0 8px}.sheet input{width:100%;background:#070809;border:1px solid #2a2d32;color:white;border-radius:15px;padding:15px;margin:7px 0;outline:none}.close{background:none;border:0;color:#888;float:right}
 .nav{position:fixed;z-index:20;left:0;right:0;bottom:0;height:78px;background:rgba(8,9,11,.98);border-top:1px solid rgba(218,173,55,.35);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}.nav button{background:none;border:0;color:#777d88;font-size:11px}.nav button.active{color:#f1c95e}.nav i{display:block;font-style:normal;font-size:23px;margin-bottom:5px}
 body.whiteTheme,body.whiteTheme .app{background:#f7f6f1;color:#141414}body.whiteTheme .page,body.whiteTheme .topbar{color:#141414}body.whiteTheme .profilecard{background:#fff;border-color:#d8c98f}body.whiteTheme .sub,body.whiteTheme .label{color:#70737a}body.whiteTheme .profileline{color:#202124;border-color:#e5e2d8}body.whiteTheme .apiCard input{background:#f7f7f4;color:#171717;border-color:#d8d8d2}body.whiteTheme .menuCard,body.whiteTheme .walletSecurity,body.whiteTheme .legalCard,body.whiteTheme .appearanceCard,body.whiteTheme .guestCard,body.whiteTheme .accountAccess,body.whiteTheme .apiCard{box-shadow:0 8px 30px rgba(30,25,10,.05)}body.whiteTheme .primary{background:#e6bd4d;color:#111}body.whiteTheme .outline{background:#fff;color:#9b7620;border-color:#b89431}body.whiteTheme .nav{background:rgba(250,249,245,.98);border-top-color:#d4bd67}body.whiteTheme .nav button{color:#8b8d91}body.whiteTheme .nav button.active{color:#a57d18}body.whiteTheme .profileTitle{color:#141414}body.whiteTheme .legalHead span{color:#a57d18}@media(max-width:380px){.page{padding:0 20px}.top{padding-left:20px;padding-right:20px}.sandbox{margin-left:20px;margin-right:20px}.hero{padding:22px}.h1{font-size:34px}.topbar h1{font-size:36px}}
+/* V4 readability and theme-safe responsive polish */
+html,body{width:100%;max-width:100%;overflow-x:hidden}
+body{font-size:14px;line-height:1.45}
+button,input{max-width:100%}
+.page{padding-left:24px;padding-right:24px;min-width:0}
+.top{padding-left:24px;padding-right:24px}
+.brand{width:120px;height:46px;object-fit:contain}
+.theme{width:40px;height:40px;border-radius:14px}
+.topbar{padding:4px 0 10px}
+.topbar h1{font-size:30px;line-height:1.08;letter-spacing:-1px}
+.topbar .sub{font-size:14px;line-height:1.45;margin-top:8px}
+.h1{font-size:32px;line-height:1.05;letter-spacing:-1.1px}
+.sub{font-size:14px;line-height:1.5}
+.homeWelcome{padding:28px 2px 13px}
+.homeWelcome .h1{font-size:32px}
+.heroBalance .amount{font-size:38px}
+.balancefoot{font-size:12px;line-height:1.4}
+.homeFeature{min-height:285px;padding:21px 18px;border-radius:25px}
+.homeFeature h2{font-size:21px;line-height:1.08;margin:70px 0 10px}
+.homeFeature .sub{font-size:10px;line-height:1.42;min-height:68px}
+.homeFeature button{font-size:10px;padding:11px 7px}
+.homePanel{padding:22px;border-radius:25px}
+.homePanel h2{font-size:21px}
+.homePanel .sub{font-size:13px}
+.homeStats b{font-size:17px}
+.homeStats span{font-size:9px}
+.homeShortcut h2{font-size:17px}
+.strategy{padding:22px;border-radius:26px}
+.strategy h3{font-size:21px}
+.alloc{font-size:14px}
+.settings{padding:22px;border-radius:26px}
+.calcLabel{font-size:14px}
+.calcvalue{font-size:28px}
+.profilecard{padding:24px 24px;border-radius:27px;margin:16px 0}
+.profilecard h2{font-size:19px;margin-bottom:10px}
+.profileTitle{font-size:22px;margin:54px 0 0 2px}
+.profileActions{gap:12px}
+.profileActions .primary,.profileActions .outline{min-height:62px;font-size:16px}
+.guestCard .profileline{padding:15px 0 20px;font-size:17px;gap:12px;flex-wrap:wrap}
+.guestStatus{font-size:12px;white-space:nowrap}
+.apiCard .sub{font-size:13px;line-height:1.45;margin-bottom:18px}
+.apiCard input{height:62px;padding:14px 18px;font-size:15px}
+.apiCard .primary{min-height:62px;font-size:15px;margin-top:14px}
+.menuCard{padding:8px 24px}
+.menuCard .profileline{min-height:62px;font-size:16px;gap:12px}
+.walletSecurity .sub{font-size:13px;line-height:1.45}
+.walletSecurity .profileActions .primary,.walletSecurity .profileActions .outline{min-height:62px}
+.legalCard{padding:23px 24px}
+.legalCard .sub{font-size:13px;margin-top:17px}
+.appearanceCard{padding:24px}
+.appearanceHead{align-items:center}
+.appearanceHead h2{font-size:19px}
+.appearanceHead .sub{font-size:13px}
+.themeSwitch{width:88px;height:50px;flex:0 0 auto}
+.themeSwitch span{width:40px;height:40px}
+.marketrow{grid-template-columns:46px minmax(0,1fr) auto 68px;gap:9px;padding:14px 12px}
+.coin{width:46px;height:46px}
+.mname{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pair{font-size:10px}
+.mprice{font-size:12px;min-width:62px}
+.change{font-size:10px}
+.spark{width:68px}
+.tabs{gap:8px}
+.tab{font-size:13px;padding:10px 15px}
+.sectionhead h2{font-size:21px}
+.assettitle{font-size:18px}
+.bigprice{font-size:30px}
+.detailchart{height:165px}
+.walletcard{padding:22px 24px}
+.walletbuttons .primary,.walletbuttons .outline{min-height:60px}
+.notice{font-size:11px}
+.nav{height:74px}
+.nav i{font-size:21px}
+.nav button{font-size:10px}
+@media(max-width:380px){
+ .page{padding-left:18px;padding-right:18px}
+ .top{padding-left:18px;padding-right:18px}
+ .topbar h1{font-size:28px}
+ .h1,.homeWelcome .h1{font-size:29px}
+ .homeCards{gap:9px}
+ .homeFeature{padding:18px 14px;min-height:270px}
+ .homeFeature h2{font-size:18px;margin-top:62px}
+ .homeFeature .sub{font-size:9px}
+ .profilecard{padding-left:19px;padding-right:19px}
+ .menuCard{padding-left:19px;padding-right:19px}
+}
+body.whiteTheme{background:#f7f6f1;color:#161616}
+body.whiteTheme .app{background:#f7f6f1}
+body.whiteTheme .top,body.whiteTheme .topbar,body.whiteTheme .page{color:#161616}
+body.whiteTheme .hero,body.whiteTheme .heroBalance,.whiteTheme .balance,.whiteTheme .homePanel,.whiteTheme .settings,.whiteTheme .walletcard,.whiteTheme .profilecard,.whiteTheme .homeShortcut{
+ background:#fff;
+ color:#161616;
+ border-color:#d8c98f;
+}
+body.whiteTheme .homeFeature{background:#fff;border-color:#d8c98f}
+body.whiteTheme .goldFeature{background:#fff;border-color:#c5a443}
+body.whiteTheme .homeFeature:after{background:rgba(112,79,245,.08)}
+body.whiteTheme .goldFeature:after{background:rgba(218,173,55,.10)}
+body.whiteTheme .h1,body.whiteTheme .homeFeature h2,body.whiteTheme .homePanel h2,body.whiteTheme .homeShortcut h2,body.whiteTheme .profilecard h2,body.whiteTheme .topbar h1,body.whiteTheme .sectionhead h2,body.whiteTheme .mname,body.whiteTheme .assettitle,body.whiteTheme .bigprice,body.whiteTheme .strategy h3{color:#161616}
+body.whiteTheme .sub,body.whiteTheme .balancefoot,body.whiteTheme .label,body.whiteTheme .alloc,body.whiteTheme .status,body.whiteTheme .pair,body.whiteTheme .notice{color:#666b73}
+body.whiteTheme .marketlist,body.whiteTheme .news{background:#fff;border-color:#d8d8d2}
+body.whiteTheme .marketrow,.whiteTheme .newsitem,.whiteTheme .profileline{border-color:#e6e2d6;color:#202124}
+body.whiteTheme .marketrow .mprice{color:#202124}
+body.whiteTheme .coin{background:#f1f1ee}
+body.whiteTheme .tab{background:#fff;border-color:#d8d8d2;color:#6e7177}
+body.whiteTheme .tab.active{background:#17130a;color:#f1c95e;border-color:#b68d2e}
+body.whiteTheme .live{background:#fff}
+body.whiteTheme .homeStats div,body.whiteTheme .statbox,body.whiteTheme .info{background:#f7f7f4;border-color:#e1ddd2}
+body.whiteTheme .homeStats b,body.whiteTheme .calcvalue{color:#b58a24}
+body.whiteTheme .outline{background:#fff;color:#9b7620;border-color:#b89431}
+body.whiteTheme .primary{background:#e8bd4b;color:#111}
+body.whiteTheme .settings input,body.whiteTheme .apiCard input,.whiteTheme .sheet input{background:#f7f7f4;color:#161616;border-color:#d8d8d2}
+body.whiteTheme .nav{background:rgba(250,249,245,.98);border-top-color:#d4bd67}
+body.whiteTheme .nav button{color:#777b82}
+body.whiteTheme .nav button.active{color:#9b761b}
+body.whiteTheme .theme{background:#fff;color:#9b761b}
+body.whiteTheme .themeSwitch{background:#f0f0ec;border-color:#c5a443}
+body.whiteTheme .modal{background:rgba(30,28,20,.35)}
+body.whiteTheme .sheet{background:#fff;color:#161616;border-color:#d8c98f}
 </style>
 </head>
 <body>
