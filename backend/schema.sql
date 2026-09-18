@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS withdrawals (
   amount NUMERIC(30,8) NOT NULL CHECK (amount > 0),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','completed','rejected')),
   requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  processed_at TIMESTAMPTZ
+  processed_at TIMESTAMPTZ,
+  investment_id UUID REFERENCES investments(id)
 );
 
 CREATE INDEX IF NOT EXISTS withdrawals_user_created_idx ON withdrawals(user_id, requested_at DESC);
