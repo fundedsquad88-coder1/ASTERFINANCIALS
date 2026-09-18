@@ -117,3 +117,13 @@ CREATE INDEX IF NOT EXISTS investment_updates_investment_period_idx
 
 ALTER TABLE investments
   ADD COLUMN IF NOT EXISTS realized_rate NUMERIC(12,8);
+
+
+CREATE TABLE IF NOT EXISTS investment_weekly_rates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category TEXT NOT NULL CHECK (category IN ('crypto','forex')),
+  period_ending TIMESTAMPTZ NOT NULL,
+  realized_rate NUMERIC(12,8) NOT NULL CHECK (realized_rate >= -1 AND realized_rate <= 1),
+  published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(category, period_ending)
+);
