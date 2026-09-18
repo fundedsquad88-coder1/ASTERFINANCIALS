@@ -65,7 +65,11 @@ public class MainActivity extends Activity {
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.setPadding(dp(18), dp(8), dp(14), dp(8));
-        LinearLayout brand=new LinearLayout(this); brand.setGravity(Gravity.CENTER_VERTICAL);\n        ImageView logo=new ImageView(this); logo.setImageResource(com.asterfinancials.app.R.drawable.aster_logo_reference); logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);\n        brand.addView(logo,new LinearLayout.LayoutParams(dp(30),dp(30)));\n        TextView brandName=text("ASTER",14,TEXT,true); brandName.setLetterSpacing(.18f); brand.addView(brandName,new LinearLayout.LayoutParams(-2,dp(52)));\n        top.addView(brand,new LinearLayout.LayoutParams(0,dp(52),1));
+        LinearLayout brand=new LinearLayout(this); brand.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo=new ImageView(this); logo.setImageResource(com.asterfinancials.app.R.drawable.aster_logo_reference); logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        brand.addView(logo,new LinearLayout.LayoutParams(dp(30),dp(30)));
+        TextView brandName=text("ASTER",14,TEXT,true); brandName.setLetterSpacing(.18f); brand.addView(brandName,new LinearLayout.LayoutParams(-2,dp(52)));
+        top.addView(brand,new LinearLayout.LayoutParams(0,dp(52),1));
 
         Button bell = button("♧", false);
         bell.setOnClickListener(v -> toast("Notifications will appear after account connection."));
