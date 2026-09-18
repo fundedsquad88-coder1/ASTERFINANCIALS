@@ -70,7 +70,7 @@ fun AsterApp(){
         else
             lightColorScheme(background=Color(0xFFF7F7F5),surface=Color.White,primary=Color(0xFFA87518),onPrimary=Color.White)
     ){
-        Column(Modifier.fillMaxSize()){
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){
             Box(Modifier.weight(1f)){
                 when(tab){
                     Tab.HOME->Home{tab=it}
@@ -257,20 +257,18 @@ fun AsterApp(){
     ))}
     var loading by remember{mutableStateOf(true)}
     var refreshed by remember{mutableStateOf(false)}
+    var news by remember{mutableStateOf(emptyList<News>())}
+    var newsLoading by remember{mutableStateOf(true)}
 
     LaunchedEffect(refreshed){
         loading=true
         coins=fetchMarketSnapshot(coins)
+        news=fetchLiveNews()
         loading=false
+        newsLoading=false
     }
 
-    val news=listOf(
-        News("MARKET","Crypto market cap rises as major assets rebound","CoinMarketCap","https://coinmarketcap.com/top-stories/"),
-        News("BINANCE","Binance announces spot-pair and market updates","Binance","https://www.binance.com/en/support/announcement/list"),
-        News("ALTCOINS","AVAX gains amid institutional, government and protocol news","CoinMarketCap","https://coinmarketcap.com/top-stories/"),
-        News("AI TOKENS","Render and AI-linked tokens gain in sector rotation","CoinMarketCap","https://coinmarketcap.com/top-stories/"),
-        News("MACRO","Markets digest the latest Federal Reserve decision","CoinMarketCap","https://coinmarketcap.com/")
-    )
+    val displayedNews=if(news.isEmpty()) listOf(News("NEWS","Live headlines are temporarily unavailable","CoinDesk","https://www.coindesk.com/")) else news
 
     LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
         item{
@@ -310,7 +308,7 @@ fun AsterApp(){
             }
             Spacer(Modifier.height(7.dp))
         }
-        items(news){n->
+        items(displayedNews){n->
             NewsRow(n)
         }
         item{
@@ -386,23 +384,49 @@ fun AsterApp(){
 private suspend fun fetchMarketSnapshot(old:List<Coin>):List<Coin>{
     return withContext(Dispatchers.IO){
         try{
-            val symbols=old.joinToString(","){it.symbol+"USDT"}
-            val url=URL("https://api.binance.com/api/v3/ticker/24hr?symbols="+Uri.encode("[$symbols]"))
+            val url=URL("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin,ripple,tron&order=market_cap_desc&per_page=6&page=1&sparkline=false&price_change_percentage=24h")
             val con=url.openConnection() as HttpURLConnection
-            con.connectTimeout=7000
-            con.readTimeout=7000
+            con.connectTimeout=10000
+            con.readTimeout=10000
             con.requestMethod="GET"
             val text=con.inputStream.bufferedReader().use{it.readText()}
             con.disconnect()
             val arr=org.json.JSONArray(text)
+            val ids=mapOf("bitcoin" to "BTC","ethereum" to "ETH","solana" to "SOL","binancecoin" to "BNB","ripple" to "XRP","tron" to "TRX")
+            val names=mapOf("BTC" to "Bitcoin","ETH" to "Ethereum","SOL" to "Solana","BNB" to "BNB","XRP" to "XRP","TRX" to "TRON")
             val map=mutableMapOf<String,Coin>()
             for(i in 0 until arr.length()){
                 val o=arr.getJSONObject(i)
-                val s=o.getString("symbol").removeSuffix("USDT")
-                map[s]=Coin(s,old.firstOrNull{it.symbol==s}?.name?:s,o.getDouble("lastPrice"),o.getDouble("priceChangePercent"))
+                val s=ids[o.getString("id")]?:continue
+                map[s]=Coin(s,names[s]?:s,o.optDouble("current_price",0.0),o.optDouble("price_change_percentage_24h",0.0))
             }
             old.map{map[it.symbol]?:it}
-        }catch(_:Exception){old}
+        }catch(_:Exception){
+            old
+        }
+    }
+}
+
+private suspend fun fetchLiveNews():List<News>{
+    return withContext(Dispatchers.IO){
+        try{
+            val con=URL("https://www.coindesk.com/arc/outboundfeeds/rss/").openConnection() as HttpURLConnection
+            con.connectTimeout=10000
+            con.readTimeout=10000
+            val xml=con.inputStream.bufferedReader().use{it.readText()}
+            con.disconnect()
+            val result=mutableListOf<News>()
+            val items=Regex("<item>(.*?)</item>",RegexOption.DOT_MATCHES_ALL)
+            val titles=Regex("<title>(?:<!\[CDATA\[)?(.*?)(?:]]>)?</title>",RegexOption.DOT_MATCHES_ALL)
+            val links=Regex("<link>(.*?)</link>",RegexOption.DOT_MATCHES_ALL)
+            for(item in items.findAll(xml).take(8)){
+                val body=item.groupValues[1]
+                val title=titles.find(body)?.groupValues?.get(1)?.trim()?.replace("&amp;","&")?:continue
+                val link=links.find(body)?.groupValues?.get(1)?.trim()?:continue
+                result.add(News("NEWS",title,"CoinDesk",link))
+            }
+            result
+        }catch(_:Exception){emptyList()}
     }
 }
 
