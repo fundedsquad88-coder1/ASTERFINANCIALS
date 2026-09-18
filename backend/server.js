@@ -354,7 +354,9 @@ app.post("/api/funding/withdrawals", auth, async (req,res)=>{
       );
       if(!inv.rows[0]){ await client.query("ROLLBACK"); return res.status(404).json({error:"INVESTMENT_NOT_FOUND"}); }
       if(inv.rows[0].status!=="active"){ await client.query("ROLLBACK"); return res.status(400).json({error:"INVESTMENT_NOT_ACTIVE"}); }
-      if(value>Number(inv.rows[0].current_value)){ await client.query("ROLLBACK"); return res.status(400).json({error:"INSUFFICIENT_INVESTMENT_BALANCE"}); }
+      if(value!==Number(inv.rows[0].current_value)){ await client.query("ROLLBACK"); return res.status(400).json({error:"FULL_INVESTMENT_WITHDRAWAL_REQUIRED",message:"Investment withdrawals must request the full current investment value."}); }
+      const pending=await client.query("SELECT 1 FROM withdrawals WHERE investment_id=$1 AND status IN ('pending','processing') LIMIT 1",[investmentId]);
+      if(pending.rows[0]){ await client.query("ROLLBACK"); return res.status(409).json({error:"WITHDRAWAL_ALREADY_PENDING"}); }
       sourceType="investment";
     }else{
       const balance=await client.query(
