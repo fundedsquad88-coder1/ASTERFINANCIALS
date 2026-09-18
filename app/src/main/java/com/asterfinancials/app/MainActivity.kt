@@ -728,6 +728,7 @@ private fun formatPrice(v:Double):String{
             CardBox(Modifier.padding(horizontal=16.dp)){
                 Preference("Deposit USDT",Icons.Default.AccountBalanceWallet,"BEP-20 or TRC-20"){ showDeposit=true }
                 Preference("Withdraw USDT",Icons.Default.AccountBalanceWallet,"Request a transfer to your wallet"){ showWithdrawal=true }
+                Preference("Referrals",Icons.Default.People,"Your referral code & rewards"){ }
                 Preference("Theme",Icons.Default.DarkMode,"Black-gold / white-gold"){theme()}
                 Preference("Security",Icons.Default.Security,"Account security controls"){}
                 Preference("Notifications",Icons.Default.Notifications,"Market & strategy alerts"){}
