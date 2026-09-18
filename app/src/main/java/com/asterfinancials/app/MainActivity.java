@@ -116,6 +116,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    @Override public void onBackPressed() {
+        if (web != null) {
+            web.evaluateJavascript("(function(){var v=document.querySelector('.view.active');return v?v.id:'home'})()", value -> {
+                String id = value == null ? "home" : value.replace("\"", "").replace(""", "");
+                if (!"home".equals(id)) web.evaluateJavascript("if(window.nav)nav('home');", null);
+                else superOnBackPressed();
+            });
+        } else superOnBackPressed();
+    }
+
+    private void superOnBackPressed() {
+        super.onBackPressed();
+    }
+
     @Override protected void onDestroy() {
         main.removeCallbacksAndMessages(null);
         network.shutdownNow();
