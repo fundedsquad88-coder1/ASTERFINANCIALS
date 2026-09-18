@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -195,9 +196,9 @@ fun AsterApp(){
         item{
             CardBox(Modifier.padding(16.dp)){
                 Row(Modifier.padding(16.dp),horizontalArrangement=Arrangement.spacedBy(18.dp)){
-                    HomeStat("24/7","Platform access")
-                    HomeStat("2","Auto-Invest categories")
-                    HomeStat("Live","Market data")
+                    HomeStat(Modifier.weight(1f),"24/7","Platform access")
+                    HomeStat(Modifier.weight(1f),"2","Auto-Invest categories")
+                    HomeStat(Modifier.weight(1f),"Live","Market data")
                 }
             }
         }
@@ -240,8 +241,8 @@ fun AsterApp(){
     }
 }
 
-@Composable private fun HomeStat(value:String,label:String){
-    Column(Modifier.weight(1f)){
+@Composable private fun HomeStat(modifier:Modifier,value:String,label:String){
+    Column(modifier){
         Text(value,color=Gold,fontSize=17.sp,fontWeight=FontWeight.Black)
         Text(label,color=Muted,fontSize=7.sp,lineHeight=10.sp)
     }
