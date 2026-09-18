@@ -227,10 +227,31 @@ app.get("/api/funding/deposits", auth, async (req, res) => {
 
 app.get("/api/account/summary", auth, async (req, res) => {
   const result = await pool.query(
-    "SELECT COALESCE(SUM(CASE WHEN type IN ('deposit','investment_gain','referral_reward','adjustment') AND status='posted' THEN amount WHEN type IN ('investment_principal','withdrawal') AND status='posted' THEN -amount ELSE 0 END),0) AS balance FROM ledger_entries WHERE user_id=$1",
+    "SELECT " +
+    "COALESCE(SUM(CASE WHEN type IN ('deposit','referral_reward','adjustment') AND status='posted' THEN amount WHEN type='withdrawal' AND status='posted' THEN -amount ELSE 0 END),0) AS available_balance, " +
+    "COALESCE((SELECT SUM(current_value) FROM investments WHERE user_id=$1 AND status IN ('active','withdrawal_pending')),0) AS invested_balance " +
+    "FROM ledger_entries WHERE user_id=$1",
     [req.user.sub]
   );
-  res.json({ availableBalance: result.rows[0].balance, currency: "USDT" });
+  const available=Number(result.rows[0].available_balance);
+  const invested=Number(result.rows[0].invested_balance);
+  res.json({ availableBalance: available.toFixed(8), investedBalance: invested.toFixed(8), totalBalance: (available+invested).toFixed(8), currency: "USDT" });
+});
+
+app.get("/api/account/activity", auth, async (req,res)=>{
+  const result=await pool.query(
+    "SELECT id,type,amount,currency,status,created_at AS \"createdAt\" FROM ledger_entries WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
+    [req.user.sub]
+  );
+  res.json({activity:result.rows});
+});
+
+app.get("/api/investments", auth, async (req,res)=>{
+  const result=await pool.query(
+    "SELECT id,category,principal,current_value AS \"currentValue\",projection_rate AS \"projectionRate\",compounding,status,started_at AS \"startedAt\",next_update_at AS \"nextUpdateAt\",updated_at AS \"updatedAt\" FROM investments WHERE user_id=$1 ORDER BY started_at DESC",
+    [req.user.sub]
+  );
+  res.json({investments:result.rows});
 });
 
 app.use((err, _req, res, _next) => {
