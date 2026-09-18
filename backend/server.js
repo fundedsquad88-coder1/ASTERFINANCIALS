@@ -170,7 +170,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     const resetUrl = appBaseUrl ? appBaseUrl.replace(/\\/$/,"") + "/reset-password?token=" + token : "";
     await sendEmail(email, "Reset your Aster Financials password",
       "<p>A password reset was requested for your Aster account.</p>" +
-      (resetUrl ? "<p><a href="" + resetUrl + "">Reset password</a></p>" : ""));
+      (resetUrl ? "<p><a href=\"" + resetUrl + "\">Reset password</a></p>" : ""));
   }
   res.json({ ok: true });
 });
@@ -329,6 +329,71 @@ async function weeklyUpdateHandler(req,res){
 }
 
 app.post("/api/internal/investments/weekly-update", weeklyUpdateHandler);
+
+app.post("/api/funding/withdrawals", auth, async (req,res)=>{
+  const network=String(req.body?.network||"").trim();
+  const destinationAddress=String(req.body?.destinationAddress||"").trim();
+  const amount=String(req.body?.amount||"").trim();
+  const investmentId=String(req.body?.investmentId||"").trim() || null;
+
+  if(!["TRC-20","BEP-20"].includes(network) || !destinationAddress || !/^\\d+(\\.\\d{1,8})?$/.test(amount) || Number(amount)<=0){
+    return res.status(400).json({error:"INVALID_INPUT",message:"Enter a valid network, destination address and USDT amount."});
+  }
+
+  const value=Number(amount);
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[req.user.sub]);
+
+    let sourceType="available";
+    if(investmentId){
+      const inv=await client.query(
+        "SELECT id,current_value,status FROM investments WHERE id=$1 AND user_id=$2 FOR UPDATE",
+        [investmentId,req.user.sub]
+      );
+      if(!inv.rows[0]){ await client.query("ROLLBACK"); return res.status(404).json({error:"INVESTMENT_NOT_FOUND"}); }
+      if(inv.rows[0].status!=="active"){ await client.query("ROLLBACK"); return res.status(400).json({error:"INVESTMENT_NOT_ACTIVE"}); }
+      if(value>Number(inv.rows[0].current_value)){ await client.query("ROLLBACK"); return res.status(400).json({error:"INSUFFICIENT_INVESTMENT_BALANCE"}); }
+      sourceType="investment";
+    }else{
+      const balance=await client.query(
+        "SELECT COALESCE(SUM(CASE WHEN le.type IN ('deposit','referral_reward','adjustment') AND le.status='posted' THEN le.amount WHEN le.type IN ('withdrawal','investment_principal') AND le.status='posted' THEN -le.amount WHEN le.type='investment_gain' AND le.status='posted' AND NOT COALESCE(i.compounding,TRUE) THEN le.amount ELSE 0 END),0) AS available_balance FROM ledger_entries le LEFT JOIN investments i ON i.id=le.reference_id WHERE le.user_id=$1",
+        [req.user.sub]
+      );
+      if(value>Number(balance.rows[0].available_balance)){
+        await client.query("ROLLBACK");
+        return res.status(400).json({error:"INSUFFICIENT_BALANCE",message:"Your verified available balance is insufficient."});
+      }
+    }
+
+    const result=await client.query(
+      "INSERT INTO withdrawals(user_id,network,destination_address,amount,status) VALUES($1,$2,$3,$4,'pending') RETURNING id,network,destination_address AS \"destinationAddress\",amount,status,requested_at AS \"requestedAt\"",
+      [req.user.sub,network,destinationAddress,amount]
+    );
+
+    if(sourceType==="investment"){
+      await client.query("UPDATE investments SET status='withdrawal_pending',updated_at=NOW() WHERE id=$1",[investmentId]);
+    }
+
+    // Funds become unavailable immediately through this pending withdrawal only after processing;
+    // no balance is credited or debited until the withdrawal is approved/posted.
+    await client.query("COMMIT");
+    res.status(201).json({withdrawal:result.rows[0],source:sourceType});
+  }catch(error){
+    await client.query("ROLLBACK");
+    console.error(error);
+    res.status(500).json({error:"SERVER_ERROR"});
+  }finally{client.release();}
+});
+
+app.get("/api/funding/withdrawals", auth, async (req,res)=>{
+  const result=await pool.query(
+    "SELECT id,network,destination_address AS \"destinationAddress\",amount,status,requested_at AS \"requestedAt\",processed_at AS \"processedAt\" FROM withdrawals WHERE user_id=$1 ORDER BY requested_at DESC LIMIT 50",
+    [req.user.sub]
+  );
+  res.json({withdrawals:result.rows});
+});
 
 app.get("/api/account/activity", auth, async (req,res)=>{
   const result=await pool.query(
