@@ -1,5 +1,8 @@
 package com.asterfinancials.app
 
+import android.content.ClipData
+import android.content.Context
+import android.content.ClipboardManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -42,6 +45,7 @@ fun DepositScreen(onBack:()->Unit){
     }
 
     val selected=wallets.firstOrNull{it.network==network}
+    val context=androidx.compose.ui.platform.LocalContext.current
 
     Column(Modifier.fillMaxSize()){
         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
@@ -68,9 +72,16 @@ fun DepositScreen(onBack:()->Unit){
                 Column(Modifier.padding(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
                     Icon(Icons.Default.QrCode2,null,tint=Gold,modifier=Modifier.size(80.dp))
                     Text(if(loading)"Loading deposit address…" else selected?.address ?: "Wallet not configured",fontSize=10.sp,fontWeight=FontWeight.Bold)
+
                     Text("Only send USDT on the selected network.",color=Muted,fontSize=9.sp,modifier=Modifier.padding(top=5.dp))
                     if(selected!=null){
-                        OutlinedButton(onClick={}){ 
+                        OutlinedButton(onClick={
+                            selected?.let{
+                                val clip=context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clip.setPrimaryClip(ClipData.newPlainText("Aster $network address",it.address))
+                                status="Address copied."
+                            }
+                        }){ 
                             Icon(Icons.Default.ContentCopy,null,Modifier.size(15.dp))
                             Spacer(Modifier.width(5.dp))
                             Text("Copy address",fontSize=9.sp)
@@ -109,7 +120,7 @@ fun DepositScreen(onBack:()->Unit){
 private suspend fun loadWallets():List<WalletOption>{
     return withContext(Dispatchers.IO){
         try{
-            // Authentication token is intentionally required by the production API.
+            val prefs=androidx.compose.ui.platform.LocalContext.current
             emptyList()
         }catch(_:Exception){emptyList()}
     }
