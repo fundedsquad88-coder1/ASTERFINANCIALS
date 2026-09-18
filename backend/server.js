@@ -85,21 +85,42 @@ function makeToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function makeReferralCode(){
+  return crypto.randomBytes(5).toString("hex").toUpperCase();
+}
+
+async function uniqueReferralCode(){
+  for(let i=0;i<8;i++){
+    const code=makeReferralCode();
+    const r=await pool.query("SELECT 1 FROM users WHERE referral_code=$1 LIMIT 1",[code]);
+    if(!r.rows[0]) return code;
+  }
+  throw new Error("Could not allocate referral code.");
+}
+
 app.post("/api/auth/register", async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const password = String(req.body?.password || "");
   const fullName = String(req.body?.fullName || "").trim();
+  const referralCode = String(req.body?.referralCode || "").trim().toUpperCase();
 
   if (!fullName || !email || !/^\\S+@\\S+\\.\\S+$/.test(email) || password.length < 8) {
     return res.status(400).json({ error: "INVALID_INPUT", message: "Name, valid email and an 8+ character password are required." });
   }
 
   try {
+    let referredBy=null;
+    if(referralCode){
+      const ref=await pool.query("SELECT id FROM users WHERE referral_code=$1 LIMIT 1",[referralCode]);
+      if(!ref.rows[0]) return res.status(400).json({error:"INVALID_REFERRAL_CODE",message:"That referral code is not valid."});
+      referredBy=ref.rows[0].id;
+    }
+    const ownReferralCode=await uniqueReferralCode();
     const passwordHash = await bcrypt.hash(password, 12);
     const verificationToken = makeToken();
     const result = await pool.query(
-      "INSERT INTO users (email, password_hash, full_name, verification_token_hash, verification_expires_at) VALUES ($1,$2,$3,$4,NOW()+INTERVAL '24 hours') RETURNING id,email,full_name,created_at,email_verified_at",
-      [email, passwordHash, fullName, tokenHash(verificationToken)]
+      "INSERT INTO users (email, password_hash, full_name, referral_code, referred_by, verification_token_hash, verification_expires_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()+INTERVAL '24 hours') RETURNING id,email,full_name,created_at,email_verified_at",
+      [email, passwordHash, fullName, ownReferralCode, referredBy, tokenHash(verificationToken)]
     );
     const user = publicUser(result.rows[0]);
     const verifyUrl = appBaseUrl ? appBaseUrl.replace(/\\/$/,"") + "/verify-email?token=" + verificationToken : "";
@@ -183,6 +204,23 @@ app.post("/api/auth/reset-password", async (req, res) => {
   const result = await pool.query("UPDATE users SET password_hash=$1, reset_token_hash=NULL, reset_expires_at=NULL WHERE reset_token_hash=$2 AND reset_expires_at>NOW() RETURNING id", [hash, tokenHash(token)]);
   if (!result.rows[0]) return res.status(400).json({ error: "TOKEN_EXPIRED", message: "Reset link is invalid or expired." });
   res.json({ ok: true });
+});
+
+app.get("/api/referrals/summary", auth, async (req,res)=>{
+  const user=await pool.query("SELECT referral_code AS \"referralCode\" FROM users WHERE id=$1",[req.user.sub]);
+  const stats=await pool.query(
+    "SELECT COUNT(*)::int AS invited, COALESCE(SUM(CASE WHEN status='posted' THEN reward_amount ELSE 0 END),0) AS earned, COUNT(*) FILTER (WHERE status='posted')::int AS paid_rewards FROM referral_rewards WHERE referrer_user_id=$1",
+    [req.user.sub]
+  );
+  res.json({referralCode:user.rows[0]?.referralCode||null,invited:stats.rows[0]?.invited||0,earned:String(stats.rows[0]?.earned||0),paidRewards:stats.rows[0]?.paid_rewards||0,rate:0.15});
+});
+
+app.get("/api/referrals/list", auth, async (req,res)=>{
+  const result=await pool.query(
+    "SELECT u.id,u.full_name AS \"fullName\",u.created_at AS \"joinedAt\",COALESCE(SUM(rr.reward_amount) FILTER (WHERE rr.status='posted'),0) AS \"rewarded\" FROM users u LEFT JOIN referral_rewards rr ON rr.referred_user_id=u.id WHERE u.referred_by=$1 GROUP BY u.id ORDER BY u.created_at DESC LIMIT 100",
+    [req.user.sub]
+  );
+  res.json({referrals:result.rows});
 });
 
 app.get("/api/funding/wallets", auth, async (_req, res) => {
