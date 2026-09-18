@@ -528,17 +528,33 @@ private fun formatPrice(v:Double):String{
 }
 
 @Composable private fun Profile(theme:()->Unit){
+    val context=LocalContext.current
+    val repository=remember{AuthRepository(context)}
+    var user by remember{mutableStateOf(repository.currentUser())}
+
+    if(user==null){
+        Column(Modifier.fillMaxSize()){
+            Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
+                Text("‹",fontSize=30.sp,color=Gold,modifier=Modifier.clickable{})
+                Spacer(Modifier.width(8.dp))
+                Text("Aster Account",fontSize=20.sp,fontWeight=FontWeight.Bold)
+            }
+            AuthScreen(repository){ authenticated -> user=authenticated }
+        }
+        return
+    }
+
     LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
         item{Header("Profile","Account, security & preferences")}
         item{
             CardBox(Modifier.padding(16.dp)){
                 Column(Modifier.padding(16.dp)){
                     Text("ACCOUNT",color=Gold,fontSize=9.sp,fontWeight=FontWeight.Bold)
-                    Text("Not connected",fontWeight=FontWeight.Bold)
-                    Text("Connect your account to unlock verified balances and funding.",color=Muted,fontSize=9.sp)
+                    Text(user?.fullName ?: "Aster member",fontWeight=FontWeight.Bold)
+                    Text(user?.email ?: "",color=Muted,fontSize=9.sp)
                     Spacer(Modifier.height(12.dp))
-                    Button({},colors=ButtonDefaults.buttonColors(Gold)){
-                        Text("Connect",color=Black)
+                    OutlinedButton({ repository.logout(); user=null }){
+                        Text("Sign out",fontSize=10.sp)
                     }
                 }
             }
