@@ -68,8 +68,7 @@ fun WithdrawalScreen(onBack:()->Unit){
                         }
                     }
                 }
-                selectedInvestment?.let{amount="%.8f".format(it.currentValue)}
-                Text("Investment withdrawals request the selected position's full current value. Processing remains subject to backend review.",color=Muted,fontSize=8.sp,modifier=Modifier.padding(top=8.dp))
+                Text("Selected investment value: "+(selectedInvestment?.currentValue?.let{"%.2f USDT".format(it)}?:"—")+". Investment withdrawals request the full current value and remain subject to backend review.",color=Muted,fontSize=8.sp,modifier=Modifier.padding(top=8.dp))
             }else{
                 OutlinedTextField(amount,{amount=it},Modifier.fillMaxWidth().padding(top=10.dp),label={Text("Amount (USDT)")},singleLine=true)
             }
