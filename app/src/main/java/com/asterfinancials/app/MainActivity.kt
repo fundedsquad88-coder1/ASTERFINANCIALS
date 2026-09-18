@@ -596,7 +596,8 @@ fun AsterApp(){
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)){
-                Text(n.category,fontSize=8.sp,color=Gold,fontWeight=FontWeight.Bold)                Text(n.title,fontSize=11.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=2.dp))
+                Text(n.category,fontSize=8.sp,color=Gold,fontWeight=FontWeight.Bold)
+                Text(n.title,fontSize=11.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=2.dp))
                 Text(n.source+" · Open article",color=Muted,fontSize=8.sp,modifier=Modifier.padding(top=3.dp))
             }
             Icon(Icons.Default.OpenInNew,null,tint=Muted,modifier=Modifier.size(15.dp))
@@ -703,7 +704,7 @@ private fun formatPrice(v:Double):String{
         return
     }
     if(showReferral){
-        Referral()
+        Referral(onBack={showReferral=false})
         return
     }
     val context=LocalContext.current
