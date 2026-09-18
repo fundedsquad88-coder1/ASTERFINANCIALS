@@ -358,7 +358,7 @@ app.post("/api/funding/withdrawals", auth, async (req,res)=>{
       sourceType="investment";
     }else{
       const balance=await client.query(
-        "SELECT COALESCE(SUM(CASE WHEN le.type IN ('deposit','referral_reward','adjustment') AND le.status='posted' THEN le.amount WHEN le.type IN ('withdrawal','investment_principal') AND le.status='posted' THEN -le.amount WHEN le.type='investment_gain' AND le.status='posted' AND NOT COALESCE(i.compounding,TRUE) THEN le.amount ELSE 0 END),0) AS available_balance FROM ledger_entries le LEFT JOIN investments i ON i.id=le.reference_id WHERE le.user_id=$1",
+        "SELECT COALESCE(SUM(CASE WHEN le.type IN ('deposit','referral_reward','adjustment') AND le.status='posted' THEN le.amount WHEN le.type IN ('withdrawal','investment_principal') AND le.status='posted' THEN -le.amount WHEN le.type='investment_gain' AND le.status='posted' AND NOT COALESCE(i.compounding,TRUE) THEN le.amount ELSE 0 END),0) - COALESCE((SELECT SUM(w.amount) FROM withdrawals w WHERE w.user_id=$1 AND w.status IN ('pending','processing') AND w.investment_id IS NULL),0) AS available_balance FROM ledger_entries le LEFT JOIN investments i ON i.id=le.reference_id WHERE le.user_id=$1",
         [req.user.sub]
       );
       if(value>Number(balance.rows[0].available_balance)){
@@ -368,8 +368,8 @@ app.post("/api/funding/withdrawals", auth, async (req,res)=>{
     }
 
     const result=await client.query(
-      "INSERT INTO withdrawals(user_id,network,destination_address,amount,status) VALUES($1,$2,$3,$4,'pending') RETURNING id,network,destination_address AS \"destinationAddress\",amount,status,requested_at AS \"requestedAt\"",
-      [req.user.sub,network,destinationAddress,amount]
+      "INSERT INTO withdrawals(user_id,network,destination_address,amount,status,investment_id) VALUES($1,$2,$3,$4,'pending',$5) RETURNING id,network,destination_address AS \"destinationAddress\",amount,status,requested_at AS \"requestedAt\"",
+      [req.user.sub,network,destinationAddress,amount,investmentId]
     );
 
     if(sourceType==="investment"){
@@ -389,7 +389,7 @@ app.post("/api/funding/withdrawals", auth, async (req,res)=>{
 
 app.get("/api/funding/withdrawals", auth, async (req,res)=>{
   const result=await pool.query(
-    "SELECT id,network,destination_address AS \"destinationAddress\",amount,status,requested_at AS \"requestedAt\",processed_at AS \"processedAt\" FROM withdrawals WHERE user_id=$1 ORDER BY requested_at DESC LIMIT 50",
+    "SELECT id,network,destination_address AS \"destinationAddress\",amount,status,investment_id AS \"investmentId\",requested_at AS \"requestedAt\",processed_at AS \"processedAt\" FROM withdrawals WHERE user_id=$1 ORDER BY requested_at DESC LIMIT 50",
     [req.user.sub]
   );
   res.json({withdrawals:result.rows});
