@@ -36,11 +36,11 @@
       document.getElementById('confirmFlow').onclick=()=>{if(window.note)note('Configuration complete. Live activation remains disabled until the secure account and ledger backend are connected.')};
     }
   }
-  function start(k){state.kind=k;state.step=1;render();if(window.nav)nav('invest-flow')}
+  function start(k){state.kind=k;state.step=1;render();if(window.nav)nav('invest-flow');document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'))}
   window.startAutoInvest=start;
   function init(){
     addStyles();
-    const sec=document.createElement('section');sec.id='invest-flow';sec.className='view';
+    const old=document.getElementById('invest-flow');if(old)old.remove();const sec=document.createElement('section');sec.id='invest-flow';sec.className='view';
     sec.innerHTML='<div class="hero"><div class="eyebrow">Auto-Invest Setup</div><h1>Configure your <span>strategy.</span></h1><p class="sub">Review the plan before any live activation. No funds are moved from this screen.</p></div><div class="card flowCard"><div class="flowTop"><div><div id="flowStep" class="flowStep">Step 1 of 4</div><div id="flowTitle" class="flowTitle">Choose an Auto-Invest</div></div><button class="btn" id="flowCancel">Cancel</button></div><div id="flowBody"></div></div>';
     const wallet=document.getElementById('wallet');wallet.parentNode.insertBefore(sec,wallet);
     document.getElementById('flowCancel').onclick=()=>nav('autoinvest');
