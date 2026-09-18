@@ -1,6 +1,7 @@
 package com.asterfinancials.app
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -21,6 +22,7 @@ fun AuthScreen(
     onAuthenticated:(AsterUser)->Unit
 ){
     var register by remember{mutableStateOf(false)}
+    var forgot by remember{mutableStateOf(false)}
     var fullName by remember{mutableStateOf("")}
     var email by remember{mutableStateOf("")}
     var password by remember{mutableStateOf("")}
@@ -39,32 +41,33 @@ fun AuthScreen(
         }
         Text("ASTER",color=Gold,fontSize=13.sp,fontWeight=FontWeight.Bold,letterSpacing=3.sp)
         Text(
-            if(register)"Create your Aster account" else "Welcome back",
+            if(forgot)"Reset your password" else if(register)"Create your Aster account" else "Welcome back",
             fontSize=24.sp,fontWeight=FontWeight.Bold,
             modifier=Modifier.padding(top=18.dp)
         )
         Text(
-            if(register)"Your account will be the gateway to balances, investments and funding."
+            if(forgot)"Enter your email and we'll send reset instructions."
+            else if(register)"Your account will be the gateway to balances, investments and funding."
             else "Sign in to access your verified account data.",
             color=Muted,fontSize=10.sp
         )
 
-        Row(Modifier.padding(top=18.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+        if(!forgot) Row(Modifier.padding(top=18.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
             FilterChip(selected=!register,onClick={register=false},label={Text("Sign in",fontSize=10.sp)})
             FilterChip(selected=register,onClick={register=true},label={Text("Create account",fontSize=10.sp)})
         }
 
-        if(register){
+        if(register && !forgot){
             OutlinedTextField(fullName,{fullName=it},Modifier.fillMaxWidth().padding(top=18.dp),label={Text("Full name")},singleLine=true,leadingIcon={Icon(Icons.Default.Person,null)})
         }
         OutlinedTextField(email,{email=it},Modifier.fillMaxWidth().padding(top=10.dp),label={Text("Email")},singleLine=true)
-        OutlinedTextField(
+        if(!forgot) OutlinedTextField(
             password,{password=it},Modifier.fillMaxWidth().padding(top=10.dp),
             label={Text("Password")},singleLine=true,
             leadingIcon={Icon(Icons.Default.Lock,null)},
             visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation()
         )
-        if(register){
+        if(register && !forgot){
             OutlinedTextField(
                 confirm,{confirm=it},Modifier.fillMaxWidth().padding(top=10.dp),
                 label={Text("Confirm password")},singleLine=true,
@@ -78,21 +81,34 @@ fun AuthScreen(
             enabled=!busy,
             onClick={
                 error=null
-                if(register && password!=confirm){error="Passwords do not match";return@Button}
-                if(password.length<8){error="Use at least 8 characters";return@Button}
                 busy=true
                 scope.launch{
-                    val result=if(register) repository.register(fullName,email,password) else repository.login(email,password)
-                    busy=false
-                    result.onSuccess(onAuthenticated).onFailure{error=it.message?:"Could not connect to Aster."}
+                    if(forgot){
+                        val result=repository.forgotPassword(email)
+                        busy=false
+                        result.onSuccess{error="If an account exists, reset instructions have been sent."}
+                            .onFailure{error=it.message?:"Could not connect to Aster."}
+                    }else{
+                        if(register && password!=confirm){busy=false;error="Passwords do not match";return@launch}
+                        if(password.length<8){busy=false;error="Use at least 8 characters";return@launch}
+                        val result=if(register) repository.register(fullName,email,password) else repository.login(email,password)
+                        busy=false
+                        result.onSuccess(onAuthenticated).onFailure{error=it.message?:"Could not connect to Aster."}
+                    }
                 }
             },
             Modifier.fillMaxWidth().padding(top=14.dp),
             colors=ButtonDefaults.buttonColors(Gold)
         ){
-            Text(if(busy)"Connecting…" else if(register)"Create account" else "Sign in",color=Color.Black,fontWeight=FontWeight.Bold)
+            Text(if(busy)"Connecting…" else if(forgot)"Send reset email" else if(register)"Create account" else "Sign in",color=Color.Black,fontWeight=FontWeight.Bold)
         }
 
+        if(!register && !forgot){
+            Text("Forgot password?",color=Gold,fontSize=10.sp,modifier=Modifier.padding(top=14.dp).clickable{forgot=true;error=null})
+        }
+        if(forgot){
+            Text("Back to sign in",color=Gold,fontSize=10.sp,modifier=Modifier.padding(top=14.dp).clickable{forgot=false;error=null})
+        }
         Row(Modifier.padding(top=18.dp),verticalAlignment=Alignment.CenterVertically){
             Icon(Icons.Default.Security,null,tint=Gold,modifier=Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
