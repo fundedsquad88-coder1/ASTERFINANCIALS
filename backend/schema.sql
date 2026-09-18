@@ -131,3 +131,25 @@ CREATE TABLE IF NOT EXISTS investment_weekly_rates (
 
 ALTER TABLE withdrawals
   ADD COLUMN IF NOT EXISTS investment_id UUID REFERENCES investments(id);
+
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES users(id);
+CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_idx ON users(referral_code) WHERE referral_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS users_referred_by_idx ON users(referred_by);
+
+CREATE TABLE IF NOT EXISTS referral_rewards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  referred_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source_type TEXT NOT NULL CHECK (source_type IN ('deposit','investment')),
+  source_reference_id UUID,
+  rate NUMERIC(12,8) NOT NULL CHECK (rate >= 0 AND rate <= 1),
+  reward_amount NUMERIC(30,8) NOT NULL CHECK (reward_amount >= 0),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','posted','rejected')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  posted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS referral_rewards_referrer_idx ON referral_rewards(referrer_user_id,created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS referral_rewards_source_idx ON referral_rewards(referrer_user_id,source_type,source_reference_id);
+
