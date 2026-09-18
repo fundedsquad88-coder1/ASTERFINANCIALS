@@ -106,7 +106,7 @@ app.post("/api/auth/register", async (req, res) => {
     await sendEmail(email, "Verify your Aster Financials account",
       "<p>Welcome to Aster Financials.</p><p>Verify your email to activate account access.</p>" +
       (verifyUrl ? "<p><a href="" + verifyUrl + "">Verify email</a></p>" : ""));
-    return res.status(201).json({ verificationRequired: true, user });
+    return res.status(201).json({ verificationRequired: true, accessToken: signAccessToken(user), user });
   } catch (error) {
     if (error.code === "23505") return res.status(409).json({ error: "EMAIL_EXISTS", message: "An account with this email already exists." });
     console.error(error);
