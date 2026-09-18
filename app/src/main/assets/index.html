@@ -1,6 +1,178 @@
-<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#050606"><style>
-*{box-sizing:border-box}body{margin:0;background:#050606;color:#f7f7f4;font-family:Arial,sans-serif;-webkit-user-select:none;user-select:none}.app{min-height:100vh;padding-bottom:84px;background:radial-gradient(circle at 80% 0,#d6a93412,transparent 28%)}.top{padding:18px 18px 8px;display:flex;align-items:center;justify-content:space-between}.brand{height:45px;width:145px;object-fit:contain;object-position:left}.bell{color:#f1c85c;font-size:25px}.balance{margin:10px 16px;border:1px solid #d6a93499;border-radius:14px;padding:20px;background:linear-gradient(135deg,#0d0e0e,#080909);position:relative;overflow:hidden}.balance:after{content:'✦';position:absolute;right:15px;bottom:-15px;font-size:120px;color:#d6a93412}.small{color:#aaa;font-size:12px}.amount{font-size:31px;margin-top:7px}.gold{color:#f1c85c}.quick{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 14px}.q{text-align:center;font-size:10px;color:#ddd}.qi{height:52px;border:1px solid #d6a93466;border-radius:12px;display:grid;place-items:center;color:#f1c85c;font-size:22px;margin-bottom:5px;background:#090a0a}.promo{margin:18px 16px;border:1px solid #d6a93477;border-radius:13px;padding:17px;background:linear-gradient(120deg,#0b0c0c,#11100a)}.promo b{font-size:20px}.promo p{color:#aaa;font-size:12px;margin:5px 0 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px}.card{border:1px solid #ffffff14;border-radius:13px;background:#090a0a;padding:14px}.card h3{font-size:14px;margin:0 0 8px}.green{color:#18d779}.chart{height:105px}.chart svg{width:100%;height:100%}.stats{color:#bbb;font-size:11px;line-height:1.9}.section{padding:18px 16px 0}.section-head{display:flex;justify-content:space-between;margin-bottom:10px}.section-head b{font-size:17px}.section-head span{color:#f1c85c;font-size:11px}.tx{border-top:1px solid #222;padding:12px 0;display:flex;justify-content:space-between;font-size:12px}.tx small{display:block;color:#777;margin-top:3px}.nav{position:fixed;bottom:0;left:0;right:0;height:76px;background:#080909f2;border-top:1px solid #d6a93455;display:grid;grid-template-columns:repeat(5,1fr);z-index:10;padding-bottom:env(safe-area-inset-bottom)}.nav button{background:none;border:0;color:#aaa;font-size:10px}.nav i{display:block;font-style:normal;font-size:22px;margin-bottom:3px}.nav .active{color:#f1c85c}.screen{display:none}.screen.active{display:block}.back{padding:14px 16px;color:#f1c85c}.trade{padding:0 16px}.selector{border:1px solid #d6a93499;border-radius:12px;padding:15px;display:flex;justify-content:space-between}.price{font-size:30px;margin:17px 0 2px}.chartbig{height:235px;border:1px solid #ffffff12;border-radius:12px;margin:12px 0;padding:10px}.chartbig svg{width:100%;height:100%}.time{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.time button,.stepper button{border:1px solid #333;background:#0b0c0c;color:#eee;border-radius:8px;padding:11px}.time .sel{border-color:#d6a934;background:#2a220e;color:#f1c85c}.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.field{border:1px solid #333;border-radius:10px;padding:12px}.field label{display:block;color:#888;font-size:10px;margin-bottom:6px}.stepper{display:flex;justify-content:space-between;align-items:center}.stepper button{padding:4px 12px}.ret{text-align:right;margin:10px 0;color:#18d779}.tradebtn{border:0;border-radius:10px;padding:16px;color:white;font-weight:800;font-size:16px}.higher{background:#08b954}.lower{background:#ed3030}.tabs{display:flex;border-bottom:1px solid #333;margin-top:20px}.tabs button{flex:1;background:none;border:0;color:#aaa;padding:12px}.tabs .on{color:#f1c85c;border-bottom:2px solid #f1c85c}.position{border:1px solid #252525;border-radius:10px;padding:13px;margin-top:10px;font-size:12px;display:flex;justify-content:space-between}.note{color:#777;font-size:10px;line-height:1.5;margin:14px 0}
-</style></head><body><div class="app">
-<div id="home" class="screen active"><div class="top"><img class="brand" src="file:///android_asset/aster-logo-reference.png"><div class="bell">♧</div></div><div class="balance"><div class="small">Total Balance　◉</div><div class="amount">125,430.68 <span class="small">USDT</span></div><div class="small">≈ $125,430.68</div></div><div class="quick"><button class="q" onclick="show('trade')"><div class="qi">⌁</div>Trade</button><button class="q"><div class="qi">₮</div>Staking</button><button class="q"><div class="qi">▣</div>Rewards</button><button class="q"><div class="qi">♧</div>Referral</button><button class="q"><div class="qi">▢</div>Wallet</button></div><div class="promo"><b>Trade. Stake. <span class="gold">Earn. Repeat.</span></b><p>Your financial freedom starts here.</p></div><div class="grid"><div class="card"><h3>24H Performance <span class="green">+2.14%</span></h3><div class="chart"><svg viewBox="0 0 300 100" preserveAspectRatio="none"><polyline points="0,85 25,76 50,79 75,61 100,67 125,43 150,54 175,35 200,50 225,25 250,38 275,15 300,7" fill="none" stroke="#d8ad37" stroke-width="3"/></svg></div></div><div class="card stats"><b>Active Traders</b><br>12,480<hr style="border:0;border-top:1px solid #242424"><b>Total Volume</b><br>8.42M USDT<hr style="border:0;border-top:1px solid #242424"><b>Total Payouts</b><br>3.18M USDT</div></div><div class="section"><div class="section-head"><b>Recent Transactions</b><span>View All ›</span></div><div class="tx"><div>USDT Deposit<small>Today, 14:32</small></div><span class="green">+1,000.00 USDT</span></div><div class="tx"><div>Binary Trade<small>Today, 12:21</small></div><span class="green">+850.00 USDT</span></div><div class="tx"><div>Staking Reward<small>Today, 09:14</small></div><span class="green">+12.50 USDT</span></div><div class="tx"><div>Withdrawal<small>Yesterday, 18:45</small></div><span>-500.00 USDT</span></div></div></div>
-<div id="trade" class="screen"><div class="back" onclick="show('home')">‹　Aster</div><div class="trade"><div class="selector"><span>▥　Binary</span><span>⌄</span></div><div class="price">71,235.6 <span class="green" style="font-size:14px">▲ +0.42%</span></div><div class="chartbig"><svg viewBox="0 0 600 240" preserveAspectRatio="none"><g stroke="#222"><line x1="0" y1="50" x2="600" y2="50"/><line x1="0" y1="100" x2="600" y2="100"/><line x1="0" y1="150" x2="600" y2="150"/><line x1="0" y1="200" x2="600" y2="200"/></g><polyline points="0,185 30,155 60,170 90,125 120,145 150,105 180,130 210,92 240,118 270,70 300,96 330,55 360,85 390,48 420,78 450,34 480,70 510,48 540,66 570,42 600,58" fill="none" stroke="#e0b33d" stroke-width="4"/></svg></div><div class="time"><button class="sel">1m</button><button>5m</button><button>15m</button><button>30m</button></div><div class="controls"><div class="field"><label>Amount (USDT)</label><div class="stepper"><button>−</button><b>100</b><button>+</button></div></div><div class="field"><label>Expiry Time</label><b>◷　1 Min　⌄</b></div></div><div class="ret">Potential Return　<b>+82%</b><br><span style="color:#aaa;font-size:11px">≈ 182.00 USDT</span></div><div class="controls"><button class="tradebtn higher">↗　HIGHER</button><button class="tradebtn lower">↘　LOWER</button></div><div class="tabs"><button class="on">Open Trades (1)</button><button>Trade History</button></div><div class="position"><span>▥　Binary<br><small>71,230.4　·　100 USDT</small></span><span>00:38<br><b class="green">+82.00 USDT</b></span></div><p class="note">Demo interface values shown for product design. Live prices, returns, balances and trade execution require a connected backend and appropriate regulatory/compliance controls.</p></div></div>
-<div class="nav"><button class="active" onclick="show('home')"><i>⌂</i>Home</button><button onclick="show('trade')"><i>⌁</i>Trade</button><button><i>₮</i>Staking</button><button><i>▣</i>Rewards</button><button><i>♙</i>Profile</button></div></div><script>function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach((b,i)=>b.classList.toggle('active',(id==='home'&&i===0)||(id==='trade'&&i===1)));window.scrollTo(0,0)}</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090a0c">
+<title>Aster Financials — V5</title>
+<style>
+:root{--bg:#08090b;--panel:#101216;--panel2:#14161b;--text:#f5f5f2;--muted:#8d919a;--line:#24272e;--gold:#e7bb55;--gold2:#ffd978;--green:#31d58a;--red:#ff5d67;--shadow:0 14px 38px #0008}
+:root.light{--bg:#f6f6f3;--panel:#fff;--panel2:#f0f0ec;--text:#141518;--muted:#6e727a;--line:#deded8;--gold:#a87518;--gold2:#c9942c;--shadow:0 12px 32px #7772}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:500 12px/1.45 Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}.app{max-width:520px;margin:auto;min-height:100vh;padding-bottom:86px;background:radial-gradient(700px 300px at 85% -5%,#e7bb5518,transparent 60%)}
+button,input,select{font:inherit}button{cursor:pointer}.top{height:66px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+.logo{height:38px;width:122px;object-fit:contain;object-position:left}.top-actions{display:flex;gap:7px}.icon-btn{width:36px;height:36px;border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--text);display:grid;place-items:center}.icon{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+main{padding:14px 15px}.eyebrow{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}h1,h2,h3,p{margin:0}.hero{padding:7px 1px 16px}.hero h1{font-size:26px;letter-spacing:-.04em;margin-top:4px}.hero p{color:var(--muted);font-size:11px;margin-top:4px}
+.card{background:linear-gradient(145deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.wallet{padding:16px;position:relative;overflow:hidden}.wallet:after{content:"";position:absolute;width:160px;height:160px;border:1px solid #e7bb5522;border-radius:50%;right:-85px;top:-80px}.wallet-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.wallet-status{display:flex;align-items:center;gap:8px}.dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}.wallet-title{font-size:11px;color:var(--muted)}.wallet-value{font-size:23px;font-weight:750;letter-spacing:-.03em;margin-top:9px}.wallet-note{font-size:10px;color:var(--muted);margin-top:5px}.primary{border:0;border-radius:10px;background:var(--gold);color:#111;padding:10px 13px;font-weight:800;font-size:11px}.secondary{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);padding:10px 12px;font-weight:700;font-size:11px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.quick{min-width:0;padding:10px 4px;border:1px solid var(--line);background:var(--panel);border-radius:13px;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:5px}.quick .icon{color:var(--gold);width:18px;height:18px}.quick span{font-size:9px;white-space:nowrap}
+.section{margin-top:18px}.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}.section-head h2{font-size:15px;letter-spacing:-.02em}.section-head button{border:0;background:none;color:var(--gold);font-size:10px}
+.ticker{display:flex;gap:8px;overflow:auto;padding-bottom:3px;scrollbar-width:none}.ticker::-webkit-scrollbar{display:none}.ticker-card{min-width:150px;padding:11px 12px}.ticker-top{display:flex;justify-content:space-between;align-items:center}.asset{display:flex;align-items:center;gap:7px;font-weight:800}.coin{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;background:var(--panel2);color:var(--gold);border:1px solid var(--line);font-size:10px}.price{font-size:16px;font-weight:800;margin-top:7px}.change{font-size:10px;margin-top:2px}.up{color:var(--green)}.down{color:var(--red)}
+.market-list{display:grid;gap:8px}.market{padding:12px;display:grid;grid-template-columns:1fr auto;gap:8px}.market-left{display:flex;align-items:center;gap:10px}.market .coin{width:30px;height:30px;border-radius:9px}.market-name{font-weight:800}.market-sub{font-size:9px;color:var(--muted);margin-top:2px}.market-right{text-align:right}.market-price{font-weight:800}.market-change{font-size:10px;margin-top:2px}.spark{width:74px;height:27px;margin-top:6px}.spark polyline{fill:none;stroke:var(--gold);stroke-width:2}
+.feature{padding:15px}.feature-row{display:flex;align-items:flex-start;gap:11px}.feature-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e7bb5514;color:var(--gold);flex:0 0 auto}.feature h3{font-size:13px}.feature p{font-size:10px;color:var(--muted);margin-top:3px}.feature .tag{display:inline-flex;align-items:center;gap:4px;font-size:9px;color:var(--gold);margin-top:8px}
+.news-list{display:grid;gap:8px}.news{padding:12px;display:flex;gap:10px}.news-thumb{width:64px;height:52px;border-radius:10px;background:linear-gradient(135deg,#e7bb5520,#ffffff08);display:grid;place-items:center;flex:0 0 auto;color:var(--gold)}.news-title{font-weight:750;font-size:11px;line-height:1.35}.news-meta{font-size:9px;color:var(--muted);margin-top:5px}
+.screen{display:none}.screen.active{display:block}.subtop{display:flex;align-items:center;gap:8px;padding:8px 0 12px}.back{border:1px solid var(--line);background:var(--panel);color:var(--text);width:34px;height:34px;border-radius:10px;display:grid;place-items:center}.subtop h2{font-size:17px}.subtop p{font-size:9px;color:var(--muted)}
+.chart-card{padding:13px}.chart-head{display:flex;justify-content:space-between;align-items:flex-start}.bigprice{font-size:24px;font-weight:850;margin-top:3px}.chart-wrap{height:205px;margin-top:10px;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#ffffff03,transparent)}.chart-wrap svg{width:100%;height:100%}.chart-grid line{stroke:var(--line);stroke-width:1}.chart-line{fill:none;stroke:var(--gold);stroke-width:3}.chart-fill{fill:url(#fade)}
+.range{display:flex;gap:6px;margin-top:9px}.range button{flex:1;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:8px;padding:7px;font-size:9px}.range .sel{border-color:var(--gold);color:var(--gold);background:#e7bb5510}
+.trade-box{padding:13px;margin-top:9px}.asset-select{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);padding:10px;border-radius:10px;background:var(--panel)}.amount-box{margin-top:9px}.field-label{font-size:9px;color:var(--muted);margin-bottom:5px}.amount-input{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);padding:11px;outline:0}.amount-input:focus{border-color:var(--gold)}.trade-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.trade-actions button{border:0;border-radius:10px;padding:12px;font-weight:850}.higher{background:#1bb875;color:#06150e}.lower{background:#e94c57;color:#1b0608}.trade-note{font-size:9px;color:var(--muted);margin-top:9px;text-align:center}
+.calc{padding:15px}.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.calc-field{border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--bg)}.calc-field label{display:block;color:var(--muted);font-size:9px;margin-bottom:5px}.calc-field input,.calc-field select{width:100%;border:0;outline:0;background:transparent;color:var(--text);font-size:12px}.calc-result{margin-top:10px;padding:12px;border-radius:11px;background:#e7bb5510;border:1px solid #e7bb5530}.calc-result .result-number{font-size:21px;font-weight:850;color:var(--gold2)}.calc-result .muted{font-size:9px;color:var(--muted)}
+.rows{display:grid;gap:7px}.row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:10px}.row:last-child{border-bottom:0}.empty{padding:24px 14px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}.empty .icon{width:25px;height:25px;color:var(--gold);margin-bottom:7px}.empty b{display:block;color:var(--text);font-size:11px;margin-bottom:3px}
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(520px,100%);height:74px;padding:7px 10px calc(7px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(20px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);z-index:30}.nav button{border:0;background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:8px}.nav .icon{width:19px;height:19px}.nav .active{color:var(--gold)}.nav .active:after{content:"";width:4px;height:4px;border-radius:50%;background:var(--gold);margin-top:1px}
+.toast{position:fixed;left:50%;bottom:88px;transform:translate(-50%,15px);background:var(--text);color:var(--bg);padding:9px 12px;border-radius:10px;font-size:10px;opacity:0;pointer-events:none;transition:.22s;z-index:50}.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(min-width:520px){body{background:#030405}.app{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="market" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M7 15l3-4 3 2 5-7"/></symbol>
+<symbol id="calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2m4 0h2M8 15h2m4 0h2M8 18h8"/></symbol>
+<symbol id="news" viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v15H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M7 8h10M7 12h10M7 16h6"/></symbol>
+<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20c.8-3.2 3.1-5 7-5s6.2 1.8 7 5"/></symbol>
+<symbol id="bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+<symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="moon" viewBox="0 0 24 24"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/></symbol>
+<symbol id="wallet" viewBox="0 0 24 24"><path d="M4 6h15a2 2 0 0 1 2 2v11H5a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1Z"/><path d="M16 13h5M6 6V4h12a2 2 0 0 1 2 2"/><circle cx="16" cy="13" r="1"/></symbol>
+<symbol id="trend" viewBox="0 0 24 24"><path d="m4 16 5-5 4 3 7-8"/><path d="M15 6h5v5"/></symbol>
+<symbol id="bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 9-12h-7z"/></symbol>
+<symbol id="shield" viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5M4 13a8 8 0 0 0 14 5l2-2m0 5v-5h-5"/></symbol>
+</defs></svg>
+
+<div class="app">
+<header class="top">
+<img class="logo" src="file:///android_asset/aster-logo-reference.png" alt="Aster">
+<div class="top-actions">
+<button class="icon-btn" id="themeBtn" aria-label="Theme"><svg class="icon"><use href="#moon"/></svg></button>
+<button class="icon-btn" onclick="toast('Notifications will appear here when an account is connected')" aria-label="Notifications"><svg class="icon"><use href="#bell"/></svg></button>
+</div>
+</header>
+
+<main>
+<section id="home" class="screen active">
+<div class="hero"><div class="eyebrow">ASTER FINANCIALS · V5</div><h1>A clearer way to grow.</h1><p>Live markets, tools and account controls in one clean interface.</p></div>
+
+<div class="card wallet">
+<div class="wallet-row"><div class="wallet-status"><span class="dot"></span><div><div class="wallet-title">Wallet status</div><b>Not connected</b></div></div><button class="primary" onclick="connectWallet()">Connect wallet</button></div>
+<div class="wallet-value">— — —</div><div class="wallet-note">No balance is shown until a verified wallet/account connection exists.</div>
+</div>
+
+<div class="grid4">
+<button class="quick" onclick="show('markets')"><svg class="icon"><use href="#market"/></svg><span>Markets</span></button>
+<button class="quick" onclick="show('calculator')"><svg class="icon"><use href="#calc"/></svg><span>Calculator</span></button>
+<button class="quick" onclick="show('news')"><svg class="icon"><use href="#news"/></svg><span>News</span></button>
+<button class="quick" onclick="toast('Rewards require a connected account')"><svg class="icon"><use href="#bolt"/></svg><span>Rewards</span></button>
+</div>
+
+<div class="section"><div class="section-head"><h2>Live market pulse</h2><button onclick="loadMarkets()"><svg class="icon" style="width:12px;height:12px;vertical-align:-2px"><use href="#refresh"/></svg> Refresh</button></div><div id="ticker" class="ticker"></div></div>
+
+<div class="section"><div class="section-head"><h2>Market watch</h2><button onclick="show('markets')">View all <svg class="icon" style="width:11px;height:11px;vertical-align:-2px"><use href="#arrow"/></svg></button></div><div id="homeMarkets" class="market-list"></div></div>
+
+<div class="section card feature"><div class="feature-row"><div class="feature-icon"><svg class="icon"><use href="#shield"/></svg></div><div><h3>Account-first design</h3><p>No invented portfolio values, returns or transactions. Account data appears only after a real connection.</p><span class="tag"><svg class="icon" style="width:12px;height:12px"><use href="#shield"/></svg> Live data only</span></div></div></div>
+</section>
+
+<section id="markets" class="screen">
+<div class="subtop"><button class="back" onclick="show('home')">‹</button><div><h2>Markets</h2><p>Public reference prices · live refresh</p></div><button class="icon-btn" style="margin-left:auto" onclick="loadMarkets()"><svg class="icon"><use href="#refresh"/></svg></button></div>
+<div id="marketList" class="market-list"></div>
+<div class="section card feature"><div class="feature-row"><div class="feature-icon"><svg class="icon"><use href="#trend"/></svg></div><div><h3>Market data is reference data</h3><p>Prices are pulled from public market endpoints and are not an account balance or execution quote.</p></div></div></div>
+</section>
+
+<section id="calculator" class="screen">
+<div class="subtop"><button class="back" onclick="show('home')">‹</button><div><h2>Calculator</h2><p>Estimate position size and outcome</p></div></div>
+<div class="card calc">
+<div class="calc-grid">
+<div class="calc-field"><label>Stake / amount</label><input id="stake" type="number" value="100" min="0" oninput="calc()"></div>
+<div class="calc-field"><label>Expected return %</label><input id="rate" type="number" value="82" min="0" oninput="calc()"></div>
+<div class="calc-field"><label>Rounds</label><input id="rounds" type="number" value="1" min="1" oninput="calc()"></div>
+<div class="calc-field"><label>Compounding</label><select id="compound" onchange="calc()"><option value="yes">On</option><option value="no">Off</option></select></div>
+</div>
+<div class="calc-result"><div class="muted">Illustrative calculation — not a guaranteed return</div><div class="result-number" id="calcResult">182.00 USDT</div><div class="muted" id="calcProfit">Estimated profit: 82.00 USDT</div></div>
+</div>
+<div class="section card feature"><div class="feature-row"><div class="feature-icon"><svg class="icon"><use href="#calc"/></svg></div><div><h3>Transparent math</h3><p>Change the inputs to see the calculation update instantly. Nothing is added to your account from this screen.</p></div></div></div>
+</section>
+
+<section id="news" class="screen">
+<div class="subtop"><button class="back" onclick="show('home')">‹</button><div><h2>Market news</h2><p>Live feed · source headlines</p></div><button class="icon-btn" style="margin-left:auto" onclick="loadNews()"><svg class="icon"><use href="#refresh"/></svg></button></div>
+<div id="newsList" class="news-list"></div>
+</section>
+
+<section id="profile" class="screen">
+<div class="subtop"><button class="back" onclick="show('home')">‹</button><div><h2>Profile</h2><p>Account & preferences</p></div></div>
+<div class="card wallet"><div class="wallet-row"><div class="wallet-status"><span class="dot"></span><div><div class="wallet-title">Account</div><b>Not connected</b></div></div><button class="primary" onclick="connectWallet()">Connect</button></div></div>
+<div class="section rows card" style="padding:5px 13px">
+<div class="row"><span>Wallet</span><b>Not connected</b></div><div class="row"><span>Balances</span><span style="color:var(--muted)">Hidden until connected</span></div><div class="row"><span>Transactions</span><span style="color:var(--muted)">No account data</span></div><div class="row"><span>Theme</span><button class="secondary" onclick="toggleTheme()">Switch theme</button></div>
+</div>
+<div class="section empty"><svg class="icon"><use href="#wallet"/></svg><b>Your account stays empty until connected.</b>V5 never invents balances, deposits, withdrawals or P&amp;L.</div>
+</section>
+
+</main>
+
+<nav class="nav">
+<button class="active" onclick="show('home')"><svg class="icon"><use href="#home"/></svg>Home</button>
+<button onclick="show('markets')"><svg class="icon"><use href="#market"/></svg>Markets</button>
+<button onclick="show('calculator')"><svg class="icon"><use href="#calc"/></svg>Calculator</button>
+<button onclick="show('news')"><svg class="icon"><use href="#news"/></svg>News</button>
+<button onclick="show('profile')"><svg class="icon"><use href="#user"/></svg>Profile</button>
+</nav>
+<div id="toast" class="toast"></div>
+</div>
+
+<script>
+const assets=[{s:'BTCUSDT',n:'Bitcoin',sym:'BTC',icon:'₿'},{s:'ETHUSDT',n:'Ethereum',sym:'ETH',icon:'Ξ'},{s:'BNBUSDT',n:'BNB',sym:'BNB',icon:'B'},{s:'SOLUSDT',n:'Solana',sym:'SOL',icon:'S'}];
+let prices={};
+function esc(v){return String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function fmt(v){return Number(v).toLocaleString(undefined,{maximumFractionDigits:Number(v)>100?2:4});}
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach((b,i)=>b.classList.toggle('active',['home','markets','calculator','news','profile'].indexOf(id)===i));window.scrollTo(0,0);if(id==='markets'&&!Object.keys(prices).length)loadMarkets();if(id==='news')loadNews();}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove('show'),2600);}
+function connectWallet(){toast('Wallet connection is not enabled in this V5 build yet — no balance will be fabricated.');}
+function toggleTheme(){document.documentElement.classList.toggle('light');localStorage.setItem('aster-theme',document.documentElement.classList.contains('light')?'light':'dark');updateThemeIcon();}
+function updateThemeIcon(){const b=document.getElementById('themeBtn');b.innerHTML='<svg class="icon"><use href="#'+(document.documentElement.classList.contains('light')?'moon':'sun')+'"/></svg>';}
+document.getElementById('themeBtn').onclick=toggleTheme;
+if(localStorage.getItem('aster-theme')==='light')document.documentElement.classList.add('light');updateThemeIcon();
+
+function marketCard(a,d){
+ const p=Number(d.lastPrice), pc=Number(d.priceChangePercent); const cls=pc>=0?'up':'down';
+ return '<div class="card market"><div class="market-left"><div class="coin">'+esc(a.icon)+'</div><div><div class="market-name">'+esc(a.sym)+'/USDT</div><div class="market-sub">'+esc(a.n)+' · 24h</div><svg class="spark" viewBox="0 0 80 28"><polyline points="0,21 10,18 20,22 30,13 40,16 50,9 60,14 70,6 80,10"/></svg></div></div><div class="market-right"><div class="market-price">'+fmt(p)+'</div><div class="market-change '+cls+'">'+(pc>=0?'+':'')+pc.toFixed(2)+'%</div></div></div>';
+}
+function tickerCard(a,d){const p=Number(d.lastPrice),pc=Number(d.priceChangePercent),cls=pc>=0?'up':'down';return '<div class="card ticker-card"><div class="ticker-top"><div class="asset"><span class="coin">'+esc(a.icon)+'</span>'+esc(a.sym)+'</div><span class="'+cls+'">'+(pc>=0?'+':'')+pc.toFixed(2)+'%</span></div><div class="price">'+fmt(p)+'</div><div class="change" style="color:var(--muted)">24h reference</div></div>';}
+async function loadMarkets(){
+ const home=document.getElementById('homeMarkets'),list=document.getElementById('marketList'),tick=document.getElementById('ticker');
+ if(!Object.keys(prices).length){home.innerHTML=list.innerHTML='<div class="empty"><svg class="icon"><use href="#refresh"/></svg><b>Loading live markets…</b>Fetching public reference prices.</div>';tick.innerHTML='';}
+ try{
+  const symbols=encodeURIComponent(JSON.stringify(assets.map(x=>x.s)));
+  const r=await fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbols='+symbols,{cache:'no-store'});
+  if(!r.ok)throw new Error('market request failed');
+  const data=await r.json();prices={};data.forEach(d=>prices[d.symbol]=d);
+  tick.innerHTML=assets.map(a=>prices[a.s]?tickerCard(a,prices[a.s]:'')).join('');
+  home.innerHTML=assets.slice(0,3).map(a=>prices[a.s]?marketCard(a,prices[a.s]:'')).join('');
+  list.innerHTML=assets.map(a=>prices[a.s]?marketCard(a,prices[a.s]:'')).join('');
+ }catch(e){const msg='<div class="empty"><svg class="icon"><use href="#trend"/></svg><b>Live market feed unavailable</b>Try refresh again in a moment.</div>';if(!Object.keys(prices).length){home.innerHTML=list.innerHTML=msg;tick.innerHTML='';}}
+}
+async function loadNews(){
+ const el=document.getElementById('newsList');el.innerHTML='<div class="empty"><svg class="icon"><use href="#news"/></svg><b>Loading market news…</b>Fetching current headlines.</div>';
+ try{
+  const rss=encodeURIComponent('https://www.coindesk.com/arc/outboundfeeds/rss/');
+  const r=await fetch('https://api.rss2json.com/v1/api.json?rss_url='+rss,{cache:'no-store'});
+  if(!r.ok)throw new Error('news request failed');const j=await r.json();if(!j.items?.length)throw new Error('empty');
+  el.innerHTML=j.items.slice(0,10).map(x=>'<article class="card news"><div class="news-thumb"><svg class="icon"><use href="#news"/></svg></div><div><div class="news-title">'+esc(x.title)+'</div><div class="news-meta">'+esc(x.author||'Market news')+' · '+new Date(x.pubDate).toLocaleString()+'</div></div></article>').join('');
+ }catch(e){el.innerHTML='<div class="empty"><svg class="icon"><use href="#news"/></svg><b>News feed unavailable</b>Live headlines could not be loaded right now.</div>';}
+}
+function calc(){
+ const stake=Math.max(0,Number(document.getElementById('stake').value)||0),rate=Math.max(0,Number(document.getElementById('rate').value)||0),rounds=Math.max(1,Math.floor(Number(document.getElementById('rounds').value)||1)),compound=document.getElementById('compound').value==='yes';
+ let total=stake;for(let i=0;i<rounds;i++)total=compound?total*(1+rate/100):stake*(1+rate/100)*(i+1);
+ document.getElementById('calcResult').textContent=total.toLocaleString(undefined,{maximumFractionDigits:2})+' USDT';
+ document.getElementById('calcProfit').textContent='Illustrative profit: '+Math.max(0,total-stake).toLocaleString(undefined,{maximumFractionDigits:2})+' USDT';
+}
+calc();loadMarkets();loadNews();setInterval(loadMarkets,15000);
+</script>
+</body>
+</html>
