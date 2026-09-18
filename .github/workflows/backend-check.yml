@@ -1,13 +1,13 @@
 name: Check Aster API
 
 on:
+  workflow_dispatch:
+  push:
+    branches: [ main, aster-native ]
 
 concurrency:
   group: aster-native-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  workflow_dispatch:
-  push:
-    branches: [ main, aster-native ]
 
 jobs:
   check:
