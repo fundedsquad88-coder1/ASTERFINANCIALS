@@ -3,6 +3,9 @@ package com.asterfinancials.app
 import android.content.ClipData
 import android.content.Context
 import android.content.ClipboardManager
+import android.graphics.Bitmap
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,6 +14,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,7 +74,9 @@ fun DepositScreen(onBack:()->Unit){
 
             CardBox(Modifier.fillMaxWidth().padding(top=14.dp)){
                 Column(Modifier.padding(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
-                    Icon(Icons.Default.QrCode2,null,tint=Gold,modifier=Modifier.size(80.dp))
+                    selected?.let{ addr ->
+                        QrCodeImage(addr.address)
+                    } ?: Icon(Icons.Default.QrCode2,null,tint=Gold,modifier=Modifier.size(80.dp))
                     Text(if(loading)"Loading deposit address…" else selected?.address ?: "Wallet not configured",fontSize=10.sp,fontWeight=FontWeight.Bold)
 
                     Text("Only send USDT on the selected network.",color=Muted,fontSize=9.sp,modifier=Modifier.padding(top=5.dp))
@@ -128,5 +134,22 @@ private suspend fun loadWallets():List<WalletOption>{
 
 private suspend fun submitDeposit(network:String,amount:String,txHash:String):String{
     if(amount.toDoubleOrNull()==null || amount.toDoubleOrNull()!!<=0) return "Enter a valid USDT amount."
-    return "Deposit submission is waiting for the deployed Aster API."
+    return withContext(Dispatchers.IO){
+        try{
+            val prefs=androidx.compose.ui.platform.LocalContext.current
+            "Deposit submission is waiting for the deployed Aster API."
+        }catch(_:Exception){"Could not submit deposit."}
+    }
+}
+
+@Composable private fun QrCodeImage(value:String){
+    val bitmap=remember(value){
+        try{
+            val matrix=MultiFormatWriter().encode(value,BarcodeFormat.QR_CODE,420,420)
+            Bitmap.createBitmap(420,420,Bitmap.Config.ARGB_8888).also{bmp->
+                for(x in 0 until 420) for(y in 0 until 420) bmp.setPixel(x,y,if(matrix[x,y]) android.graphics.Color.BLACK android.graphics.Color.WHITE)
+            }
+        }catch(_:Exception){null}
+    }
+    bitmap?.let{androidx.compose.foundation.Image(it.asImageBitmap(),contentDescription="Deposit QR code",modifier=Modifier.size(180.dp))}
 }
