@@ -83,3 +83,19 @@ VALUES
 ('TRC-20','TMrK4d1r2cGye2TwX3JfjCaUDWvZy6aoXD',NULL),
 ('BEP-20','0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5',NULL)
 ON CONFLICT (network) DO UPDATE SET address=EXCLUDED.address;
+
+
+CREATE TABLE IF NOT EXISTS investments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('crypto','forex')),
+  principal NUMERIC(30,8) NOT NULL CHECK (principal > 0),
+  current_value NUMERIC(30,8) NOT NULL CHECK (current_value >= 0),
+  projection_rate NUMERIC(12,8),
+  compounding BOOLEAN NOT NULL DEFAULT TRUE,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','completed','withdrawal_pending','closed')),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  next_update_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS investments_user_status_idx ON investments(user_id,status,updated_at DESC);
