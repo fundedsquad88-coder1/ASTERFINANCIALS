@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material3.*
@@ -40,7 +41,7 @@ fun WithdrawalScreen(onBack:()->Unit){
 
     Column(Modifier.fillMaxSize()){
         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
-            Text("‹",fontSize=30.sp,color=Gold)
+            IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,null,tint=Gold)}
             Spacer(Modifier.width(8.dp))
             Column{
                 Text("Withdraw USDT",fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
