@@ -238,6 +238,64 @@ app.get("/api/account/summary", auth, async (req, res) => {
   res.json({ availableBalance: available.toFixed(8), investedBalance: invested.toFixed(8), totalBalance: (available+invested).toFixed(8), currency: "USDT" });
 });
 
+app.get("/api/investments/:id/updates", auth, async (req,res)=>{
+  const result=await pool.query(
+    "SELECT iu.id,iu.period_ending AS \"periodEnding\",iu.opening_value AS \"openingValue\",iu.realized_rate AS \"realizedRate\",iu.gain_amount AS \"gainAmount\",iu.closing_value AS \"closingValue\" FROM investment_updates iu JOIN investments i ON i.id=iu.investment_id WHERE iu.investment_id=$1 AND i.user_id=$2 ORDER BY iu.period_ending DESC LIMIT 52",
+    [req.params.id,req.user.sub]
+  );
+  res.json({updates:result.rows});
+});
+
+// Internal weekly accounting worker.
+// It only applies a server-supplied REALIZED rate; projection_rate is never used as a gain.
+app.post("/api/internal/investments/weekly-update", async (req,res)=>{
+  const secret=req.headers["x-aster-job-secret"];
+  if(!process.env.JOB_SECRET || secret!==process.env.JOB_SECRET) return res.status(401).json({error:"JOB_UNAUTHORIZED"});
+  const periodEnding=req.body?.periodEnding ? new Date(req.body.periodEnding) : new Date();
+  const updates=Array.isArray(req.body?.updates) ? req.body.updates : [];
+  const client=await pool.connect();
+  let processed=0;
+  try{
+    await client.query("BEGIN");
+    for(const item of updates){
+      const id=String(item.investmentId||"");
+      const realizedRate=Number(item.realizedRate);
+      if(!id || !Number.isFinite(realizedRate) || realizedRate < -1 || realizedRate > 1) continue;
+      const locked=await client.query(
+        "SELECT id,user_id,current_value,compounding,status FROM investments WHERE id=$1 FOR UPDATE",
+        [id]
+      );
+      if(!locked.rows[0] || locked.rows[0].status!=="active") continue;
+      const inv=locked.rows[0];
+      const opening=Number(inv.current_value);
+      const gain=opening*realizedRate;
+      const closing=inv.compounding ? opening+gain : Math.max(0,Number(inv.current_value)+gain);
+      const inserted=await client.query(
+        "INSERT INTO investment_updates(investment_id,period_ending,opening_value,realized_rate,gain_amount,closing_value) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(investment_id,period_ending) DO NOTHING RETURNING id",
+        [id,periodEnding.toISOString(),opening,realizedRate,gain,closing]
+      );
+      if(!inserted.rows[0]) continue;
+      await client.query(
+        "UPDATE investments SET current_value=$1,realized_rate=$2,next_update_at=$3,updated_at=NOW() WHERE id=$4",
+        [closing,realizedRate,new Date(periodEnding.getTime()+7*24*60*60*1000).toISOString(),id]
+      );
+      if(gain!==0){
+        await client.query(
+          "INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'investment_gain',$2,'USDT',$3,'posted')",
+          [inv.user_id,gain,id]
+        );
+      }
+      processed++;
+    }
+    await client.query("COMMIT");
+    res.json({ok:true,processed,periodEnding:periodEnding.toISOString()});
+  }catch(error){
+    await client.query("ROLLBACK");
+    console.error(error);
+    res.status(500).json({error:"SERVER_ERROR"});
+  }finally{client.release();}
+});
+
 app.get("/api/account/activity", auth, async (req,res)=>{
   const result=await pool.query(
     "SELECT id,type,amount,currency,status,created_at AS \"createdAt\" FROM ledger_entries WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
