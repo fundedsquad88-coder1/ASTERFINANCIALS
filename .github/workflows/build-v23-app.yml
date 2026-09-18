@@ -3,7 +3,6 @@ on:
   workflow_dispatch:
   push:
     branches: [aster-app-v23-scratch]
-
 jobs:
   build:
     runs-on: ubuntu-latest
