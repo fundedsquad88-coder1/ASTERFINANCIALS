@@ -296,11 +296,38 @@ fun AsterApp(){
     var activating by remember{mutableStateOf(false)}
     var message by remember{mutableStateOf<String?>(null)}
     var activated by remember{mutableStateOf<Investment?>(null)}
+    var investments by remember{mutableStateOf(emptyList<Investment>())}
+    var investmentsLoading by remember{mutableStateOf(false)}
+    LaunchedEffect(Unit){
+        if(AuthRepository(context).currentUser()!=null){
+            investmentsLoading=true
+            investments=repository.list().getOrElse{emptyList()}
+            investmentsLoading=false
+        }
+    }
     val a=amount.toDoubleOrNull()?:0.0
     val r=(rate.toDoubleOrNull()?:0.0)/100
     val w=weeks.toDoubleOrNull()?:0.0
     val end=if(a>0 && r>=0 && w>=0)a*(1+r).pow(w) else 0.0
     LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
+        item{
+            Text("ACTIVE INVESTMENTS",color=Gold,fontSize=9.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(16.dp,14.dp,16.dp,5.dp))
+            if(investmentsLoading) Text("Loading your positions…",color=Muted,fontSize=9.sp,modifier=Modifier.padding(horizontal=16.dp))
+            else if(investments.isEmpty()) Text("No active investments yet. Activated positions will appear here.",color=Muted,fontSize=9.sp,modifier=Modifier.padding(horizontal=16.dp))
+            investments.filter{it.status=="active"}.forEach{inv->
+                CardBox(Modifier.padding(horizontal=16.dp,vertical=4.dp)){
+                    Row(Modifier.fillMaxWidth().padding(14.dp),verticalAlignment=Alignment.CenterVertically){
+                        Icon(if(inv.category=="crypto")Icons.Default.CurrencyBitcoin else Icons.Default.CurrencyExchange,null,tint=Gold,modifier=Modifier.size(22.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)){
+                            Text(inv.category.replaceFirstChar{ch->ch.uppercase()}+" Auto-Invest",fontWeight=FontWeight.Bold,fontSize=11.sp)
+                            Text("Principal %.2f · Current %.2f USDT".format(inv.principal,inv.currentValue),color=Muted,fontSize=9.sp)
+                        }
+                        Text("ACTIVE",color=Green,fontSize=8.sp,fontWeight=FontWeight.Bold)
+                    }
+                }
+            }
+        }
         item{Header("Auto Invest","Choose a strategy and activate only against verified funds")}
         item{
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
