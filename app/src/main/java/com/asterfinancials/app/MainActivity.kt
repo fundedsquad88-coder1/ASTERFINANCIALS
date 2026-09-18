@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -35,14 +36,14 @@ import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.pow
 
-private val Black=Color(0xFF050606)
-private val Panel=Color(0xFF0D0E0E)
-private val Panel2=Color(0xFF151616)
-private val Gold=Color(0xFFD8AD37)
-private val WhiteGold=Color(0xFFF1D98A)
-private val Muted=Color(0xFF92928B)
-private val Green=Color(0xFF18D779)
-private val Red=Color(0xFFFF5C62)
+val Black=Color(0xFF050606)
+val Panel=Color(0xFF0D0E0E)
+val Panel2=Color(0xFF151616)
+val Gold=Color(0xFFD8AD37)
+val WhiteGold=Color(0xFFF1D98A)
+val Muted=Color(0xFF92928B)
+val Green=Color(0xFF18D779)
+val Red=Color(0xFFFF5C62)
 
 private enum class Tab(val label:String,val icon:ImageVector){
     HOME("Home",Icons.Default.Home),
@@ -115,7 +116,7 @@ fun AsterApp(){
     }
 }
 
-@Composable private fun CardBox(mod:Modifier=Modifier,content:@Composable ColumnScope.()->Unit){
+@Composable fun CardBox(mod:Modifier=Modifier,content:@Composable ColumnScope.()->Unit){
     Card(mod,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),content=content)
 }
 
@@ -297,7 +298,8 @@ fun AsterApp(){
     var message by remember{mutableStateOf<String?>(null)}
     var activated by remember{mutableStateOf<Investment?>(null)}
     var investments by remember{mutableStateOf(emptyList<Investment>())}
-    var investmentsLoading by remember{mutableStateOf(false)}    LaunchedEffect(Unit){
+    var investmentsLoading by remember{mutableStateOf(false)}
+    LaunchedEffect(Unit){
         if(AuthRepository(context).currentUser()!=null){
             investmentsLoading=true
             investments=repository.list().getOrElse{emptyList()}
