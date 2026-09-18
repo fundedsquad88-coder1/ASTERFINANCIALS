@@ -123,7 +123,7 @@ app.post("/api/auth/register", async (req, res) => {
       [email, passwordHash, fullName, ownReferralCode, referredBy, tokenHash(verificationToken)]
     );
     const user = publicUser(result.rows[0]);
-    const verifyUrl = appBaseUrl ? appBaseUrl.replace(/\\/$/,"") + "/verify-email?token=" + verificationToken : "";
+    const verifyUrl = appBaseUrl ? appBaseUrl.replace(/\/$/,"") + "/verify-email?token=" + verificationToken : "";
     await sendEmail(email, "Verify your Aster Financials account",
       "<p>Welcome to Aster Financials.</p><p>Verify your email to activate account access.</p>" +
       (verifyUrl ? "<p><a href=\"" + verifyUrl + "\">Verify email</a></p>" : ""));
