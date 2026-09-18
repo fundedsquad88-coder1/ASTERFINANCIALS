@@ -119,10 +119,10 @@ fun DepositScreen(onBack:()->Unit){
 
 private suspend fun loadWallets():List<WalletOption>{
     return withContext(Dispatchers.IO){
-        try{
-            val prefs=androidx.compose.ui.platform.LocalContext.current
-            emptyList()
-        }catch(_:Exception){emptyList()}
+        listOf(
+            WalletOption("TRC-20","TMrK4d1r2cGye2TwX3JfjCaUDWvZy6aoXD"),
+            WalletOption("BEP-20","0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5")
+        )
     }
 }
 
