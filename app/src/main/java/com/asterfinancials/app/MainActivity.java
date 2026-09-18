@@ -50,6 +50,20 @@ public class MainActivity extends Activity {
         settings.setTextZoom(100);
 
         web.addJavascriptInterface(new NativeBridge(), "asterNative");
+        web.setClickable(true);
+        web.setFocusable(true);
+        web.setFocusableInTouchMode(true);
+        web.setOnTouchListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_UP && web.getHeight() > 0 && event.getY() >= web.getHeight() - 105) {
+                int slot = (int) (event.getX() / Math.max(1f, web.getWidth() / 5f));
+                if (slot < 0) slot = 0;
+                if (slot > 4) slot = 4;
+                final String[] tabs = {"home", "autoinvest", "markets", "wallet", "profile"};
+                web.evaluateJavascript("window.nav && window.nav('" + tabs[slot] + "')", null);
+                return true;
+            }
+            return false;
+        });
         setContentView(web);
         web.loadUrl("file:///android_asset/index.html");
     }
