@@ -38,3 +38,41 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   expires_at TIMESTAMPTZ NOT NULL,
   revoked_at TIMESTAMPTZ
 );
+
+
+CREATE TABLE IF NOT EXISTS wallet_addresses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  network TEXT NOT NULL UNIQUE CHECK (network IN ('TRC-20','BEP-20')),
+  address TEXT NOT NULL,
+  qr_asset_url TEXT,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS deposits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  wallet_address_id UUID NOT NULL REFERENCES wallet_addresses(id),
+  network TEXT NOT NULL CHECK (network IN ('TRC-20','BEP-20')),
+  amount NUMERIC(30,8) NOT NULL CHECK (amount > 0),
+  tx_hash TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirming','completed','rejected')),
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  verified_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS deposits_user_created_idx ON deposits(user_id, submitted_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS deposits_network_tx_hash_idx ON deposits(network, tx_hash) WHERE tx_hash IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS withdrawals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  network TEXT NOT NULL CHECK (network IN ('TRC-20','BEP-20')),
+  destination_address TEXT NOT NULL,
+  amount NUMERIC(30,8) NOT NULL CHECK (amount > 0),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','completed','rejected')),
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS withdrawals_user_created_idx ON withdrawals(user_id, requested_at DESC);
