@@ -745,7 +745,7 @@ private fun formatPrice(v:Double):String{
                 Preference("Activity",Icons.Default.ReceiptLong,"Deposits, withdrawals & investment ledger"){ showActivity=true }
                 Preference("Theme",Icons.Default.DarkMode,"Black-gold / white-gold"){theme()}
                 Preference("Security",Icons.Default.Security,"Account security controls"){}
-                Preference("Notifications",Icons.Default.Notifications,"Market & strategy alerts"){}
+                Preference("Notifications",Icons.Default.Notifications,"Market & strategy alerts"){ showNotifications=true }
                 Preference("Support",Icons.Default.HelpOutline,"Help center"){}
             }
         }
