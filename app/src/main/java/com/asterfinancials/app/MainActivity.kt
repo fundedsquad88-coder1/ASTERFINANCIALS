@@ -152,7 +152,11 @@ fun AsterApp(){
                                 modifier=Modifier.size(42.dp)
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("ASTER",color=Gold,fontSize=12.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
+                            Image(
+                                painter=painterResource(com.asterfinancials.app.R.drawable.aster_watermark),
+                                contentDescription="Aster",
+                                modifier=Modifier.size(44.dp)
+                            )
                         }
                         IconButton(onClick=toggleTheme){
                             Icon(
