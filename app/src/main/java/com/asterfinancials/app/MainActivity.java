@@ -121,7 +121,7 @@ public class MainActivity extends Activity {
     private void home() {
         header("Aster Financials", "A clearer way to ", "grow.");
         paragraph("A focused financial experience for Auto-Invest, wallet controls, market references and account management.");
-        card(balance());
+        content.addView(balance());
         LinearLayout grid=new LinearLayout(this); grid.setOrientation(LinearLayout.VERTICAL);
         String[][] actions={{"↓","Deposit"},{"↑","Withdraw"},{"◷","Auto-Invest"},{"▣","Wallet"}};
         for(int r=0;r<2;r++){
