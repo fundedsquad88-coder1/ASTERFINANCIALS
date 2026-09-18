@@ -185,6 +185,46 @@ app.post("/api/auth/reset-password", async (req, res) => {
   res.json({ ok: true });
 });
 
+app.get("/api/funding/wallets", auth, async (_req, res) => {
+  const result = await pool.query(
+    "SELECT network,address,qr_asset_url AS qrAssetUrl FROM wallet_addresses WHERE active=TRUE ORDER BY network"
+  );
+  res.json({ wallets: result.rows });
+});
+
+app.post("/api/funding/deposits", auth, async (req, res) => {
+  const network = String(req.body?.network || "").trim();
+  const amount = String(req.body?.amount || "").trim();
+  const txHash = String(req.body?.txHash || "").trim() || null;
+
+  if (!["TRC-20","BEP-20"].includes(network) || !/^\\d+(\\.\\d{1,8})?$/.test(amount)) {
+    return res.status(400).json({ error: "INVALID_INPUT" });
+  }
+
+  const wallet = await pool.query("SELECT id,address FROM wallet_addresses WHERE network=$1 AND active=TRUE LIMIT 1", [network]);
+  if (!wallet.rows[0]) return res.status(503).json({ error: "WALLET_NOT_CONFIGURED", message: "This deposit network is not configured yet." });
+
+  try {
+    const result = await pool.query(
+      "INSERT INTO deposits(user_id,wallet_address_id,network,amount,tx_hash) VALUES($1,$2,$3,$4,$5) RETURNING id,network,amount,tx_hash AS txHash,status,submitted_at AS submittedAt",
+      [req.user.sub,wallet.rows[0].id,network,amount,txHash]
+    );
+    res.status(201).json({ deposit: result.rows[0] });
+  } catch (error) {
+    if (error.code === "23505") return res.status(409).json({ error: "TX_HASH_EXISTS", message: "This transaction hash has already been submitted." });
+    console.error(error);
+    res.status(500).json({ error: "SERVER_ERROR" });
+  }
+});
+
+app.get("/api/funding/deposits", auth, async (req, res) => {
+  const result = await pool.query(
+    "SELECT id,network,amount,tx_hash AS \"txHash\",status,submitted_at AS \"submittedAt\",verified_at AS \"verifiedAt\" FROM deposits WHERE user_id=$1 ORDER BY submitted_at DESC LIMIT 50",
+    [req.user.sub]
+  );
+  res.json({ deposits: result.rows });
+});
+
 app.get("/api/account/summary", auth, async (req, res) => {
   const result = await pool.query(
     "SELECT COALESCE(SUM(CASE WHEN type IN ('deposit','investment_gain','referral_reward','adjustment') AND status='posted' THEN amount WHEN type IN ('investment_principal','withdrawal') AND status='posted' THEN -amount ELSE 0 END),0) AS balance FROM ledger_entries WHERE user_id=$1",
