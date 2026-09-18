@@ -248,7 +248,39 @@ app.get("/api/investments/:id/updates", auth, async (req,res)=>{
 
 // Internal weekly accounting worker.
 // It only applies a server-supplied REALIZED rate; projection_rate is never used as a gain.
-app.post("/api/internal/investments/weekly-update", async (req,res)=>{
+app.post("/api/internal/investments/publish-rate", async (req,res)=>{
+  const secret=req.headers["x-aster-job-secret"];
+  if(!process.env.JOB_SECRET || secret!==process.env.JOB_SECRET) return res.status(401).json({error:"JOB_UNAUTHORIZED"});
+  const category=String(req.body?.category||"").toLowerCase();
+  const periodEnding=new Date(req.body?.periodEnding||"");
+  const realizedRate=Number(req.body?.realizedRate);
+  if(!["crypto","forex"].includes(category) || !Number.isFinite(realizedRate) || realizedRate < -1 || realizedRate > 1 || Number.isNaN(periodEnding.getTime()))
+    return res.status(400).json({error:"INVALID_INPUT"});
+  await pool.query(
+    "INSERT INTO investment_weekly_rates(category,period_ending,realized_rate) VALUES($1,$2,$3) ON CONFLICT(category,period_ending) DO UPDATE SET realized_rate=EXCLUDED.realized_rate,published_at=NOW()",
+    [category,periodEnding.toISOString(),realizedRate]
+  );
+  res.json({ok:true});
+});
+
+app.post("/api/internal/investments/process-published-rates", async (req,res)=>{
+  const secret=req.headers["x-aster-job-secret"];
+  if(!process.env.JOB_SECRET || secret!==process.env.JOB_SECRET) return res.status(401).json({error:"JOB_UNAUTHORIZED"});
+  const periodEnding=new Date(req.body?.periodEnding||"");
+  if(Number.isNaN(periodEnding.getTime())) return res.status(400).json({error:"INVALID_PERIOD"});
+  const rates=await pool.query("SELECT category,realized_rate FROM investment_weekly_rates WHERE period_ending=$1",[periodEnding.toISOString()]);
+  const updates=[];
+  for(const r of rates.rows){
+    const invs=await pool.query("SELECT id FROM investments WHERE category=$1 AND status='active' AND (next_update_at IS NULL OR next_update_at<=$2)",[r.category,periodEnding.toISOString()]);
+    for(const i of invs.rows) updates.push({investmentId:i.id,realizedRate:Number(r.realized_rate)});
+  }
+  req.body.updates=updates;
+  // Reuse the same audited transactional worker below.
+  req.url="/api/internal/investments/weekly-update";
+  return weeklyUpdateHandler(req,res);
+});
+
+async function weeklyUpdateHandler(req,res){
   const secret=req.headers["x-aster-job-secret"];
   if(!process.env.JOB_SECRET || secret!==process.env.JOB_SECRET) return res.status(401).json({error:"JOB_UNAUTHORIZED"});
   const periodEnding=req.body?.periodEnding ? new Date(req.body.periodEnding) : new Date();
@@ -269,7 +301,7 @@ app.post("/api/internal/investments/weekly-update", async (req,res)=>{
       const inv=locked.rows[0];
       const opening=Number(inv.current_value);
       const gain=opening*realizedRate;
-      const closing=inv.compounding ? opening+gain : Math.max(0,Number(inv.current_value)+gain);
+      const closing=inv.compounding ? opening+gain : opening;
       const inserted=await client.query(
         "INSERT INTO investment_updates(investment_id,period_ending,opening_value,realized_rate,gain_amount,closing_value) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(investment_id,period_ending) DO NOTHING RETURNING id",
         [id,periodEnding.toISOString(),opening,realizedRate,gain,closing]
@@ -294,7 +326,9 @@ app.post("/api/internal/investments/weekly-update", async (req,res)=>{
     console.error(error);
     res.status(500).json({error:"SERVER_ERROR"});
   }finally{client.release();}
-});
+}
+
+app.post("/api/internal/investments/weekly-update", weeklyUpdateHandler);
 
 app.get("/api/account/activity", auth, async (req,res)=>{
   const result=await pool.query(
