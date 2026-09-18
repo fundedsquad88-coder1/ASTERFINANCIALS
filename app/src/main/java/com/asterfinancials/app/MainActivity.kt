@@ -120,6 +120,17 @@ fun AsterApp(){
 }
 
 @Composable private fun Home(go:(Tab)->Unit){
+    val context=LocalContext.current
+    val account=remember{AccountRepository(context)}
+    var summary by remember{mutableStateOf<AccountSummary?>(null)}
+    var accountLoading by remember{mutableStateOf(false)}
+    LaunchedEffect(Unit){
+        if(AuthRepository(context).currentUser()!=null){
+            accountLoading=true
+            summary=account.summary().getOrNull()
+            accountLoading=false
+        }
+    }
     LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
         item{
             Box(Modifier.fillMaxWidth()){
@@ -148,8 +159,22 @@ fun AsterApp(){
                     Row(verticalAlignment=Alignment.CenterVertically){
                         Column(Modifier.weight(1f)){
                             Text("AVAILABLE BALANCE",color=Muted,fontSize=9.sp)
-                            Text("— — —",fontSize=28.sp,fontWeight=FontWeight.Bold)
-                            Text("Verified balance appears after account connection.",color=Muted,fontSize=9.sp)
+                            Text(
+                                when {
+                                    accountLoading -> "Loading…"
+                                    summary == null -> "— — —"
+                                    else -> "%.2f USDT".format(summary!!.total)
+                                },
+                                fontSize=28.sp,fontWeight=FontWeight.Bold
+                            )
+                            Text(
+                                when {
+                                    accountLoading -> "Fetching your server-side balance."
+                                    summary == null -> "Sign in to view your verified account balance."
+                                    else -> "Available %.2f · Invested %.2f USDT".format(summary!!.available,summary!!.invested)
+                                },
+                                color=Muted,fontSize=9.sp
+                            )
                         }
                         Icon(Icons.Default.AccountBalanceWallet,null,tint=Gold,modifier=Modifier.size(30.dp))
                     }
@@ -157,7 +182,7 @@ fun AsterApp(){
                     Button({go(Tab.PROFILE)},colors=ButtonDefaults.buttonColors(Gold)){
                         Icon(Icons.Default.AccountCircle,null,Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Connect account",color=Black,fontSize=10.sp)
+                        Text(if(summary==null)"Sign in" else "Account",color=Black,fontSize=10.sp)
                     }
                 }
             }
