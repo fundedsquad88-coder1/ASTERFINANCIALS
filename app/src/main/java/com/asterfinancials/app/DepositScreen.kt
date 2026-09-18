@@ -108,7 +108,7 @@ fun DepositScreen(onBack:()->Unit){
                 onClick={
                     submitting=true; status=null
                     scope.launch{
-                        status=submitDeposit(network,amount,txHash)
+                        status=submitDeposit(context,network,amount,txHash)
                         submitting=false
                     }
                 },
@@ -132,13 +132,29 @@ private suspend fun loadWallets():List<WalletOption>{
     }
 }
 
-private suspend fun submitDeposit(network:String,amount:String,txHash:String):String{
-    if(amount.toDoubleOrNull()==null || amount.toDoubleOrNull()!!<=0) return "Enter a valid USDT amount."
+private suspend fun submitDeposit(context:android.content.Context,network:String,amount:String,txHash:String):String{
+    val value=amount.toDoubleOrNull()
+    if(value==null || value<=0) return "Enter a valid USDT amount."
     return withContext(Dispatchers.IO){
         try{
-            val prefs=androidx.compose.ui.platform.LocalContext.current
-            "Deposit submission is waiting for the deployed Aster API."
-        }catch(_:Exception){"Could not submit deposit."}
+            val token=context.getSharedPreferences("aster_auth",Context.MODE_PRIVATE).getString("access_token",null)
+                ?: return@withContext "Please sign in before depositing."
+            val con=URL(AuthRepository.API_BASE_URL+"/api/funding/deposits").openConnection() as HttpURLConnection
+            con.requestMethod="POST"
+            con.connectTimeout=12000
+            con.readTimeout=12000
+            con.doOutput=true
+            con.setRequestProperty("Content-Type","application/json")
+            con.setRequestProperty("Authorization","Bearer "+token)
+            val body=JSONObject().apply{put("network",network);put("amount",amount);if(txHash.isNotBlank())put("txHash",txHash)}
+            con.outputStream.use{it.write(body.toString().toByteArray())}
+            val code=con.responseCode
+            val stream=if(code in 200..299) con.inputStream else con.errorStream
+            val response=stream?.bufferedReader()?.use{it.readText()}?:""
+            con.disconnect()
+            if(code in 200..299) "Submitted — awaiting verification."
+            else JSONObject(response.ifBlank{"{}"}).optString("message","Deposit could not be submitted.")
+        }catch(_:Exception){"Could not connect to the Aster API."}
     }
 }
 
