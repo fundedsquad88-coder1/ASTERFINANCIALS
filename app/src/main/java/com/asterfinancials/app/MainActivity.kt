@@ -528,6 +528,11 @@ private fun formatPrice(v:Double):String{
 }
 
 @Composable private fun Profile(theme:()->Unit){
+    var showDeposit by remember{mutableStateOf(false)}
+    if(showDeposit){
+        DepositScreen(onBack={showDeposit=false})
+        return
+    }
     val context=LocalContext.current
     val repository=remember{AuthRepository(context)}
     var user by remember{mutableStateOf(repository.currentUser())}
@@ -561,7 +566,7 @@ private fun formatPrice(v:Double):String{
         }
         item{
             CardBox(Modifier.padding(horizontal=16.dp)){
-                Preference("Deposit USDT",Icons.Default.AccountBalanceWallet,"BEP-20 or TRC-20"){ }
+                Preference("Deposit USDT",Icons.Default.AccountBalanceWallet,"BEP-20 or TRC-20"){ showDeposit=true }
                 Preference("Theme",Icons.Default.DarkMode,"Black-gold / white-gold"){theme()}
                 Preference("Security",Icons.Default.Security,"Account security controls"){}
                 Preference("Notifications",Icons.Default.Notifications,"Market & strategy alerts"){}
