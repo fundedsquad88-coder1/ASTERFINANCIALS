@@ -6,7 +6,12 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   full_name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  email_verified_at TIMESTAMPTZ,
+  verification_token_hash TEXT,
+  verification_expires_at TIMESTAMPTZ,
+  reset_token_hash TEXT,
+  reset_expires_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS users_email_idx ON users (LOWER(email));
