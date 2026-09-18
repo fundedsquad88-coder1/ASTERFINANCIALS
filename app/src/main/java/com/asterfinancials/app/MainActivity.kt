@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -164,6 +166,18 @@ fun AsterApp(){
                     Text("Premium automation & market intelligence",color=Muted,fontSize=10.sp,modifier=Modifier.padding(top=3.dp))
                 }
             }
+        }
+        item{
+            Image(
+                painter=painterResource(com.asterfinancials.app.R.drawable.aster_banner),
+                contentDescription="Trade. Stake. Earn.",
+                modifier=Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal=16.dp)
+                    .height(132.dp)
+                    .clip(RoundedCornerShape(18.dp))
+            )
+            Spacer(Modifier.height(14.dp))
         }
         item{
             CardBox(Modifier.padding(horizontal=16.dp)){
