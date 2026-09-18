@@ -48,6 +48,23 @@ class AuthRepository(private val context:Context){
         })
     }
 
+    suspend fun forgotPassword(email:String):Result<Boolean>{
+        return withContext(Dispatchers.IO){
+            try{
+                val con=URL(API_BASE_URL+"/api/auth/forgot-password").openConnection() as HttpURLConnection
+                con.requestMethod="POST"
+                con.connectTimeout=12000
+                con.readTimeout=12000
+                con.doOutput=true
+                con.setRequestProperty("Content-Type","application/json")
+                con.outputStream.use{it.write(JSONObject().put("email",email).toString().toByteArray())}
+                val ok=con.responseCode in 200..299
+                con.disconnect()
+                if(ok) Result.success(true) else Result.failure(IllegalStateException("Could not process the request."))
+            }catch(e:Exception){Result.failure(e)}
+        }
+    }
+
     private suspend fun request(path:String,body:JSONObject):Result<AsterUser>{
         return withContext(Dispatchers.IO){
             try{
