@@ -105,7 +105,6 @@ fun DepositScreen(onBack:()->Unit){
             status?.let{Text(it,color=if(it.startsWith("Submitted"))Green else Gold,fontSize=10.sp,modifier=Modifier.padding(top=10.dp))}
 
             Button(
-                enabled=!submitting && selected!=null,
                 onClick={
                     submitting=true; status=null
                     scope.launch{
@@ -113,7 +112,8 @@ fun DepositScreen(onBack:()->Unit){
                         submitting=false
                     }
                 },
-                Modifier.fillMaxWidth().padding(top=14.dp),
+                modifier=Modifier.fillMaxWidth().padding(top=14.dp),
+                enabled=!submitting && selected!=null,
                 colors=ButtonDefaults.buttonColors(Gold)
             ){
                 Text(if(submitting)"Submitting…" else "Submit deposit",color=Color.Black,fontWeight=FontWeight.Bold)
@@ -164,7 +164,7 @@ private suspend fun submitDeposit(context:android.content.Context,network:String
         try{
             val matrix=MultiFormatWriter().encode(value,BarcodeFormat.QR_CODE,420,420)
             Bitmap.createBitmap(420,420,Bitmap.Config.ARGB_8888).also{bmp->
-                for(x in 0 until 420) for(y in 0 until 420) bmp.setPixel(x,y,if(matrix[x,y]) android.graphics.Color.BLACK android.graphics.Color.WHITE)
+                for(x in 0 until 420) for(y in 0 until 420) bmp.setPixel(x,y,if(matrix[x,y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
             }
         }catch(_:Exception){null}
     }
