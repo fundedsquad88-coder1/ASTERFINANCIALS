@@ -411,6 +411,61 @@ fun AsterApp(){
     }
 }
 
+@Composable private fun Referral(){
+    val context=LocalContext.current
+    val repo=remember{ReferralRepository(context)}
+    val clipboard=context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    var data by remember{mutableStateOf<ReferralSummary?>(null)}
+    var loading by remember{mutableStateOf(true)}
+    var message by remember{mutableStateOf<String?>(null)}
+    LaunchedEffect(Unit){data=repo.summary().getOrNull();loading=false}
+    LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
+        item{Header("Aster Referral","Invite users and track your referral rewards")}
+        item{
+            CardBox(Modifier.padding(16.dp)){
+                Column(Modifier.padding(16.dp)){
+                    Text("YOUR REFERRAL CODE",color=Gold,fontSize=9.sp,fontWeight=FontWeight.Bold)
+                    Text(if(loading)"Loading…" else data?.code?:"—",fontSize=25.sp,fontWeight=FontWeight.Bold,color=WhiteGold)
+                    Text("Referral reward rate: 15%",color=Muted,fontSize=9.sp,modifier=Modifier.padding(top=4.dp))
+                    Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        OutlinedButton(onClick={
+                            data?.code?.let{
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Aster referral code",it))
+                                message="Referral code copied."
+                            }
+                        }){Text("Copy code",fontSize=9.sp)}
+                    }
+                    message?.let{Text(it,color=Green,fontSize=9.sp,modifier=Modifier.padding(top=7.dp))}
+                }
+            }
+        }
+        item{
+            Row(Modifier.padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                StatCard(Modifier.weight(1f),"INVITED",data?.invited?.toString()?:"—")
+                StatCard(Modifier.weight(1f),"EARNED",data?.earned?.let{"%.2f".format(it)}?:"—")
+            }
+        }
+        item{
+            CardBox(Modifier.padding(16.dp)){
+                Column(Modifier.padding(14.dp)){
+                    Text("HOW IT WORKS",color=Gold,fontSize=9.sp,fontWeight=FontWeight.Bold)
+                    Text("Share your referral code. New accounts can enter it during registration. Rewards are recorded server-side and only become part of your balance when the corresponding reward is posted.",fontSize=10.sp,modifier=Modifier.padding(top=5.dp))
+                    Text("Rewards are subject to the program's terms and backend verification.",color=Muted,fontSize=8.sp,modifier=Modifier.padding(top=7.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable private fun StatCard(modifier:Modifier,label:String,value:String){
+    CardBox(modifier){
+        Column(Modifier.padding(14.dp)){
+            Text(label,color=Muted,fontSize=8.sp,fontWeight=FontWeight.Bold)
+            Text(value,fontSize=18.sp,fontWeight=FontWeight.Bold,color=WhiteGold,modifier=Modifier.padding(top=3.dp))
+        }
+    }
+}
+
 @Composable private fun Calculator(){
     var a by remember{mutableStateOf("1000")}
     var r by remember{mutableStateOf("22.5")}
