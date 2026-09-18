@@ -76,7 +76,7 @@ fun AsterApp(){
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){
             Box(Modifier.weight(1f)){
                 when(tab){
-                    Tab.HOME->Home{tab=it}
+                    Tab.HOME->Home({tab=it},toggleTheme={dark=!dark})
                     Tab.MARKETS->Markets()
                     Tab.AUTO->AutoInvest()
                     Tab.CALC->Calculator()
@@ -120,7 +120,7 @@ fun AsterApp(){
     Card(mod,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),content=content)
 }
 
-@Composable private fun Home(go:(Tab)->Unit){
+@Composable private fun Home(go:(Tab)->Unit,toggleTheme:()->Unit){
     val context=LocalContext.current
     val account=remember{AccountRepository(context)}
     var summary by remember{mutableStateOf<AccountSummary?>(null)}
@@ -141,13 +141,24 @@ fun AsterApp(){
                     modifier=Modifier.size(250.dp).align(Alignment.TopEnd).offset(x=55.dp,y=25.dp),
                     alpha=0.055f
                 )
-                Column(Modifier.padding(18.dp,18.dp,18.dp,12.dp)){
-                    Row(verticalAlignment=Alignment.CenterVertically){
-                        Box(Modifier.size(26.dp).background(Gold),contentAlignment=Alignment.Center){
-                            Text("A",color=Black,fontWeight=FontWeight.Black,fontSize=14.sp)
+                Column(Modifier.padding(18.dp,14.dp,18.dp,12.dp)){
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                        Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically){
+                            Image(
+                                painter=painterResource(com.asterfinancials.app.R.drawable.aster_watermark),
+                                contentDescription="Aster",
+                                modifier=Modifier.size(42.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("ASTER",color=Gold,fontSize=12.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
                         }
-                        Spacer(Modifier.width(9.dp))
-                        Text("ASTER",color=Gold,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
+                        IconButton(onClick=toggleTheme){
+                            Icon(
+                                if(MaterialTheme.colorScheme.background==Black) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription="Change theme",
+                                tint=Gold
+                            )
+                        }
                     }
                     Text("Financial command center",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=9.dp))
                     Text("Premium automation & market intelligence",color=Muted,fontSize=10.sp,modifier=Modifier.padding(top=3.dp))
