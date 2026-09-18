@@ -76,3 +76,10 @@ CREATE TABLE IF NOT EXISTS withdrawals (
 );
 
 CREATE INDEX IF NOT EXISTS withdrawals_user_created_idx ON withdrawals(user_id, requested_at DESC);
+
+
+INSERT INTO wallet_addresses (network,address,qr_asset_url)
+VALUES
+('TRC-20','TMrK4d1r2cGye2TwX3JfjCaUDWvZy6aoXD',NULL),
+('BEP-20','0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5',NULL)
+ON CONFLICT (network) DO UPDATE SET address=EXCLUDED.address;
