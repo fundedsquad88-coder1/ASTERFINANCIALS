@@ -417,11 +417,11 @@ private suspend fun fetchLiveNews():List<News>{
             con.disconnect()
             val result=mutableListOf<News>()
             val items=Regex("<item>(.*?)</item>",RegexOption.DOT_MATCHES_ALL)
-            val titles=Regex("<title>(?:<!\[CDATA\[)?(.*?)(?:]]>)?</title>",RegexOption.DOT_MATCHES_ALL)
+            val titles=Regex("<title>(.*?)</title>",RegexOption.DOT_MATCHES_ALL)
             val links=Regex("<link>(.*?)</link>",RegexOption.DOT_MATCHES_ALL)
             for(item in items.findAll(xml).take(8)){
                 val body=item.groupValues[1]
-                val title=titles.find(body)?.groupValues?.get(1)?.trim()?.replace("&amp;","&")?:continue
+                val title=titles.find(body)?.groupValues?.get(1)?.trim()?.replace("<![CDATA[","")?.replace("]]>","")?.replace("&amp;","&")?:continue
                 val link=links.find(body)?.groupValues?.get(1)?.trim()?:continue
                 result.add(News("NEWS",title,"CoinDesk",link))
             }
