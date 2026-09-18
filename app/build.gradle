@@ -6,8 +6,8 @@ android {
         applicationId 'com.asterfinancials.app'
         minSdk 24
         targetSdk 35
-        versionCode 101
-        versionName '6.0-native'
+        versionCode 102
+        versionName '6.1-auth'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
