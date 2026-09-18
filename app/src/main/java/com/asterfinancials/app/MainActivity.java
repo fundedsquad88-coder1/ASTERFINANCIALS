@@ -50,21 +50,43 @@ public class MainActivity extends Activity {
         settings.setTextZoom(100);
 
         web.addJavascriptInterface(new NativeBridge(), "asterNative");
-        web.setClickable(true);
-        web.setFocusable(true);
-        web.setFocusableInTouchMode(true);
-        web.setOnTouchListener((v, event) -> {
-            if (event.getAction() == android.view.MotionEvent.ACTION_UP && web.getHeight() > 0 && event.getY() >= web.getHeight() - 105) {
-                int slot = (int) (event.getX() / Math.max(1f, web.getWidth() / 5f));
-                if (slot < 0) slot = 0;
-                if (slot > 4) slot = 4;
-                final String[] tabs = {"home", "autoinvest", "markets", "wallet", "profile"};
-                web.evaluateJavascript("window.nav && window.nav('" + tabs[slot] + "')", null);
-                return true;
-            }
-            return false;
-        });
-        setContentView(web);
+
+        // Native tap targets sit above the WebView footer. This avoids relying on
+        // WebView/HTML touch dispatch for the primary navigation.
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.addView(web, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+
+        android.widget.LinearLayout navOverlay = new android.widget.LinearLayout(this);
+        navOverlay.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        navOverlay.setGravity(android.view.Gravity.CENTER);
+        navOverlay.setClickable(false);
+        navOverlay.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
+        final String[] tabs = {"home", "autoinvest", "markets", "wallet", "profile"};
+        final String[] names = {"Home", "Auto-Invest", "Markets", "Wallet", "Profile"};
+        for (int i = 0; i < tabs.length; i++) {
+            final String tab = tabs[i];
+            android.widget.TextView hit = new android.widget.TextView(this);
+            hit.setText("");
+            hit.setClickable(true);
+            hit.setFocusable(true);
+            hit.setContentDescription(names[i]);
+            hit.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            hit.setOnClickListener(v -> web.evaluateJavascript(
+                    "window.nav && window.nav('" + tab + "')", null));
+            android.widget.LinearLayout.LayoutParams hp =
+                    new android.widget.LinearLayout.LayoutParams(0, dp(76), 1f);
+            navOverlay.addView(hit, hp);
+        }
+
+        android.widget.FrameLayout.LayoutParams np =
+                new android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT, dp(82));
+        np.gravity = android.view.Gravity.BOTTOM;
+        root.addView(navOverlay, np);
+        setContentView(root);
         web.loadUrl("file:///android_asset/index.html");
     }
 
@@ -77,6 +99,10 @@ public class MainActivity extends Activity {
     @Override protected void onPause() {
         main.removeCallbacks(marketLoop);
         super.onPause();
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void requestMarkets() {
