@@ -78,7 +78,6 @@ fun AuthScreen(
         error?.let{Text(it,color=Color(0xFFFF5C62),fontSize=10.sp,modifier=Modifier.padding(top=10.dp))}
 
         Button(
-            enabled=!busy,
             onClick={
                 error=null
                 busy=true
@@ -97,7 +96,8 @@ fun AuthScreen(
                     }
                 }
             },
-            Modifier.fillMaxWidth().padding(top=14.dp),
+            modifier=Modifier.fillMaxWidth().padding(top=14.dp),
+            enabled=!busy,
             colors=ButtonDefaults.buttonColors(Gold)
         ){
             Text(if(busy)"Connecting…" else if(forgot)"Send reset email" else if(register)"Create account" else "Sign in",color=Color.Black,fontWeight=FontWeight.Bold)
