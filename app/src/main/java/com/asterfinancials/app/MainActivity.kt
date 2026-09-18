@@ -297,8 +297,7 @@ fun AsterApp(){
     var message by remember{mutableStateOf<String?>(null)}
     var activated by remember{mutableStateOf<Investment?>(null)}
     var investments by remember{mutableStateOf(emptyList<Investment>())}
-    var investmentsLoading by remember{mutableStateOf(false)}
-    LaunchedEffect(Unit){
+    var investmentsLoading by remember{mutableStateOf(false)}    LaunchedEffect(Unit){
         if(AuthRepository(context).currentUser()!=null){
             investmentsLoading=true
             investments=repository.list().getOrElse{emptyList()}
@@ -597,8 +596,7 @@ fun AsterApp(){
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)){
-                Text(n.category,fontSize=8.sp,color=Gold,fontWeight=FontWeight.Bold)
-                Text(n.title,fontSize=11.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=2.dp))
+                Text(n.category,fontSize=8.sp,color=Gold,fontWeight=FontWeight.Bold)                Text(n.title,fontSize=11.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=2.dp))
                 Text(n.source+" · Open article",color=Muted,fontSize=8.sp,modifier=Modifier.padding(top=3.dp))
             }
             Icon(Icons.Default.OpenInNew,null,tint=Muted,modifier=Modifier.size(15.dp))
@@ -685,12 +683,27 @@ private fun formatPrice(v:Double):String{
 @Composable private fun Profile(theme:()->Unit){
     var showDeposit by remember{mutableStateOf(false)}
     var showWithdrawal by remember{mutableStateOf(false)}
+    var showActivity by remember{mutableStateOf(false)}
+    var showNotifications by remember{mutableStateOf(false)}
+    var showReferral by remember{mutableStateOf(false)}
     if(showDeposit){
         DepositScreen(onBack={showDeposit=false})
         return
     }
     if(showWithdrawal){
         WithdrawalScreen(onBack={showWithdrawal=false})
+        return
+    }
+    if(showActivity){
+        ActivityScreen(onBack={showActivity=false})
+        return
+    }
+    if(showNotifications){
+        NotificationsScreen(onBack={showNotifications=false})
+        return
+    }
+    if(showReferral){
+        Referral()
         return
     }
     val context=LocalContext.current
@@ -728,7 +741,8 @@ private fun formatPrice(v:Double):String{
             CardBox(Modifier.padding(horizontal=16.dp)){
                 Preference("Deposit USDT",Icons.Default.AccountBalanceWallet,"BEP-20 or TRC-20"){ showDeposit=true }
                 Preference("Withdraw USDT",Icons.Default.AccountBalanceWallet,"Request a transfer to your wallet"){ showWithdrawal=true }
-                Preference("Referrals",Icons.Default.People,"Your referral code & rewards"){ }
+                Preference("Referrals",Icons.Default.People,"Your referral code & rewards"){ showReferral=true }
+                Preference("Activity",Icons.Default.ReceiptLong,"Deposits, withdrawals & investment ledger"){ showActivity=true }
                 Preference("Theme",Icons.Default.DarkMode,"Black-gold / white-gold"){theme()}
                 Preference("Security",Icons.Default.Security,"Account security controls"){}
                 Preference("Notifications",Icons.Default.Notifications,"Market & strategy alerts"){}
