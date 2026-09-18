@@ -99,3 +99,21 @@ CREATE TABLE IF NOT EXISTS investments (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS investments_user_status_idx ON investments(user_id,status,updated_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS investment_updates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  investment_id UUID NOT NULL REFERENCES investments(id) ON DELETE CASCADE,
+  period_ending TIMESTAMPTZ NOT NULL,
+  opening_value NUMERIC(30,8) NOT NULL,
+  realized_rate NUMERIC(12,8) NOT NULL,
+  gain_amount NUMERIC(30,8) NOT NULL,
+  closing_value NUMERIC(30,8) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(investment_id, period_ending)
+);
+CREATE INDEX IF NOT EXISTS investment_updates_investment_period_idx
+  ON investment_updates(investment_id, period_ending DESC);
+
+ALTER TABLE investments
+  ADD COLUMN IF NOT EXISTS realized_rate NUMERIC(12,8);
