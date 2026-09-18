@@ -68,9 +68,9 @@ fun AsterApp(){
     var tab by remember{mutableStateOf(Tab.HOME)}
     MaterialTheme(
         colorScheme=if(dark)
-            darkColorScheme(background=Black,surface=Panel,primary=Gold,onPrimary=Black,onBackground=Color.White)
+            darkColorScheme(background=Black,surface=Panel,surfaceVariant=Panel2,primary=Gold,onPrimary=Black,onBackground=Color.White)
         else
-            lightColorScheme(background=Color(0xFFF7F7F5),surface=Color.White,primary=Color(0xFFA87518),onPrimary=Color.White)
+            lightColorScheme(background=Color(0xFFF7F7F5),surface=Color.White,surfaceVariant=Color(0xFFF0F0ED),primary=Color(0xFFA87518),onPrimary=Color.White)
     ){
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){
             Box(Modifier.weight(1f)){
@@ -218,7 +218,7 @@ fun AsterApp(){
     CardBox(Modifier.padding(horizontal=16.dp,vertical=5.dp)){
         Column(Modifier.padding(17.dp)){
             Row(verticalAlignment=Alignment.CenterVertically){
-                Box(Modifier.size(44.dp).background(Panel2),contentAlignment=Alignment.Center){
+                Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center){
                     Icon(icon,null,tint=Gold,modifier=Modifier.size(23.dp))
                 }
                 Spacer(Modifier.width(12.dp))
