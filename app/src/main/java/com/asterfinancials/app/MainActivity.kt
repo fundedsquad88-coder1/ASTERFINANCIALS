@@ -284,16 +284,23 @@ fun AsterApp(){
 }
 
 @Composable private fun AutoInvest(){
+    val context=LocalContext.current
+    val repository=remember{InvestmentRepository(context)}
     var crypto by remember{mutableStateOf(true)}
-    var amount by remember{mutableStateOf("1000")}
+    var amount by remember{mutableStateOf("")}
     var weeks by remember{mutableStateOf("4")}
     var rate by remember{mutableStateOf("22.5")}
+    var compounding by remember{mutableStateOf(true)}
+    var review by remember{mutableStateOf(false)}
+    var activating by remember{mutableStateOf(false)}
+    var message by remember{mutableStateOf<String?>(null)}
+    var activated by remember{mutableStateOf<Investment?>(null)}
     val a=amount.toDoubleOrNull()?:0.0
     val r=(rate.toDoubleOrNull()?:0.0)/100
     val w=weeks.toDoubleOrNull()?:0.0
-    val end=a*(1+r).pow(w)
+    val end=if(a>0 && r>=0 && w>=0)a*(1+r).pow(w) else 0.0
     LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
-        item{Header("Auto Invest","Choose a strategy and review projected outcomes")}
+        item{Header("Auto Invest","Choose a strategy and activate only against verified funds")}
         item{
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 Strategy("Cryptocurrency","20–25% / week",Icons.Default.CurrencyBitcoin,crypto){crypto=true}
@@ -308,23 +315,63 @@ fun AsterApp(){
                     Text("Weekly target range: 20–25%",fontSize=19.sp,fontWeight=FontWeight.Bold)
                     Text("Target/projection only — actual performance may be lower or negative.",color=Muted,fontSize=9.sp)
                     Spacer(Modifier.height(12.dp))
-                    Input("Initial amount (USDT)",amount){amount=it}
-                    Input("Weeks",weeks){weeks=it}
-                    Input("Projection % / week",rate){rate=it}
-                    Spacer(Modifier.height(10.dp))
-                    Text("Projected balance",color=Muted,fontSize=9.sp)
-                    Text("%.2f USDT".format(end),color=WhiteGold,fontSize=25.sp,fontWeight=FontWeight.Bold)
-                    Text("%.2f principal + %.2f projected gain".format(a,end-a),color=Muted,fontSize=9.sp)
-                    Spacer(Modifier.height(10.dp))
-                    Button({},Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(Gold)){
-                        Text("Review & activate",color=Black,fontSize=11.sp)
+                    Input("Investment amount (USDT)",amount){amount=it}
+                    Input("Duration (weeks)",weeks){weeks=it}
+                    Input("Illustrative projection % / week",rate){rate=it}
+                    Row(Modifier.fillMaxWidth().padding(top=10.dp),verticalAlignment=Alignment.CenterVertically){
+                        Column(Modifier.weight(1f)){
+                            Text("Compounding",fontSize=11.sp,fontWeight=FontWeight.Bold)
+                            Text("Keep gains invested when applicable",color=Muted,fontSize=8.sp)
+                        }
+                        Switch(checked=compounding,onCheckedChange={compounding=it})
                     }
+                    Spacer(Modifier.height(10.dp))
+                    Text("Illustrative projected value",color=Muted,fontSize=9.sp)
+                    Text(if(a>0)"%.2f USDT".format(end) else "—",color=WhiteGold,fontSize=25.sp,fontWeight=FontWeight.Bold)
+                    Text(if(a>0)"%.2f principal + %.2f illustrative gain".format(a,end-a) else "Enter an amount to calculate.",color=Muted,fontSize=9.sp)
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        {message=null; if(a<=0 || weeks.toDoubleOrNull()==null || rate.toDoubleOrNull()==null) message="Enter valid investment details." else review=true},
+                        Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(Gold)
+                    ){Text("Review & activate",color=Black,fontSize=11.sp,fontWeight=FontWeight.Bold)}
+                    message?.let{Text(it,color=if(it.startsWith("Activated"))Green else Gold,fontSize=9.sp,modifier=Modifier.padding(top=9.dp))}
+                    activated?.let{inv->Text("Active "+inv.category.replaceFirstChar{ch->ch.uppercase()}+" investment · %.2f USDT".format(inv.principal),color=Green,fontSize=9.sp,modifier=Modifier.padding(top=5.dp))}
                 }
             }
         }
     }
+    if(review){
+        AlertDialog(
+            onDismissRequest={if(!activating)review=false},
+            title={Text("Review Auto-Invest")},
+            text={Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
+                Text(if(crypto)"Cryptocurrency" else "Forex",fontWeight=FontWeight.Bold)
+                Text("Principal: %.2f USDT".format(a))
+                Text("Duration: "+weeks+" weeks")
+                Text("Projection: "+rate+"% / week")
+                Text("Compounding: "+if(compounding)"ON" else "OFF")
+                Text("Projected value: %.2f USDT".format(end))
+                Text("The projection is illustrative and not guaranteed. Activation requires sufficient verified available balance.",color=Muted,fontSize=9.sp)
+            }},
+            confirmButton={
+                Button(enabled=!activating,onClick={
+                    activating=true
+                    message=null
+                    kotlinx.coroutines.MainScope().launch{
+                        val result=repository.create(if(crypto)"crypto" else "forex",amount,rate,compounding)
+                        activating=false
+                        result.onSuccess{
+                            activated=it
+                            message="Activated — investment recorded on the Aster server."
+                            review=false
+                        }.onFailure{message=it.message?: "Investment could not be activated."}
+                    }
+                },colors=ButtonDefaults.buttonColors(Gold)){Text(if(activating)"Activating…" else "Confirm",color=Black)}
+            },
+            dismissButton={TextButton(enabled=!activating,onClick={review=false}){Text("Cancel")}}
+        )
+    }
 }
-
 @Composable private fun Strategy(t:String,r:String,i:ImageVector,sel:Boolean,go:()->Unit){
     CardBox(Modifier.width(175.dp).clickable{go()}){
         Column(Modifier.padding(13.dp)){
