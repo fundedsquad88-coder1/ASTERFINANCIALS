@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -64,9 +65,7 @@ public class MainActivity extends Activity {
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.setPadding(dp(18), dp(8), dp(14), dp(8));
-        TextView logo = text("◆  ASTER", 14, TEXT, true);
-        logo.setLetterSpacing(.18f);
-        top.addView(logo, new LinearLayout.LayoutParams(0, dp(52), 1));
+        LinearLayout brand=new LinearLayout(this); brand.setGravity(Gravity.CENTER_VERTICAL);\n        ImageView logo=new ImageView(this); logo.setImageResource(com.asterfinancials.app.R.drawable.aster_logo_reference); logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);\n        brand.addView(logo,new LinearLayout.LayoutParams(dp(30),dp(30)));\n        TextView brandName=text("ASTER",14,TEXT,true); brandName.setLetterSpacing(.18f); brand.addView(brandName,new LinearLayout.LayoutParams(-2,dp(52)));\n        top.addView(brand,new LinearLayout.LayoutParams(0,dp(52),1));
 
         Button bell = button("♧", false);
         bell.setOnClickListener(v -> toast("Notifications will appear after account connection."));
@@ -122,27 +121,47 @@ public class MainActivity extends Activity {
         header("Aster Financials", "A clearer way to ", "grow.");
         paragraph("A focused financial experience for Auto-Invest, wallet controls, market references and account management.");
         content.addView(balance());
+
         LinearLayout grid=new LinearLayout(this); grid.setOrientation(LinearLayout.VERTICAL);
-        String[][] actions={{"↓","Deposit"},{"↑","Withdraw"},{"◷","Auto-Invest"},{"▣","Wallet"}};
+        String[][] actions={{"↓","Deposit","Account required"},{"↑","Withdraw","Account required"},{"◷","Auto-Invest","Explore strategies"},{"▣","Wallet","Account required"}};
         for(int r=0;r<2;r++){
             LinearLayout row=new LinearLayout(this);
-            for(int c=0;c<2;c++){
-                int idx=r*2+c; Button b=button(actions[idx][0]+"\n"+actions[idx][1],false);
-                b.setGravity(Gravity.CENTER_VERTICAL); b.setPadding(dp(18),0,0,0); b.setTextSize(12);
-                if(idx==2)b.setOnClickListener(v->showTab(1)); else if(idx==3)b.setOnClickListener(v->showTab(3)); else b.setOnClickListener(v->toast(actions[idx][1]+" requires secure account connection."));
-                row.addView(b,weightParams(1,8));
+            for(int col=0;col<2;col++){
+                int idx=r*2+col;
+                Button b=button(actions[idx][0]+"  "+actions[idx][1]+"\n"+actions[idx][2],false);
+                b.setGravity(Gravity.CENTER_VERTICAL|Gravity.LEFT); b.setTextSize(11); b.setPadding(dp(15),0,dp(8),0);
+                if(idx==2)b.setOnClickListener(v->showTab(1));
+                else if(idx==3)b.setOnClickListener(v->showTab(3));
+                else b.setOnClickListener(v->toast(actions[idx][1]+" requires secure account connection."));
+                row.addView(b,weightParams(1,5));
             }
-            grid.addView(row,new LinearLayout.LayoutParams(-1,dp(88)));
+            grid.addView(row,new LinearLayout.LayoutParams(-1,dp(78)));
         }
         content.addView(grid);
+
         section("LIVE REFERENCE","Markets","Public data");
         LinearLayout mg=new LinearLayout(this); mg.setOrientation(LinearLayout.VERTICAL);
-        for(int i=0;i<symbols.length;i++) mg.addView(marketCard(i));
+        for(int r=0;r<3;r++){
+            LinearLayout row=new LinearLayout(this);
+            for(int col=0;col<2;col++){
+                int idx=r*2+col; if(idx>=symbols.length) break;
+                row.addView(marketCard(idx),weightParams(1,4));
+            }
+            mg.addView(row,new LinearLayout.LayoutParams(-1,dp(112)));
+        }
         content.addView(mg);
-        section("CORE PRODUCT","Auto-Invest","");
+
+        section("CORE PRODUCT","Auto-Invest","Explore →");
         autoCard("Crypto Auto-Invest","Automated strategy concept across major digital assets.","20–25% / week",true);
-        autoCard("Forex Auto-Invest","Dedicated currency-market strategy concept.","20–25% / week",false);
-        referral();
+        autoCard("Forex Auto-Invest","Dedicated currency-market strategy concept with transparent reporting.","20–25% / week",false);
+
+        section("REFERRAL","Grow your circle.","");
+        LinearLayout ref=cardLayout(); ref.setBackground(round(Color.rgb(34,29,20),Color.rgb(77,61,27),19));
+        ref.addView(text("15%",34,GOLD_LIGHT,true));
+        ref.addView(text("Track referral activity from one dedicated area. Final referral terms must match the live product.",10,MUTED,false));
+        Button rb=button("Referral link →",true); rb.setOnClickListener(v->toast("Referral links activate after account connection."));
+        ref.addView(rb,new LinearLayout.LayoutParams(-2,dp(42)));
+        content.addView(ref);
     }
 
     private LinearLayout balance() {
@@ -163,7 +182,7 @@ public class MainActivity extends Activity {
         autoCard("Forex Auto-Invest","A dedicated currency-market option with transparent reporting and account controls.","20–25% / week",false);
         section("PROJECTION TOOL","Compounding","");
         LinearLayout calc=cardLayout();
-        calc.addView(text("Illustrative end balance",8,MUTED,true));
+        calc.addView(text("ILLUSTRATIVE END BALANCE",8,MUTED,true));
         calc.addView(text("$2,073.60",24,GOLD_LIGHT,true));
         calc.addView(text("Compounded weekly · 4 weeks · 20.0%",10,MUTED,false));
         calc.addView(text("Illustrative calculator only. It does not represent an account balance, promised return, APR, or financial advice.",9,MUTED,false));
@@ -172,13 +191,15 @@ public class MainActivity extends Activity {
 
     private void autoCard(String title,String desc,String rate,boolean crypto) {
         LinearLayout c=cardLayout();
-        LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView ic=text(crypto?"₿":"◎",28,GOLD_LIGHT,true); ic.setGravity(Gravity.CENTER);
-        ic.setBackground(round(SURFACE_2,Color.rgb(75,61,29),18));
-        row.addView(ic,new LinearLayout.LayoutParams(dp(62),dp(62)));
-        LinearLayout body=new LinearLayout(this); body.setPadding(dp(13),0,0,0);
-        body.addView(text(title,14,TEXT,true)); body.addView(text(desc,10,MUTED,false)); body.addView(text(rate,18,GOLD_LIGHT,true));
-        TextView note=text("Illustrative target range · not a guarantee.",8,MUTED,false); body.addView(note);
+        LinearLayout row=new LinearLayout(this); row.setGravity(Gravity.TOP);
+        TextView ic=text(crypto?"₿":"◎",26,GOLD_LIGHT,true); ic.setGravity(Gravity.CENTER);
+        ic.setBackground(round(SURFACE_2,Color.rgb(75,61,29),17));
+        row.addView(ic,new LinearLayout.LayoutParams(dp(58),dp(58)));
+        LinearLayout body=new LinearLayout(this); body.setPadding(dp(12),0,0,0);
+        body.addView(text(title,14,TEXT,true));
+        body.addView(text(desc,9,MUTED,false));
+        body.addView(text(rate,17,GOLD_LIGHT,true));
+        body.addView(text("Illustrative target range · not a guarantee.",8,MUTED,false));
         Button start=button("Start Auto-Invest",true);
         start.setOnClickListener(v->toast("Live investing requires the finalized product, authenticated account and ledger backend."));
         body.addView(start,new LinearLayout.LayoutParams(-1,dp(40)));
@@ -189,7 +210,14 @@ public class MainActivity extends Activity {
     private void markets() {
         header("Markets","Public market ","reference.");
         paragraph("Live reference data only. Values remain unavailable when the public feed cannot be reached.");
-        for(int i=0;i<symbols.length;i++) content.addView(marketCard(i));
+        for(int r=0;r<3;r++){
+            LinearLayout row=new LinearLayout(this);
+            for(int col=0;col<2;col++){
+                int idx=r*2+col; if(idx>=symbols.length) break;
+                row.addView(marketCard(idx),weightParams(1,4));
+            }
+            content.addView(row,new LinearLayout.LayoutParams(-1,dp(112)));
+        }
     }
 
     private View marketCard(int i) {
