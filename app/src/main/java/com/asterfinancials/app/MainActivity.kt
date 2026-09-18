@@ -286,6 +286,7 @@ fun AsterApp(){
 @Composable private fun AutoInvest(){
     val context=LocalContext.current
     val repository=remember{InvestmentRepository(context)}
+    val scope=rememberCoroutineScope()
     var crypto by remember{mutableStateOf(true)}
     var amount by remember{mutableStateOf("")}
     var weeks by remember{mutableStateOf("4")}
@@ -357,7 +358,7 @@ fun AsterApp(){
                 Button(enabled=!activating,onClick={
                     activating=true
                     message=null
-                    kotlinx.coroutines.MainScope().launch{
+                    scope.launch{
                         val result=repository.create(if(crypto)"crypto" else "forex",amount,rate,compounding)
                         activating=false
                         result.onSuccess{
