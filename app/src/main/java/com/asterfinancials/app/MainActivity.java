@@ -62,6 +62,7 @@ public class MainActivity extends Activity {
         navOverlay.setOrientation(android.widget.LinearLayout.HORIZONTAL);
         navOverlay.setGravity(android.view.Gravity.CENTER);
         navOverlay.setClickable(false);
+        navOverlay.setFocusable(false);
         navOverlay.setBackgroundColor(android.graphics.Color.TRANSPARENT);
 
         final String[] tabs = {"home", "autoinvest", "markets", "wallet", "profile"};
@@ -74,8 +75,18 @@ public class MainActivity extends Activity {
             hit.setFocusable(true);
             hit.setContentDescription(names[i]);
             hit.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            hit.setOnTouchListener((v, event) -> {
+                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                    v.performClick();
+                    web.evaluateJavascript(
+                            "(function(){if(window.nav){window.nav('" + tab + "');return 'ok'}return 'nav-missing'})()",
+                            null);
+                }
+                return true;
+            });
             hit.setOnClickListener(v -> web.evaluateJavascript(
-                    "window.nav && window.nav('" + tab + "')", null));
+                    "(function(){if(window.nav){window.nav('" + tab + "');return 'ok'}return 'nav-missing'})()",
+                    null));
             android.widget.LinearLayout.LayoutParams hp =
                     new android.widget.LinearLayout.LayoutParams(0, dp(76), 1f);
             navOverlay.addView(hit, hp);
