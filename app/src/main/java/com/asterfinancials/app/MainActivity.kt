@@ -336,8 +336,8 @@ fun AsterApp(){
         }
         item{
             Row(Modifier.padding(16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                AnalysisCard("Fundamental",Icons.Default.AccountBalance,"Macro · news · on-chain")
-                AnalysisCard("Technical",Icons.Default.Timeline,"Trend · momentum · levels")
+                AnalysisCard(Modifier.weight(1f),"Fundamental",Icons.Default.AccountBalance,"Macro · news · on-chain")
+                AnalysisCard(Modifier.weight(1f),"Technical",Icons.Default.Timeline,"Trend · momentum · levels")
             }
         }
     }
@@ -363,8 +363,8 @@ fun AsterApp(){
     }
 }
 
-@Composable private fun AnalysisCard(t:String,i:ImageVector,s:String){
-    CardBox(Modifier.weight(1f)){
+@Composable private fun AnalysisCard(modifier:Modifier,t:String,i:ImageVector,s:String){
+    CardBox(modifier){
         Column(Modifier.padding(14.dp)){
             Icon(i,null,tint=Gold,modifier=Modifier.size(19.dp))
             Text(t,fontWeight=FontWeight.Bold,fontSize=11.sp,modifier=Modifier.padding(top=6.dp))
