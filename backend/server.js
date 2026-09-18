@@ -168,7 +168,7 @@ app.post("/api/auth/resend-verification", async (req, res) => {
   if (!result.rows[0] || result.rows[0].email_verified_at) return res.json({ ok: true });
   const token = makeToken();
   await pool.query("UPDATE users SET verification_token_hash=$1, verification_expires_at=NOW()+INTERVAL '24 hours' WHERE id=$2", [tokenHash(token), result.rows[0].id]);
-  const verifyUrl = appBaseUrl ? appBaseUrl.replace(/\\/$/,"") + "/verify-email?token=" + token : "";
+  const verifyUrl = appBaseUrl ? appBaseUrl.replace(/\/$/,"") + "/verify-email?token=" + token : "";
   await sendEmail(email, "Verify your Aster Financials account",
     "<p>Verify your Aster Financials email address.</p>" + (verifyUrl ? "<p><a href=\"" + verifyUrl + "\">Verify email</a></p>" : ""));
   res.json({ ok: true });
@@ -188,7 +188,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   if (result.rows[0]) {
     const token = makeToken();
     await pool.query("UPDATE users SET reset_token_hash=$1, reset_expires_at=NOW()+INTERVAL '30 minutes' WHERE id=$2", [tokenHash(token), result.rows[0].id]);
-    const resetUrl = appBaseUrl ? appBaseUrl.replace(/\\/$/,"") + "/reset-password?token=" + token : "";
+    const resetUrl = appBaseUrl ? appBaseUrl.replace(/\/$/,"") + "/reset-password?token=" + token : "";
     await sendEmail(email, "Reset your Aster Financials password",
       "<p>A password reset was requested for your Aster account.</p>" +
       (resetUrl ? "<p><a href=\"" + resetUrl + "\">Reset password</a></p>" : ""));
