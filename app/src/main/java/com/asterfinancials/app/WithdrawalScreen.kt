@@ -83,7 +83,6 @@ fun WithdrawalScreen(onBack:()->Unit){
             Text("Check the destination address and network carefully. Aster does not control an external wallet address entered by the customer.",color=Muted,fontSize=8.sp,modifier=Modifier.padding(top=8.dp))
             message?.let{Text(it,color=if(it.startsWith("Withdrawal request"))Green else Gold,fontSize=9.sp,modifier=Modifier.padding(top=10.dp))}
             Button(
-                enabled=!busy && address.isNotBlank() && (amount.toDoubleOrNull()?:0.0)>0 && (source=="available" || selectedInvestment!=null),
                 onClick={
                     busy=true;message=null
                     scope.launch{
@@ -92,7 +91,9 @@ fun WithdrawalScreen(onBack:()->Unit){
                         result.onSuccess{message=it}.onFailure{message=it.message?:"Could not submit withdrawal."}
                     }
                 },
-                Modifier.fillMaxWidth().padding(top=14.dp),colors=ButtonDefaults.buttonColors(Gold)
+                modifier=Modifier.fillMaxWidth().padding(top=14.dp),
+                enabled=!busy && address.isNotBlank() && (amount.toDoubleOrNull()?:0.0)>0 && (source=="available" || selectedInvestment!=null),
+                colors=ButtonDefaults.buttonColors(Gold)
             ){Text(if(busy)"Submitting…" else "Request withdrawal",color=Color.Black,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)}
             Spacer(Modifier.height(24.dp))
         }
