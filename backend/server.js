@@ -105,7 +105,7 @@ app.post("/api/auth/register", async (req, res) => {
     const verifyUrl = appBaseUrl ? appBaseUrl.replace(/\\/$/,"") + "/verify-email?token=" + verificationToken : "";
     await sendEmail(email, "Verify your Aster Financials account",
       "<p>Welcome to Aster Financials.</p><p>Verify your email to activate account access.</p>" +
-      (verifyUrl ? "<p><a href="" + verifyUrl + "">Verify email</a></p>" : ""));
+      (verifyUrl ? "<p><a href=\"" + verifyUrl + "\">Verify email</a></p>" : ""));
     return res.status(201).json({ verificationRequired: true, accessToken: signAccessToken(user), user });
   } catch (error) {
     if (error.code === "23505") return res.status(409).json({ error: "EMAIL_EXISTS", message: "An account with this email already exists." });
@@ -149,7 +149,7 @@ app.post("/api/auth/resend-verification", async (req, res) => {
   await pool.query("UPDATE users SET verification_token_hash=$1, verification_expires_at=NOW()+INTERVAL '24 hours' WHERE id=$2", [tokenHash(token), result.rows[0].id]);
   const verifyUrl = appBaseUrl ? appBaseUrl.replace(/\\/$/,"") + "/verify-email?token=" + token : "";
   await sendEmail(email, "Verify your Aster Financials account",
-    "<p>Verify your Aster Financials email address.</p>" + (verifyUrl ? "<p><a href="" + verifyUrl + "">Verify email</a></p>" : ""));
+    "<p>Verify your Aster Financials email address.</p>" + (verifyUrl ? "<p><a href=\"" + verifyUrl + "\">Verify email</a></p>" : ""));
   res.json({ ok: true });
 });
 
@@ -228,7 +228,7 @@ app.get("/api/funding/deposits", auth, async (req, res) => {
 app.get("/api/account/summary", auth, async (req, res) => {
   const result = await pool.query(
     "SELECT " +
-    "COALESCE(SUM(CASE WHEN type IN ('deposit','referral_reward','adjustment') AND status='posted' THEN amount WHEN type='withdrawal' AND status='posted' THEN -amount ELSE 0 END),0) AS available_balance, " +
+    "COALESCE(SUM(CASE WHEN type IN ('deposit','referral_reward','adjustment') AND status='posted' THEN amount WHEN type IN ('withdrawal','investment_principal') AND status='posted' THEN -amount ELSE 0 END),0) AS available_balance, " +
     "COALESCE((SELECT SUM(current_value) FROM investments WHERE user_id=$1 AND status IN ('active','withdrawal_pending')),0) AS invested_balance " +
     "FROM ledger_entries WHERE user_id=$1",
     [req.user.sub]
@@ -244,6 +244,52 @@ app.get("/api/account/activity", auth, async (req,res)=>{
     [req.user.sub]
   );
   res.json({activity:result.rows});
+});
+
+app.post("/api/investments", auth, async (req,res)=>{
+  const category=String(req.body?.category||"").toLowerCase();
+  const principal=String(req.body?.principal||"").trim();
+  const rate=Number(req.body?.projectionRate);
+  const compounding=req.body?.compounding !== false;
+
+  if(!["crypto","forex"].includes(category) || !/^\\d+(\\.\\d{1,8})?$/.test(principal) ||
+     Number(principal)<=0 || !Number.isFinite(rate) || rate<0 || rate>100){
+    return res.status(400).json({error:"INVALID_INPUT",message:"Choose a valid strategy and investment amount."});
+  }
+
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[req.user.sub]);
+
+    const balance=await client.query(
+      "SELECT COALESCE(SUM(CASE WHEN type IN ('deposit','referral_reward','adjustment') AND status='posted' THEN amount WHEN type IN ('withdrawal','investment_principal') AND status='posted' THEN -amount ELSE 0 END),0) AS available_balance FROM ledger_entries WHERE user_id=$1",
+      [req.user.sub]
+    );
+    const available=Number(balance.rows[0].available_balance);
+    const amount=Number(principal);
+    if(amount>available){
+      await client.query("ROLLBACK");
+      return res.status(400).json({error:"INSUFFICIENT_BALANCE",message:"Your verified available balance is insufficient for this investment."});
+    }
+
+    const investment=await client.query(
+      "INSERT INTO investments(user_id,category,principal,current_value,projection_rate,compounding,status,next_update_at) VALUES($1,$2,$3,$3,$4,$5,'active',NOW()+INTERVAL '7 days') RETURNING id,category,principal,current_value AS \"currentValue\",projection_rate AS \"projectionRate\",compounding,status,started_at AS \"startedAt\",next_update_at AS \"nextUpdateAt\"",
+      [req.user.sub,category,principal,rate,compounding]
+    );
+    await client.query(
+      "INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'investment_principal',$2,'USDT',$3,'posted')",
+      [req.user.sub,principal,investment.rows[0].id]
+    );
+    await client.query("COMMIT");
+    res.status(201).json({investment:investment.rows[0]});
+  }catch(error){
+    await client.query("ROLLBACK");
+    console.error(error);
+    res.status(500).json({error:"SERVER_ERROR"});
+  }finally{
+    client.release();
+  }
 });
 
 app.get("/api/investments", auth, async (req,res)=>{
