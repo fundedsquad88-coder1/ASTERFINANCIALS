@@ -1,13 +1,13 @@
 name: Build Aster APK
 
 on:
+  workflow_dispatch:
+  push:
+    branches: [ main, aster-native ]
 
 concurrency:
   group: aster-native-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  workflow_dispatch:
-  push:
-    branches: [ main, aster-native ]
 
 jobs:
   build:
@@ -32,25 +32,17 @@ jobs:
         run: |
           set -e
           echo "ANDROID_HOME=$ANDROID_HOME"
-
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -1 || true)
-
           if [ -z "$SDKMANAGER" ]; then
             echo "ERROR: sdkmanager was not found"
             find "$ANDROID_HOME" -maxdepth 4 -type f -name sdkmanager -print || true
             exit 1
           fi
-
           SDK_BIN=$(dirname "$SDKMANAGER")
           echo "$SDK_BIN" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-
-          "$SDKMANAGER" \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
+          "$SDKMANAGER"             "platform-tools"             "platforms;android-35"             "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
