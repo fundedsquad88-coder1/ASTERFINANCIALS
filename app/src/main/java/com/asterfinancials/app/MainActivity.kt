@@ -122,50 +122,6 @@ fun AsterApp(){
     Card(mod,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),content=content)
 }
 
-@Composable private fun AsterHomeBanner(){
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal=16.dp)
-            .height(132.dp)
-            .clip(RoundedCornerShape(18.dp))
-    ){
-        Image(
-            painter=painterResource(com.asterfinancials.app.R.drawable.aster_banner),
-            contentDescription=null,
-            modifier=Modifier.fillMaxSize()
-        )
-        Column(
-            Modifier
-                .align(Alignment.CenterStart)
-                .padding(start=22.dp)
-        ){
-            Row(verticalAlignment=Alignment.CenterVertically){
-                Text("Trade.",color=Color.White,fontSize=27.sp,fontWeight=FontWeight.Bold)
-                Spacer(Modifier.width(6.dp))
-                Text("Invest.",color=WhiteGold,fontSize=27.sp,fontWeight=FontWeight.Bold)
-                Spacer(Modifier.width(6.dp))
-                Text("Earn.",color=Color.White,fontSize=27.sp,fontWeight=FontWeight.Bold)
-            }
-            Text(
-                "Global Opportunities. 24/7.",
-                color=Color.White,
-                fontSize=15.sp,
-                modifier=Modifier.padding(top=5.dp)
-            )
-        }
-        Column(
-            Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end=18.dp)
-        ){
-            Text("D I S C I P L I N E",color=Color.White,fontSize=9.sp,fontWeight=FontWeight.Medium)
-            Text("B U I L D S",color=Color.White,fontSize=9.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=7.dp))
-            Text("F R E E D O M",color=Color.White,fontSize=9.sp,fontWeight=FontWeight.Medium,modifier=Modifier.padding(top=7.dp))
-        }
-    }
-}
-
 @Composable private fun Home(go:(Tab)->Unit,toggleTheme:()->Unit){
     val context=LocalContext.current
     val account=remember{AccountRepository(context)}
@@ -212,7 +168,7 @@ fun AsterApp(){
             }
         }
         item{
-            AsterHomeBanner()
+            Image(painter=painterResource(com.asterfinancials.app.R.drawable.aster_banner_invest),contentDescription="Trade. Invest. Earn.",modifier=Modifier.fillMaxWidth().padding(horizontal=16.dp).height(132.dp).clip(RoundedCornerShape(18.dp)))
             Spacer(Modifier.height(14.dp))
         }
         item{
