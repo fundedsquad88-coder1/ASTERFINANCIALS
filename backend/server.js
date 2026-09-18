@@ -228,9 +228,9 @@ app.get("/api/funding/deposits", auth, async (req, res) => {
 app.get("/api/account/summary", auth, async (req, res) => {
   const result = await pool.query(
     "SELECT " +
-    "COALESCE(SUM(CASE WHEN type IN ('deposit','referral_reward','adjustment') AND status='posted' THEN amount WHEN type IN ('withdrawal','investment_principal') AND status='posted' THEN -amount ELSE 0 END),0) AS available_balance, " +
+    "COALESCE(SUM(CASE WHEN le.type IN ('deposit','referral_reward','adjustment') AND le.status='posted' THEN le.amount WHEN le.type IN ('withdrawal','investment_principal') AND le.status='posted' THEN -le.amount WHEN le.type='investment_gain' AND le.status='posted' AND NOT COALESCE(i.compounding,TRUE) THEN le.amount ELSE 0 END),0) AS available_balance, " +
     "COALESCE((SELECT SUM(current_value) FROM investments WHERE user_id=$1 AND status IN ('active','withdrawal_pending')),0) AS invested_balance " +
-    "FROM ledger_entries WHERE user_id=$1",
+    "FROM ledger_entries le LEFT JOIN investments i ON i.id=le.reference_id WHERE le.user_id=$1",
     [req.user.sub]
   );
   const available=Number(result.rows[0].available_balance);
