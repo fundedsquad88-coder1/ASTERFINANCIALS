@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -119,13 +120,38 @@ fun AsterApp(){
 
 @Composable private fun Home(go:(Tab)->Unit){
     LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
-        item{Header("Financial command center","Premium automation & market intelligence")}
+        item{
+            Box(Modifier.fillMaxWidth()){
+                Image(
+                    painter=painterResource(com.asterfinancials.app.R.drawable.aster_watermark),
+                    contentDescription=null,
+                    modifier=Modifier.size(250.dp).align(Alignment.TopEnd).offset(x=55.dp,y=25.dp),
+                    alpha=0.055f
+                )
+                Column(Modifier.padding(18.dp,18.dp,18.dp,12.dp)){
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Box(Modifier.size(26.dp).background(Gold),contentAlignment=Alignment.Center){
+                            Text("A",color=Black,fontWeight=FontWeight.Black,fontSize=14.sp)
+                        }
+                        Spacer(Modifier.width(9.dp))
+                        Text("ASTER",color=Gold,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
+                    }
+                    Text("Financial command center",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=9.dp))
+                    Text("Premium automation & market intelligence",color=Muted,fontSize=10.sp,modifier=Modifier.padding(top=3.dp))
+                }
+            }
+        }
         item{
             CardBox(Modifier.padding(horizontal=16.dp)){
                 Column(Modifier.padding(17.dp)){
-                    Text("AVAILABLE BALANCE",color=Muted,fontSize=9.sp)
-                    Text("— — —",fontSize=28.sp,fontWeight=FontWeight.Bold)
-                    Text("Verified balance appears after account connection.",color=Muted,fontSize=9.sp)
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Column(Modifier.weight(1f)){
+                            Text("AVAILABLE BALANCE",color=Muted,fontSize=9.sp)
+                            Text("— — —",fontSize=28.sp,fontWeight=FontWeight.Bold)
+                            Text("Verified balance appears after account connection.",color=Muted,fontSize=9.sp)
+                        }
+                        Icon(Icons.Default.AccountBalanceWallet,null,tint=Gold,modifier=Modifier.size(30.dp))
+                    }
                     Spacer(Modifier.height(12.dp))
                     Button({go(Tab.PROFILE)},colors=ButtonDefaults.buttonColors(Gold)){
                         Icon(Icons.Default.AccountCircle,null,Modifier.size(16.dp))
@@ -134,7 +160,7 @@ fun AsterApp(){
                     }
                 }
             }
-            Spacer(Modifier.height(13.dp))
+            Spacer(Modifier.height(14.dp))
         }
         item{
             Text("QUICK ACCESS",color=Gold,fontSize=9.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(16.dp,5.dp))
@@ -147,14 +173,77 @@ fun AsterApp(){
             Spacer(Modifier.height(14.dp))
         }
         item{
+            Text("AUTO-INVEST",color=Gold,fontSize=9.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(horizontal=16.dp))
+            Text("Put your strategy on repeat.",fontSize=21.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(16.dp,5.dp,16.dp,10.dp))
+        }
+        item{
+            AutoHomeCard(
+                title="Crypto Auto-Invest",
+                icon=Icons.Default.CurrencyBitcoin,
+                description="Major digital assets with weekly progression and compounding controls.",
+                instruments=listOf("BTC","ETH","SOL","BNB","XRP")
+            ){go(Tab.AUTO)}
+        }
+        item{
+            AutoHomeCard(
+                title="Forex Auto-Invest",
+                icon=Icons.Default.CurrencyExchange,
+                description="A dedicated currency-market option with transparent reporting and account controls.",
+                instruments=listOf("EUR/USD","GBP/USD","USD/JPY","XAU/USD")
+            ){go(Tab.AUTO)}
+        }
+        item{
+            CardBox(Modifier.padding(16.dp)){
+                Row(Modifier.padding(16.dp),horizontalArrangement=Arrangement.spacedBy(18.dp)){
+                    HomeStat("24/7","Platform access")
+                    HomeStat("2","Auto-Invest categories")
+                    HomeStat("Live","Market data")
+                }
+            }
+        }
+        item{
             CardBox(Modifier.padding(horizontal=16.dp)){
                 Column(Modifier.padding(16.dp)){
                     Text("Invest. Automate. Compound.",fontSize=17.sp,fontWeight=FontWeight.Bold)
                     Text("A premium command center for automated investment strategies and market intelligence.",color=Muted,fontSize=10.sp,modifier=Modifier.padding(top=5.dp))
-                    Text("No invented account balances or transactions.",color=Gold,fontSize=9.sp,modifier=Modifier.padding(top=8.dp))
+                    Text("Target figures are illustrative and not guaranteed.",color=Gold,fontSize=9.sp,modifier=Modifier.padding(top=8.dp))
                 }
             }
         }
+    }
+}
+
+@Composable private fun AutoHomeCard(title:String,icon:ImageVector,description:String,instruments:List<String>,go:()->Unit){
+    CardBox(Modifier.padding(horizontal=16.dp,vertical=5.dp)){
+        Column(Modifier.padding(17.dp)){
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Box(Modifier.size(44.dp).background(Panel2),contentAlignment=Alignment.Center){
+                    Icon(icon,null,tint=Gold,modifier=Modifier.size(23.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)){
+                    Text(title,fontSize=16.sp,fontWeight=FontWeight.Bold)
+                    Text(description,color=Muted,fontSize=9.sp,lineHeight=14.sp,modifier=Modifier.padding(top=3.dp))
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Text("20–25% / week",color=Gold,fontSize=24.sp,fontWeight=FontWeight.Black)
+            Text("Illustrative target range",color=Muted,fontSize=8.sp)
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                instruments.forEach{Text(it,fontSize=8.sp,color=Muted,modifier=Modifier.background(Panel2).padding(horizontal=8.dp,vertical=5.dp))}
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(go,colors=ButtonDefaults.buttonColors(Gold)){
+                Text("Explore Auto-Invest →",color=Black,fontSize=10.sp,fontWeight=FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable private fun HomeStat(value:String,label:String){
+    Column(Modifier.weight(1f)){
+        Text(value,color=Gold,fontSize=17.sp,fontWeight=FontWeight.Black)
+        Text(label,color=Muted,fontSize=7.sp,lineHeight=10.sp)
     }
 }
 
