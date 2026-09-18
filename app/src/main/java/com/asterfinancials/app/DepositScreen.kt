@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Refresh
@@ -53,7 +54,7 @@ fun DepositScreen(onBack:()->Unit){
 
     Column(Modifier.fillMaxSize()){
         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
-            Text("‹",fontSize=30.sp,color=Gold)
+            IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,null,tint=Gold)}
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)){
                 Text("Deposit USDT",fontSize=20.sp,fontWeight=FontWeight.Bold)
