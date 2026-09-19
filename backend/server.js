@@ -262,6 +262,14 @@ app.get("/api/funding/wallets", auth, async (_req, res) => {
   res.json({ wallets: result.rows });
 });
 
+app.get("/api/funding/deposits",auth,async(req,res)=>{
+  const result=await pool.query("SELECT id,network,amount,tx_hash AS \"txHash\",status,confirmations,submitted_at AS \"submittedAt\",verified_at AS \"verifiedAt\",rejection_reason AS \"rejectionReason\" FROM deposits WHERE user_id=$1 ORDER BY submitted_at DESC LIMIT 100",[req.user.sub]);
+  res.json({deposits:result.rows});
+});
+app.get("/api/funding/withdrawals",auth,async(req,res)=>{
+  const result=await pool.query("SELECT id,network,destination_address AS \"destinationAddress\",amount,fee_amount AS \"feeAmount\",net_amount AS \"netAmount\",status,requested_at AS \"requestedAt\",approved_at AS \"approvedAt\",completed_at AS \"completedAt\",outgoing_tx_hash AS \"txHash\",rejection_reason AS \"rejectionReason\" FROM withdrawals WHERE user_id=$1 ORDER BY requested_at DESC LIMIT 100",[req.user.sub]);
+  res.json({withdrawals:result.rows});
+});
 app.post("/api/funding/deposits", auth, async (req, res) => {
   const network=String(req.body?.network||"").trim();
   const txHash=String(req.body?.txHash||"").trim();
