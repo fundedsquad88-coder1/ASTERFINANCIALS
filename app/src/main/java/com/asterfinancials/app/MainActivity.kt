@@ -298,7 +298,7 @@ fun AsterApp(){
         horizontalAlignment=Alignment.CenterHorizontally
     ){
         Icon(i,null,tint=Gold,modifier=Modifier.size(21.dp))
-        Text(t,fontSize=9.sp,modifier=Modifier.padding(top=5.dp))
+        Text(t,fontSize=9.sp,color=Gold,modifier=Modifier.padding(top=5.dp))
     }
 }
 
