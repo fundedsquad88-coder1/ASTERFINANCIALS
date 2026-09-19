@@ -42,10 +42,10 @@ fun DepositScreen(onBack:()->Unit){
     var status by remember{mutableStateOf<String?>(null)}
     var loading by remember{mutableStateOf(true)}
     var submitting by remember{mutableStateOf(false)}
-    val scope=rememberCoroutineScope()
+    val scope=rememberCoroutineScope()\n    val context=androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit){
-        wallets=loadWallets()
+        wallets=loadWallets(context)
         loading=false
     }
 
@@ -60,7 +60,7 @@ fun DepositScreen(onBack:()->Unit){
                 Text("Deposit USDT",fontSize=20.sp,fontWeight=FontWeight.Bold)
                 Text("Fund your Aster account",color=Muted,fontSize=9.sp)
             }
-            IconButton({scope.launch{loading=true;wallets=loadWallets();loading=false}}){
+            IconButton({scope.launch{loading=true;wallets=loadWallets(context);loading=false}}){
                 Icon(Icons.Default.Refresh,null,tint=Gold)
             }
         }
@@ -124,12 +124,20 @@ fun DepositScreen(onBack:()->Unit){
     }
 }
 
-private suspend fun loadWallets():List<WalletOption>{
+private suspend fun loadWallets(context:Context):List<WalletOption>{
     return withContext(Dispatchers.IO){
-        listOf(
-            WalletOption("TRC-20","TMrK4d1r2cGye2TwX3JfjCaUDWvZy6aoXD"),
-            WalletOption("BEP-20","0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5")
-        )
+        try{
+            val token=context.getSharedPreferences("aster_auth",Context.MODE_PRIVATE).getString("access_token",null) ?: return@withContext emptyList()
+            val con=URL(AuthRepository.API_BASE_URL+"/api/funding/wallets").openConnection() as HttpURLConnection
+            con.requestMethod="GET"; con.connectTimeout=12000; con.readTimeout=12000
+            con.setRequestProperty("Authorization","Bearer "+token)
+            val code=con.responseCode
+            val text=(if(code in 200..299)con.inputStream else con.errorStream)?.bufferedReader()?.use{it.readText()}?:""
+            con.disconnect()
+            if(code !in 200..299)return@withContext emptyList()
+            val arr=JSONObject(text).optJSONArray("wallets")?:JSONArray()
+            List(arr.length()){i->val o=arr.getJSONObject(i);WalletOption(o.optString("network"),o.optString("address"))}.filter{it.network.isNotBlank()&&it.address.isNotBlank()}
+        }catch(_:Exception){emptyList()}
     }
 }
 
