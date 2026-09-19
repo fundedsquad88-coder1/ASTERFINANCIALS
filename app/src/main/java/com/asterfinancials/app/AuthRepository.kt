@@ -10,6 +10,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import java.security.KeyStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -126,6 +127,7 @@ class AuthRepository(private val context:Context){
             .putString(USER_NAME,user.fullName)
             .apply()
         if(refresh.isNotBlank()) securePut(REFRESH,refresh)
+    }
     private fun key():SecretKey{
         val ks=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
         val existing=ks.getKey(KEY_ALIAS,null)
@@ -150,5 +152,4 @@ class AuthRepository(private val context:Context){
             String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),Charsets.UTF_8)
         }catch(_:Exception){null}
     }
-}
 }
