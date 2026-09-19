@@ -273,4 +273,21 @@ app.post("/api/admin/withdrawals/:id/execute",auth,adminOnly,requireRole("super_
   }catch(e){console.error(e);res.status(502).json({error:"TREASURY_SIGNER_ERROR",message:e.message});}
 });
 
+app.post("/api/admin/withdrawals/:id/cancel-processing",auth,adminOnly,requireRole("super_admin","finance_admin"),async(req,res)=>{
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    const row=await client.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);
+    if(!row.rows[0]){await client.query("ROLLBACK");return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});}
+    const w=row.rows[0];
+    if(w.status!=="processing"){await client.query("ROLLBACK");return res.status(409).json({error:"WITHDRAWAL_NOT_PROCESSING"});}
+    await client.query("UPDATE withdrawals SET status='rejected',rejection_reason=$1,processed_at=NOW() WHERE id=$2",[String(req.body?.reason||"Treasury execution cancelled"),w.id]);
+    await client.query("INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'adjustment',$2,'USDT',$3,'posted')",[w.user_id,w.amount,w.id]);
+    if(w.investment_id) await client.query("UPDATE investments SET status='active',updated_at=NOW() WHERE id=$1",[w.investment_id]);
+    await audit(client,req.user.sub,"withdrawal_processing_cancelled","withdrawal",w.id,{reason:String(req.body?.reason||"")});
+    await client.query("COMMIT");
+    res.json({ok:true,status:"rejected"});
+  }catch(e){await client.query("ROLLBACK");console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
+});
+
 
