@@ -68,8 +68,11 @@ async function reconcile(){
       if(existing.rows[0]){ await c.query("UPDATE blockchain_transfers SET deposit_id=$1 WHERE id=$2",[existing.rows[0].id,t.id]); continue; }
       // A verified on-chain transfer is credited only once. User attribution is optional: if the user submitted the TXID, attach it; otherwise keep it in reconciliation for ops review.
       const submitted=await c.query("SELECT id,user_id FROM deposits WHERE network=$1 AND tx_hash=$2 LIMIT 1",[t.network,t.tx_hash]);
-      if(!submitted.rows[0]) continue;
-      const d=await c.query("UPDATE deposits SET status='completed',amount=$1,verified_at=NOW(),confirmations=$2,transfer_id=$3 WHERE id=$4 RETURNING id,user_id,amount",[t.amount,t.confirmations,t.id,submitted.rows[0].id]);
+      if(!submitted.rows[0]){
+        await c.query("INSERT INTO unmatched_transfers(transfer_id) VALUES($1) ON CONFLICT(transfer_id) DO NOTHING",[t.id]);
+        continue;
+      }
+      const d=await c.query("UPDATE deposits SET status='completed',amount=$1,verified_at=NOW(),confirmations=$2,transfer_id=$3,rejection_reason=NULL WHERE id=$4 AND status<>'completed' RETURNING id,user_id,amount",[t.amount,t.confirmations,t.id,submitted.rows[0].id]);
       if(d.rows[0]) await c.query("INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'deposit',$2,'USDT',$3,'posted') ON CONFLICT DO NOTHING",[d.rows[0].user_id,d.rows[0].amount,d.rows[0].id]);
       await c.query("UPDATE blockchain_transfers SET deposit_id=$1 WHERE id=$2",[d.rows[0].id,t.id]);
     }
