@@ -3,7 +3,7 @@ name: Check Aster API
 on:
   workflow_dispatch:
   push:
-    branches: [ main, aster-native ]
+    branches: [ main, aster-native, aster-production ]
 
 concurrency:
   group: aster-native-${{ github.workflow }}-${{ github.ref }}
