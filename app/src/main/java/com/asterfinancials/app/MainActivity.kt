@@ -107,9 +107,11 @@ fun AsterApp(){
 @Composable private fun Header(title:String,sub:String){
     Column(Modifier.padding(18.dp,18.dp,18.dp,12.dp)){
         Row(verticalAlignment=Alignment.CenterVertically){
-            Box(Modifier.size(26.dp).background(Gold),contentAlignment=Alignment.Center){
-                Text("A",color=Black,fontWeight=FontWeight.Black,fontSize=14.sp)
-            }
+            Image(
+                painter=painterResource(com.asterfinancials.app.R.drawable.aster_watermark),
+                contentDescription="Aster",
+                modifier=Modifier.size(34.dp)
+            )
             Spacer(Modifier.width(9.dp))
             Text("ASTER",color=Gold,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
         }
@@ -149,14 +151,9 @@ fun AsterApp(){
                             Image(
                                 painter=painterResource(com.asterfinancials.app.R.drawable.aster_watermark),
                                 contentDescription="Aster",
-                                modifier=Modifier.size(42.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Image(
-                                painter=painterResource(com.asterfinancials.app.R.drawable.aster_watermark),
-                                contentDescription="Aster",
                                 modifier=Modifier.size(44.dp)
                             )
+                            Spacer(Modifier.width(8.dp))
                         }
                         IconButton(onClick=toggleTheme){
                             Icon(
@@ -278,7 +275,7 @@ fun AsterApp(){
             Text("20–25% / week",color=Gold,fontSize=24.sp,fontWeight=FontWeight.Black)
             Text("Illustrative target range",color=Muted,fontSize=8.sp)
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){
-                instruments.forEach{Text(it,fontSize=8.sp,color=Muted,modifier=Modifier.background(Panel2).padding(horizontal=8.dp,vertical=5.dp))}
+                instruments.forEach{Text(it,fontSize=8.sp,color=Muted,modifier=Modifier.background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal=8.dp,vertical=5.dp))}
             }
             Spacer(Modifier.height(12.dp))
             Button(go,colors=ButtonDefaults.buttonColors(Gold)){
