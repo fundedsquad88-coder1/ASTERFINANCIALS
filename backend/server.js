@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const crypto = require("crypto");
+const { validateDestination } = require("./blockchain");
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -27,6 +28,7 @@ const pool = new Pool({
 app.use(helmet());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "32kb" }));
+app.use((req,res,next)=>{req.requestId=crypto.randomUUID();res.setHeader("X-Request-ID",req.requestId);next()});
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "aster-financials-api" }));
 
@@ -374,11 +376,11 @@ app.post("/api/funding/withdrawals", auth, async (req,res)=>{
   const amount=String(req.body?.amount||"").trim();
   const investmentId=String(req.body?.investmentId||"").trim() || null;
 
-  if(!["TRC-20","BEP-20"].includes(network) || !destinationAddress || !/^\\d+(\\.\\d{1,8})?$/.test(amount) || Number(amount)<=0){
+  if(!["TRC-20","BEP-20"].includes(network) || !validateDestination(network,destinationAddress) || !/^\\d+(\\.\\d{1,8})?$/.test(amount) || Number(amount)<=0){
     return res.status(400).json({error:"INVALID_INPUT",message:"Enter a valid network, destination address and USDT amount."});
   }
 
-  const value=Number(amount);
+  const value=Number(amount);\n  const feeResult=await pool.query("SELECT fee_rate FROM withdrawal_fee_bands WHERE active=TRUE AND min_amount <= $1 AND (max_amount IS NULL OR $1 < max_amount) ORDER BY min_amount DESC LIMIT 1",[value]);\n  const feeRate=Number(feeResult.rows[0]?.fee_rate||0.015);\n  const feeAmount=value*feeRate;\n  const netAmount=value-feeAmount;
   const client=await pool.connect();
   try{
     await client.query("BEGIN");
@@ -412,14 +414,14 @@ app.post("/api/funding/withdrawals", auth, async (req,res)=>{
       [req.user.sub,network,destinationAddress,amount,investmentId]
     );
 
-    if(sourceType==="investment"){
+    await client.query("UPDATE withdrawals SET fee_amount=$1,net_amount=$2,destination_normalized=$3 WHERE id=$4",[feeAmount,netAmount,destinationAddress,result.rows[0].id]);\n    if(sourceType==="investment"){
       await client.query("UPDATE investments SET status='withdrawal_pending',updated_at=NOW() WHERE id=$1",[investmentId]);
     }
 
     // Funds become unavailable immediately through this pending withdrawal only after processing;
     // no balance is credited or debited until the withdrawal is approved/posted.
     await client.query("COMMIT");
-    res.status(201).json({withdrawal:result.rows[0],source:sourceType});
+    res.status(201).json({withdrawal:{...result.rows[0],feeAmount,netAmount},source:sourceType,feeRate});
   }catch(error){
     await client.query("ROLLBACK");
     console.error(error);
@@ -496,6 +498,47 @@ app.get("/api/investments", auth, async (req,res)=>{
   );
   res.json({investments:result.rows});
 });
+
+
+function adminAuth(roles){
+  return async(req,res,next)=>{
+    const h=req.headers.authorization||"",token=h.startsWith("Bearer ")?h.slice(7):"";
+    if(!token)return res.status(401).json({error:"ADMIN_AUTH_REQUIRED"});
+    try{
+      const p=jwt.verify(token,jwtSecret,{issuer:"aster-financials"});
+      const q=await pool.query("SELECT role FROM admin_users WHERE user_id=$1 AND active=TRUE",[p.sub]);
+      if(!q.rows[0]||!roles.includes(q.rows[0].role))return res.status(403).json({error:"ADMIN_FORBIDDEN"});
+      req.admin={sub:p.sub,role:q.rows[0].role};next();
+    }catch{return res.status(401).json({error:"ADMIN_AUTH_INVALID"})}
+  }
+}
+app.get("/api/admin/withdrawals",adminAuth(["super_admin","operations_admin","finance_admin"]),async(req,res)=>{
+  const status=String(req.query.status||"pending");
+  const q=await pool.query("SELECT w.id,w.network,w.destination_address AS \"destinationAddress\",w.amount,w.fee_amount AS \"feeAmount\",w.net_amount AS \"netAmount\",w.status,w.requested_at AS \"requestedAt\",u.full_name AS \"fullName\",u.email FROM withdrawals w JOIN users u ON u.id=w.user_id WHERE ($1='all' OR w.status=$1) ORDER BY w.requested_at ASC LIMIT 200",[status]);
+  res.json({withdrawals:q.rows});
+});
+app.post("/api/admin/withdrawals/:id/reject",adminAuth(["super_admin","operations_admin","finance_admin"]),async(req,res)=>{
+  const c=await pool.connect();
+  try{await c.query("BEGIN");const q=await c.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);
+    if(!q.rows[0]||q.rows[0].status!=="pending"){await c.query("ROLLBACK");return res.status(409).json({error:"NOT_PENDING"})}
+    await c.query("UPDATE withdrawals SET status='rejected',failure_reason='Rejected by admin',processed_at=NOW() WHERE id=$1",[req.params.id]);
+    if(q.rows[0].investment_id)await c.query("UPDATE investments SET status='active',updated_at=NOW() WHERE id=$1",[q.rows[0].investment_id]);
+    await c.query("INSERT INTO audit_events(actor_user_id,event_type,entity_type,entity_id,request_id,metadata) VALUES($1,'withdrawal_rejected','withdrawal',$2,$3,$4)",[req.admin.sub,req.params.id,req.requestId,JSON.stringify({role:req.admin.role})]);
+    await c.query("COMMIT");res.json({ok:true});
+  }catch(e){await c.query("ROLLBACK");console.error(e);res.status(500).json({error:"SERVER_ERROR"})}finally{c.release()}
+});
+app.post("/api/admin/withdrawals/:id/approve",adminAuth(["super_admin","operations_admin","finance_admin"]),async(req,res)=>{
+  const c=await pool.connect();
+  try{await c.query("BEGIN");const q=await c.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);
+    if(!q.rows[0]||q.rows[0].status!=="pending"){await c.query("ROLLBACK");return res.status(409).json({error:"NOT_PENDING"})}
+    const w=q.rows[0];
+    const job=await c.query("INSERT INTO withdrawal_jobs(withdrawal_id,status,idempotency_key) VALUES($1,'queued',$2) ON CONFLICT(withdrawal_id) DO UPDATE SET updated_at=NOW() RETURNING id",[w.id,"withdrawal:"+w.id]);
+    await c.query("UPDATE withdrawals SET status='processing',approved_at=NOW(),approved_by=$1 WHERE id=$2",[req.admin.sub,w.id]);
+    await c.query("INSERT INTO audit_events(actor_user_id,event_type,entity_type,entity_id,request_id,metadata) VALUES($1,'withdrawal_approved','withdrawal',$2,$3,$4)",[req.admin.sub,w.id,req.requestId,JSON.stringify({role:req.admin.role,jobId:job.rows[0].id})]);
+    await c.query("COMMIT");res.json({ok:true,status:"processing",jobId:job.rows[0].id});
+  }catch(e){await c.query("ROLLBACK");console.error(e);res.status(500).json({error:"SERVER_ERROR"})}finally{c.release()}
+});
+app.get("/admin",(_req,res)=>res.sendFile(require("path").join(__dirname,"admin.html")));
 
 app.use((err, _req, res, _next) => {
   console.error(err);
