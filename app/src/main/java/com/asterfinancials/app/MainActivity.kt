@@ -715,6 +715,7 @@ private fun formatPrice(v:Double):String{
     var showActivity by remember{mutableStateOf(false)}
     var showNotifications by remember{mutableStateOf(false)}
     var showReferral by remember{mutableStateOf(false)}
+    var showFundingHistory by remember{mutableStateOf(false)}
     if(showDeposit){
         DepositScreen(onBack={showDeposit=false})
         return
@@ -733,6 +734,10 @@ private fun formatPrice(v:Double):String{
     }
     if(showReferral){
         Referral(onBack={showReferral=false})
+        return
+    }
+    if(showFundingHistory){
+        FundingHistoryScreen(onBack={showFundingHistory=false})
         return
     }
     val context=LocalContext.current
@@ -794,6 +799,7 @@ private fun formatPrice(v:Double):String{
                 Preference("Deposit USDT",Icons.Default.AccountBalanceWallet,"BEP-20 or TRC-20"){ showDeposit=true }
                 Preference("Withdraw USDT",Icons.Default.AccountBalanceWallet,"Request a transfer to your wallet"){ showWithdrawal=true }
                 Preference("Referrals",Icons.Default.People,"Your referral code & rewards"){ showReferral=true }
+                Preference("Funding history",Icons.Default.AccountBalanceWallet,"Deposit verification & withdrawal status"){ showFundingHistory=true }
                 Preference("Activity",Icons.Default.ReceiptLong,"Deposits, withdrawals & investment ledger"){ showActivity=true }
                 Preference("Security",Icons.Default.Security,"Account security controls"){}
                 Preference("Notifications",Icons.Default.Notifications,"Market & strategy alerts"){ showNotifications=true }
