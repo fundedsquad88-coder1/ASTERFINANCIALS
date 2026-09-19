@@ -32,7 +32,7 @@ fun WithdrawalScreen(onBack:()->Unit){
     var address by remember{mutableStateOf("")}
     var amount by remember{mutableStateOf("")}
     var message by remember{mutableStateOf<String?>(null)}
-    var busy by remember{mutableStateOf(false)}
+    var busy by remember{mutableStateOf(false)}\n    var quote by remember{mutableStateOf<WithdrawalQuote?>(null)}
 
     LaunchedEffect(Unit){
         available=account.summary().getOrNull()?.available?:0.0
@@ -79,20 +79,20 @@ fun WithdrawalScreen(onBack:()->Unit){
                 FilterChip(selected=network=="TRC-20",onClick={network="TRC-20"},label={Text("TRC-20",fontSize=9.sp)})
                 FilterChip(selected=network=="BEP-20",onClick={network="BEP-20"},label={Text("BEP-20",fontSize=9.sp)})
             }
-            OutlinedTextField(address,{address=it},Modifier.fillMaxWidth().padding(top=10.dp),label={Text("Destination USDT address")},singleLine=true)
+            OutlinedTextField(address,{address=it},Modifier.fillMaxWidth().padding(top=10.dp),label={Text("Destination USDT address")},singleLine=true)\n            LaunchedEffect(network,amount){ if(source=="available" && (amount.toDoubleOrNull()?:0.0)>0) quote=repo.quote(network,amount).getOrNull() else quote=null }\n            quote?.let{q-> Text("Fee %.2f%% · %.4f USDT · You receive %.4f USDT".format(q.feeRate*100,q.feeAmount,q.netAmount),color=Muted,fontSize=9.sp,modifier=Modifier.padding(top=7.dp)) }
             Text("Check the destination address and network carefully. Aster does not control an external wallet address entered by the customer.",color=Muted,fontSize=8.sp,modifier=Modifier.padding(top=8.dp))
             message?.let{Text(it,color=if(it.startsWith("Withdrawal request"))Green else Gold,fontSize=9.sp,modifier=Modifier.padding(top=10.dp))}
             Button(
                 onClick={
                     busy=true;message=null
                     scope.launch{
-                        val result=repo.request(network,address,amount,selectedInvestment?.id.takeIf{source=="investment"})
+                        val requestAmount=if(source=="investment") selectedInvestment?.currentValue?.toString() ?: amount else amount\n                        val result=repo.request(network,address,requestAmount,selectedInvestment?.id.takeIf{source=="investment"})
                         busy=false
                         result.onSuccess{message=it}.onFailure{message=it.message?:"Could not submit withdrawal."}
                     }
                 },
                 modifier=Modifier.fillMaxWidth().padding(top=14.dp),
-                enabled=!busy && address.isNotBlank() && (amount.toDoubleOrNull()?:0.0)>0 && (source=="available" || selectedInvestment!=null),
+                enabled=!busy && address.isNotBlank() && (source=="investment" || (amount.toDoubleOrNull()?:0.0)>0),
                 colors=ButtonDefaults.buttonColors(Gold)
             ){Text(if(busy)"Submitting…" else "Request withdrawal",color=Color.Black,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)}
             Spacer(Modifier.height(24.dp))
