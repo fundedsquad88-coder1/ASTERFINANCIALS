@@ -279,7 +279,7 @@ app.post("/api/funding/deposits", auth, async (req, res) => {
   const wallet=await pool.query("SELECT id,address FROM wallet_addresses WHERE network=$1 AND active=TRUE LIMIT 1",[network]);
   if(!wallet.rows[0]) return res.status(503).json({error:"WALLET_NOT_CONFIGURED"});
   try{
-    const result=await pool.query("INSERT INTO deposits(user_id,wallet_address_id,network,amount,tx_hash,user_submitted_amount,claim_expires_at,status,source) VALUES($1,$2,$3,0,$4,$5,NOW()+INTERVAL '7 days','pending','user_claim') RETURNING id,network,amount,tx_hash AS \"txHash\",status,submitted_at AS \"submittedAt\"",[req.user.sub,wallet.rows[0].id,network,txHash,claimedAmount]);
+    const result=await pool.query("INSERT INTO deposits(user_id,wallet_address_id,network,amount,tx_hash,user_submitted_amount,claim_expires_at,status,source) VALUES($1,$2,$3,NULL,$4,$5,NOW()+INTERVAL '7 days','pending','user_claim') RETURNING id,network,amount,tx_hash AS \"txHash\",status,submitted_at AS \"submittedAt\"",[req.user.sub,wallet.rows[0].id,network,txHash,claimedAmount]);
     await pool.query("INSERT INTO deposit_claims(deposit_id,user_id,network,tx_hash) VALUES($1,$2,$3,$4) ON CONFLICT(network,tx_hash) DO NOTHING",[result.rows[0].id,req.user.sub,network,txHash]);
     const verified=await pool.query("SELECT id,amount,confirmations FROM blockchain_transfers WHERE network=$1 AND tx_hash=$2 AND status='verified' ORDER BY detected_at DESC LIMIT 1",[network,txHash]);
     if(verified.rows[0]){
@@ -287,7 +287,8 @@ app.post("/api/funding/deposits", auth, async (req, res) => {
       await pool.query("INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'deposit',$2,'USDT',$3,'posted')",[req.user.sub,verified.rows[0].amount,result.rows[0].id]);
       await pool.query("UPDATE blockchain_transfers SET deposit_id=$1 WHERE id=$2",[result.rows[0].id,verified.rows[0].id]);
     }
-    res.status(201).json({deposit:result.rows[0],message:"Submitted for independent blockchain verification. Balance changes only after verification."});
+    const current=await pool.query("SELECT id,network,amount,tx_hash AS \"txHash\",status,confirmations,submitted_at AS \"submittedAt\",verified_at AS \"verifiedAt\" FROM deposits WHERE id=$1",[result.rows[0].id]);
+    res.status(201).json({deposit:current.rows[0]||result.rows[0],message:current.rows[0]?.status==="completed"?"Deposit verified and credited.":"Submitted for independent blockchain verification. Balance changes only after verification."});
   }catch(error){if(error.code==="23505")return res.status(409).json({error:"TX_HASH_EXISTS"});console.error(error);res.status(500).json({error:"SERVER_ERROR"});}
 });
 app.post("/api/admin/withdrawals/:id/execute",auth,adminOnly,requireRole("super_admin","finance_admin"),async(req,res)=>{
