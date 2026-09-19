@@ -97,9 +97,9 @@ fun DepositScreen(onBack:()->Unit){
             }
 
             OutlinedTextField(amount,{amount=it},Modifier.fillMaxWidth().padding(top=12.dp),label={Text("Amount (USDT)")},singleLine=true)
-            OutlinedTextField(txHash,{txHash=it},Modifier.fillMaxWidth().padding(top=8.dp),label={Text("Transaction hash (optional)")},singleLine=true)
+            OutlinedTextField(txHash,{txHash=it},Modifier.fillMaxWidth().padding(top=8.dp),label={Text("Transaction hash / TXID")},singleLine=true)
 
-            Text("After sending the funds, submit the transaction hash when available. Your balance changes only after server-side verification.",color=Muted,fontSize=9.sp,modifier=Modifier.padding(top=10.dp))
+            Text("After sending USDT, enter the transaction hash / TXID. Aster verifies the blockchain transfer independently; the amount you enter is never used to credit your balance.",color=Muted,fontSize=9.sp,modifier=Modifier.padding(top=10.dp))
 
             status?.let{Text(it,color=if(it.startsWith("Submitted"))Green else Gold,fontSize=10.sp,modifier=Modifier.padding(top=10.dp))}
 
@@ -112,7 +112,7 @@ fun DepositScreen(onBack:()->Unit){
                     }
                 },
                 modifier=Modifier.fillMaxWidth().padding(top=14.dp),
-                enabled=!submitting && selected!=null,
+                enabled=!submitting && selected!=null && txHash.isNotBlank(),
                 colors=ButtonDefaults.buttonColors(Gold)
             ){
                 Text(if(submitting)"Submitting…" else "Submit deposit",color=Color.Black,fontWeight=FontWeight.Bold)
@@ -148,7 +148,7 @@ private suspend fun loadWallets(context:Context):List<WalletOption>{
 
 private suspend fun submitDeposit(context:android.content.Context,network:String,amount:String,txHash:String):String{
     val value=amount.toDoubleOrNull()
-    if(value==null || value<=0) return "Enter a valid USDT amount."
+    if(value!=null && value<0) return "Enter a valid USDT amount."
     return withContext(Dispatchers.IO){
         try{
             val token=context.getSharedPreferences("aster_auth",Context.MODE_PRIVATE).getString("access_token",null)
