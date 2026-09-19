@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-class WithdrawalRepository(private val context:Context){
+data class WithdrawalQuote(val feeRate:Double,val feeAmount:Double,val netAmount:Double)\n\nclass WithdrawalRepository(private val context:Context){
     suspend fun request(network:String,address:String,amount:String,investmentId:String?=null):Result<String> =
         withContext(Dispatchers.IO){
             try{
@@ -31,4 +31,4 @@ class WithdrawalRepository(private val context:Context){
                 else Result.success("Withdrawal request submitted — pending review.")
             }catch(e:Exception){Result.failure(e)}
         }
-}
+}\n    suspend fun quote(network:String,amount:String):Result<WithdrawalQuote> = withContext(Dispatchers.IO){try{val token=context.getSharedPreferences("aster_auth",Context.MODE_PRIVATE).getString("access_token",null)?:return@withContext Result.failure(IllegalStateException("Please sign in first."));val u=URL(AuthRepository.API_BASE_URL+"/api/funding/withdrawals/quote?network="+java.net.URLEncoder.encode(network,"UTF-8")+"&amount="+java.net.URLEncoder.encode(amount,"UTF-8"));val c=u.openConnection() as HttpURLConnection;c.requestMethod="GET";c.setRequestProperty("Authorization","Bearer "+token);c.connectTimeout=12000;c.readTimeout=12000;val code=c.responseCode;val text=(if(code in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText()}?:"";c.disconnect();if(code !in 200..299)return@withContext Result.failure(IllegalStateException(JSONObject(text.ifBlank{"{}"}).optString("error","Quote unavailable")));val j=JSONObject(text);Result.success(WithdrawalQuote(j.optDouble("feeRate"),j.optDouble("feeAmount"),j.optDouble("netAmount")))}catch(e:Exception){Result.failure(e)}}\n
