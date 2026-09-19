@@ -169,7 +169,7 @@ fun AsterApp(){
             }
         }
         item{
-            Image(painter=painterResource(com.asterfinancials.app.R.drawable.aster_banner_invest),contentDescription="Trade. Invest. Earn.",modifier=Modifier.fillMaxWidth().padding(horizontal=16.dp).height(132.dp).clip(RoundedCornerShape(18.dp)))
+            Image(painter=painterResource(com.asterfinancials.app.R.drawable.aster_banner_trade_earn),contentDescription="Trade. Invest. Earn.",modifier=Modifier.fillMaxWidth().padding(horizontal=16.dp).height(132.dp).clip(RoundedCornerShape(18.dp)))
             Spacer(Modifier.height(14.dp))
         }
         item{
