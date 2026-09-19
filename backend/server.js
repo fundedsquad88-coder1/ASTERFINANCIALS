@@ -44,6 +44,8 @@ app.use("/api/auth/reset-password",sensitiveLimiter);
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "aster-financials-api" }));
 
+function makeRefreshToken(){ return crypto.randomBytes(48).toString("base64url"); }
+async function issueRefreshToken(userId){ const raw=makeRefreshToken(); await pool.query("INSERT INTO refresh_tokens(user_id,token_hash,expires_at) VALUES($1,$2,NOW()+INTERVAL '30 days')",[userId,tokenHash(raw)]); return raw; }
 function signAccessToken(user) {
   return jwt.sign(
     { sub: user.id, email: user.email },
@@ -141,7 +143,8 @@ app.post("/api/auth/register", async (req, res) => {
     await sendEmail(email, "Verify your Aster Financials account",
       "<p>Welcome to Aster Financials.</p><p>Verify your email to activate account access.</p>" +
       (verifyUrl ? "<p><a href=\"" + verifyUrl + "\">Verify email</a></p>" : ""));
-    return res.status(201).json({ verificationRequired: true, accessToken: signAccessToken(user), user });
+    const refreshToken=await issueRefreshToken(user.id);
+    return res.status(201).json({ verificationRequired: true, accessToken: signAccessToken(user), refreshToken, user });
   } catch (error) {
     if (error.code === "23505") return res.status(409).json({ error: "EMAIL_EXISTS", message: "An account with this email already exists." });
     console.error(error);
@@ -163,13 +166,28 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(403).json({ error: "EMAIL_NOT_VERIFIED", message: "Verify your email before signing in." });
     }
     const user = publicUser(row);
-    return res.json({ accessToken: signAccessToken(user), user });
+    const refreshToken=await issueRefreshToken(user.id);
+    return res.json({ accessToken: signAccessToken(user), refreshToken, user });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "SERVER_ERROR" });
   }
 });
 
+app.post("/api/auth/refresh", async (req,res)=>{
+  const raw=String(req.body?.refreshToken||"");
+  if(!raw) return res.status(401).json({error:"REFRESH_REQUIRED"});
+  const result=await pool.query("SELECT rt.id,rt.user_id,u.id,u.email,u.full_name,u.created_at,u.email_verified_at FROM refresh_tokens rt JOIN users u ON u.id=rt.user_id WHERE rt.token_hash=$1 AND rt.revoked_at IS NULL AND rt.expires_at>NOW() LIMIT 1",[tokenHash(raw)]);
+  if(!result.rows[0]) return res.status(401).json({error:"REFRESH_INVALID"});
+  const row=result.rows[0], user=publicUser(row);
+  await pool.query("UPDATE refresh_tokens SET revoked_at=NOW() WHERE id=$1",[row.id]);
+  res.json({accessToken:signAccessToken(user),refreshToken:await issueRefreshToken(user.id),user});
+});
+app.post("/api/auth/logout", async (req,res)=>{
+  const raw=String(req.body?.refreshToken||"");
+  if(raw) await pool.query("UPDATE refresh_tokens SET revoked_at=NOW() WHERE token_hash=$1",[tokenHash(raw)]);
+  res.json({ok:true});
+});
 app.get("/api/auth/me", auth, async (req, res) => {
   const result = await pool.query("SELECT id,email,full_name,created_at,email_verified_at FROM users WHERE id=$1 LIMIT 1", [req.user.sub]);
   if (!result.rows[0]) return res.status(404).json({ error: "USER_NOT_FOUND" });
