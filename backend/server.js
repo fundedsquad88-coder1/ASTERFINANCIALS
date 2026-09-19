@@ -497,7 +497,55 @@ app.get("/api/investments", auth, async (req,res)=>{
   res.json({investments:result.rows});
 });
 
-app.use((err, _req, res, _next) => {
+
+
+function adminOnly(req,res,next){
+  const admins=String(process.env.ADMIN_EMAILS||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
+  if(!admins.length || !admins.includes(String(req.user?.email||"").toLowerCase())) return res.status(403).json({error:"ADMIN_REQUIRED"});
+  next();
+}
+function withdrawalFeeBps(amount){
+  const tiers=String(process.env.WITHDRAWAL_FEE_TIERS_JSON||'[{"max":999.99999999,"bps":200},{"max":null,"bps":150}]');
+  try{
+    const parsed=JSON.parse(tiers).sort((a,b)=>(a.max===null?Infinity:a.max)-(b.max===null?Infinity:b.max));
+    const hit=parsed.find(t=>t.max===null || amount<=Number(t.max));
+    return Number(hit?.bps||200);
+  }catch{return 200;}
+}
+app.get("/api/admin/withdrawals",auth,adminOnly,async(req,res)=>{
+  const status=String(req.query?.status||"pending").trim();
+  const allowed=["pending","processing","completed","rejected"];
+  const s=allowed.includes(status)?status:"pending";
+  const result=await pool.query("SELECT w.id,w.user_id AS \\\"userId\\\",u.email,u.full_name AS \\\"fullName\\\",w.network,w.destination_address AS \\\"destinationAddress\\\",w.amount,w.fee_amount AS \\\"feeAmount\\\",w.net_amount AS \\\"netAmount\\\",w.status,w.requested_at AS \\\"requestedAt\\\",w.approved_at AS \\\"approvedAt\\\",w.outgoing_tx_hash AS \\\"outgoingTxHash\\\" FROM withdrawals w JOIN users u ON u.id=w.user_id WHERE w.status=$1 ORDER BY w.requested_at ASC LIMIT 200",[s]);
+  res.json({withdrawals:result.rows});
+});
+app.post("/api/admin/withdrawals/:id/approve",auth,adminOnly,async(req,res)=>{
+  const client=await pool.connect();
+  try{
+    await client.query("BEGIN");
+    const row=await client.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);
+    if(!row.rows[0]){await client.query("ROLLBACK");return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});}
+    const w=row.rows[0];
+    if(w.status!=="pending"){await client.query("ROLLBACK");return res.status(409).json({error:"WITHDRAWAL_NOT_PENDING"});}
+    const gross=Number(w.amount), bps=withdrawalFeeBps(gross), fee=gross*bps/10000, net=gross-fee;
+    await client.query("UPDATE withdrawals SET status='processing',fee_amount=$1,net_amount=$2,approved_at=NOW(),approved_by=$3 WHERE id=$4",[fee,net,req.user.sub,w.id]);
+    await client.query("INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'withdrawal',$2,'USDT',$3,'posted')",[w.user_id,gross,w.id]);
+    await client.query("INSERT INTO admin_audit_log(admin_user_id,action,entity_type,entity_id,metadata) VALUES($1,'withdrawal_approved','withdrawal',$2,$3)",[req.user.sub,w.id,JSON.stringify({feeBps:bps,feeAmount:fee,netAmount:net,network:w.network})]);
+    await client.query("COMMIT");
+    res.json({ok:true,withdrawal:{id:w.id,network:w.network,destinationAddress:w.destination_address,grossAmount:gross,feeAmount:fee,netAmount:net,status:"processing"},execution:{instruction:"Send the exact netAmount to the validated destination using the configured treasury signer/custody process, then record the blockchain transaction hash."}});
+  }catch(e){await client.query("ROLLBACK");console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
+});
+app.post("/api/admin/withdrawals/:id/reject",auth,adminOnly,async(req,res)=>{
+  const client=await pool.connect();
+  try{await client.query("BEGIN");const row=await client.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);if(!row.rows[0]){await client.query("ROLLBACK");return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});}if(!["pending","processing"].includes(row.rows[0].status)){await client.query("ROLLBACK");return res.status(409).json({error:"WITHDRAWAL_NOT_REVIEWABLE"});}await client.query("UPDATE withdrawals SET status='rejected',admin_note=$1,processed_at=NOW() WHERE id=$2",[String(req.body?.note||"Rejected by operations"),req.params.id]);if(row.rows[0].investment_id) await client.query("UPDATE investments SET status='active',updated_at=NOW() WHERE id=$1 AND status='withdrawal_pending'",[row.rows[0].investment_id]);await client.query("INSERT INTO admin_audit_log(admin_user_id,action,entity_type,entity_id,metadata) VALUES($1,'withdrawal_rejected','withdrawal',$2,$3)",[req.user.sub,req.params.id,JSON.stringify({note:String(req.body?.note||"")})]);await client.query("COMMIT");res.json({ok:true,status:"rejected"});}catch(e){await client.query("ROLLBACK");console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
+});
+app.post("/api/admin/withdrawals/:id/complete",auth,adminOnly,async(req,res)=>{
+  const txHash=String(req.body?.txHash||"").trim();
+  if(!txHash) return res.status(400).json({error:"TX_HASH_REQUIRED"});
+  const client=await pool.connect();
+  try{await client.query("BEGIN");const row=await client.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);if(!row.rows[0]){await client.query("ROLLBACK");return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});}if(row.rows[0].status!=="processing"){await client.query("ROLLBACK");return res.status(409).json({error:"WITHDRAWAL_NOT_PROCESSING"});}await client.query("UPDATE withdrawals SET status='completed',outgoing_tx_hash=$1,completed_at=NOW(),processed_at=NOW() WHERE id=$2",[txHash,req.params.id]);await client.query("INSERT INTO admin_audit_log(admin_user_id,action,entity_type,entity_id,metadata) VALUES($1,'withdrawal_completed','withdrawal',$2,$3)",[req.user.sub,req.params.id,JSON.stringify({txHash})]);await client.query("COMMIT");res.json({ok:true,status:"completed",txHash});}catch(e){await client.query("ROLLBACK");if(e.code==='23505')return res.status(409).json({error:"TX_HASH_EXISTS"});console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
+});
+\napp.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: "SERVER_ERROR" });
 });
