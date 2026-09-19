@@ -3,7 +3,7 @@ name: Build Aster APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, aster-native ]
+    branches: [ main, aster-native, aster-production-core ]
 
 concurrency:
   group: aster-native-${{ github.workflow }}-${{ github.ref }}
