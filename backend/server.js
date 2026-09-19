@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const crypto = require("crypto");
 const rateLimit = require("express-rate-limit");
+const { signerConfigured, submitWithdrawal } = require("./treasury-signer");
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -257,4 +258,19 @@ app.post("/api/funding/deposits", auth, async (req, res) => {
     res.status(201).json({deposit:result.rows[0],message:"Submitted for independent blockchain verification. Balance changes only after verification."});
   }catch(error){if(error.code==="23505")return res.status(409).json({error:"TX_HASH_EXISTS"});console.error(error);res.status(500).json({error:"SERVER_ERROR"});}
 });
+app.post("/api/admin/withdrawals/:id/execute",auth,adminOnly,requireRole("super_admin","finance_admin"),async(req,res)=>{
+  const row=await pool.query("SELECT id,network,destination_address AS \"destinationAddress\",amount,fee_amount AS \"feeAmount\",net_amount AS \"netAmount\",status,requested_at AS \"requestedAt\" FROM withdrawals WHERE id=$1 LIMIT 1",[req.params.id]);
+  if(!row.rows[0]) return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});
+  const w=row.rows[0];
+  if(w.status!=="processing") return res.status(409).json({error:"WITHDRAWAL_NOT_PROCESSING"});
+  if(!signerConfigured()) return res.status(503).json({error:"TREASURY_SIGNER_NOT_CONFIGURED",message:"Configure the isolated treasury signer/custody service before automated execution."});
+  try{
+    const result=await submitWithdrawal(w);
+    await pool.query("UPDATE withdrawals SET execution_provider='external_signer',execution_reference=$1 WHERE id=$2",[result.executionReference||result.id||null,w.id]);
+    const c2=await pool.connect();
+    try{await audit(c2,req.user.sub,"withdrawal_execution_submitted","withdrawal",w.id,{provider:"external_signer",result});}finally{c2.release();}
+    res.json({ok:true,status:"processing",execution:result});
+  }catch(e){console.error(e);res.status(502).json({error:"TREASURY_SIGNER_ERROR",message:e.message});}
+});
+
 
