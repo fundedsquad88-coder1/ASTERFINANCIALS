@@ -42,10 +42,9 @@ fun DepositScreen(onBack:()->Unit){
     var status by remember{mutableStateOf<String?>(null)}
     var loading by remember{mutableStateOf(true)}
     var submitting by remember{mutableStateOf(false)}
-    val scope=rememberCoroutineScope()\n    val context=androidx.compose.ui.platform.LocalContext.current\n    val contextForWallets=context
-
+    val scope=rememberCoroutineScope()\n    val context=androidx.compose.ui.platform.LocalContext.current\n
     LaunchedEffect(Unit){
-        wallets=loadWallets()
+        wallets=loadWallets(context)
         loading=false
     }
 
@@ -60,7 +59,7 @@ fun DepositScreen(onBack:()->Unit){
                 Text("Deposit USDT",fontSize=20.sp,fontWeight=FontWeight.Bold)
                 Text("Fund your Aster account",color=Muted,fontSize=9.sp)
             }
-            IconButton({scope.launch{loading=true;wallets=loadWallets();loading=false}}){
+            IconButton({scope.launch{loading=true;wallets=loadWallets(context);loading=false}}){
                 Icon(Icons.Default.Refresh,null,tint=Gold)
             }
         }
@@ -124,10 +123,10 @@ fun DepositScreen(onBack:()->Unit){
     }
 }
 
-private suspend fun loadWallets():List<WalletOption>{
+private suspend fun loadWallets(context:Context):List<WalletOption>{
     return withContext(Dispatchers.IO){
         try{
-            val token=contextForWallets?.getSharedPreferences("aster_auth",Context.MODE_PRIVATE)?.getString("access_token",null)
+            val token=context.getSharedPreferences("aster_auth",Context.MODE_PRIVATE)?.getString("access_token",null)
                 ?: return@withContext emptyList()
             val con=URL(AuthRepository.API_BASE_URL+"/api/funding/wallets").openConnection() as HttpURLConnection
             con.requestMethod="GET"; con.connectTimeout=12000; con.readTimeout=12000
