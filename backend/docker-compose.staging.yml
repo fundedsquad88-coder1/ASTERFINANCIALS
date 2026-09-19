@@ -1,0 +1,13 @@
+services:
+  api:
+    build: .
+    command: node server.js
+    env_file: .env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+  worker:
+    build: .
+    command: node worker.js
+    env_file: .env
+    restart: unless-stopped
