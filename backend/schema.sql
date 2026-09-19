@@ -153,3 +153,55 @@ CREATE TABLE IF NOT EXISTS referral_rewards (
 CREATE INDEX IF NOT EXISTS referral_rewards_referrer_idx ON referral_rewards(referrer_user_id,created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS referral_rewards_source_idx ON referral_rewards(referrer_user_id,source_type,source_reference_id);
 
+
+
+-- Blockchain verification and operational controls
+CREATE TABLE IF NOT EXISTS blockchain_cursors (
+  network TEXT PRIMARY KEY CHECK (network IN ('TRC-20','BEP-20')),
+  cursor TEXT NOT NULL DEFAULT '0',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS blockchain_transfers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  network TEXT NOT NULL CHECK (network IN ('TRC-20','BEP-20')),
+  tx_hash TEXT NOT NULL,
+  transfer_index TEXT NOT NULL DEFAULT '0',
+  block_reference TEXT,
+  token_contract TEXT NOT NULL,
+  from_address TEXT NOT NULL,
+  to_address TEXT NOT NULL,
+  amount NUMERIC(30,8) NOT NULL CHECK (amount > 0),
+  confirmations INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'detected' CHECK (status IN ('detected','confirming','verified','rejected')),
+  deposit_id UUID REFERENCES deposits(id),
+  detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  verified_at TIMESTAMPTZ,
+  UNIQUE(network, tx_hash, transfer_index)
+);
+CREATE INDEX IF NOT EXISTS blockchain_transfers_status_idx ON blockchain_transfers(network,status,detected_at);
+CREATE INDEX IF NOT EXISTS blockchain_transfers_to_idx ON blockchain_transfers(network,to_address,detected_at DESC);
+
+ALTER TABLE deposits ADD COLUMN IF NOT EXISTS transfer_id UUID REFERENCES blockchain_transfers(id);
+ALTER TABLE deposits ADD COLUMN IF NOT EXISTS confirmations INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE deposits ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS fee_amount NUMERIC(30,8) NOT NULL DEFAULT 0;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS net_amount NUMERIC(30,8);
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS admin_note TEXT;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS outgoing_tx_hash TEXT;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS approved_by UUID REFERENCES users(id);
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS withdrawals_outgoing_tx_hash_idx ON withdrawals(outgoing_tx_hash) WHERE outgoing_tx_hash IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_user_id UUID REFERENCES users(id),
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id UUID,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS admin_audit_log_created_idx ON admin_audit_log(created_at DESC);
