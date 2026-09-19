@@ -33,6 +33,10 @@ fun WithdrawalScreen(onBack:()->Unit){
     var amount by remember{mutableStateOf("")}
     var message by remember{mutableStateOf<String?>(null)}
     var busy by remember{mutableStateOf(false)}
+    val grossAmount=if(source=="investment") selectedInvestment?.currentValue?:0.0 else amount.toDoubleOrNull()?:0.0
+    val feeRate=if(grossAmount>=1000.0) 0.015 else 0.02
+    val fee=grossAmount*feeRate
+    val net=grossAmount-fee
 
     LaunchedEffect(Unit){
         available=account.summary().getOrNull()?.available?:0.0
@@ -81,6 +85,7 @@ fun WithdrawalScreen(onBack:()->Unit){
             }
             OutlinedTextField(address,{address=it},Modifier.fillMaxWidth().padding(top=10.dp),label={Text("Destination USDT address")},singleLine=true)
             Text("Check the destination address and network carefully. Aster does not control an external wallet address entered by the customer.",color=Muted,fontSize=8.sp,modifier=Modifier.padding(top=8.dp))
+            if(grossAmount>0){ CardBox(Modifier.fillMaxWidth().padding(top=10.dp)){ Column(Modifier.padding(12.dp)){ Text("WITHDRAWAL ESTIMATE",color=Gold,fontSize=9.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold); Text("Gross %.2f USDT".format(grossAmount),fontSize=10.sp); Text("Fee %.2f%% · %.2f USDT".format(feeRate*100,fee),color=Muted,fontSize=9.sp); Text("Estimated payout %.2f USDT".format(net),fontSize=12.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold) } } }
             message?.let{Text(it,color=if(it.startsWith("Withdrawal request"))Green else Gold,fontSize=9.sp,modifier=Modifier.padding(top=10.dp))}
             Button(
                 onClick={
@@ -92,7 +97,7 @@ fun WithdrawalScreen(onBack:()->Unit){
                     }
                 },
                 modifier=Modifier.fillMaxWidth().padding(top=14.dp),
-                enabled=!busy && address.isNotBlank() && (amount.toDoubleOrNull()?:0.0)>0 && (source=="available" || selectedInvestment!=null),
+                enabled=!busy && address.isNotBlank() && grossAmount>0 && (source=="available" || selectedInvestment!=null),
                 colors=ButtonDefaults.buttonColors(Gold)
             ){Text(if(busy)"Submitting…" else "Request withdrawal",color=Color.Black,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)}
             Spacer(Modifier.height(24.dp))
