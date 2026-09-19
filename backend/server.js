@@ -545,7 +545,7 @@ app.post("/api/admin/withdrawals/:id/complete",auth,adminOnly,async(req,res)=>{
   const client=await pool.connect();
   try{await client.query("BEGIN");const row=await client.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);if(!row.rows[0]){await client.query("ROLLBACK");return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});}if(row.rows[0].status!=="processing"){await client.query("ROLLBACK");return res.status(409).json({error:"WITHDRAWAL_NOT_PROCESSING"});}await client.query("UPDATE withdrawals SET status='completed',outgoing_tx_hash=$1,completed_at=NOW(),processed_at=NOW() WHERE id=$2",[txHash,req.params.id]);await client.query("INSERT INTO admin_audit_log(admin_user_id,action,entity_type,entity_id,metadata) VALUES($1,'withdrawal_completed','withdrawal',$2,$3)",[req.user.sub,req.params.id,JSON.stringify({txHash})]);await client.query("COMMIT");res.json({ok:true,status:"completed",txHash});}catch(e){await client.query("ROLLBACK");if(e.code==='23505')return res.status(409).json({error:"TX_HASH_EXISTS"});console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
 });
-\napp.use((err, _req, res, _next) => {
+app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: "SERVER_ERROR" });
 });
