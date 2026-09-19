@@ -265,3 +265,9 @@ CREATE TABLE IF NOT EXISTS system_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS system_events_created_idx ON system_events(created_at DESC);
+
+
+-- Pending deposits are unverified and therefore cannot have a credited amount yet.
+ALTER TABLE deposits ALTER COLUMN amount DROP NOT NULL;
+ALTER TABLE deposits DROP CONSTRAINT IF EXISTS deposits_amount_check;
+ALTER TABLE deposits ADD CONSTRAINT deposits_amount_check CHECK (amount IS NULL OR amount > 0);
