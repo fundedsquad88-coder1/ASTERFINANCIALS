@@ -140,12 +140,15 @@ class AuthRepository(private val context:Context){
         val data=Base64.encodeToString(cipher.doFinal(value.toByteArray(Charsets.UTF_8)),Base64.NO_WRAP)
         context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().putString(name,iv+"."+data).apply()
     }
-    private fun secureGet(name:String):String?=try{
-        val raw=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).getString(name,null)?:return null
-        val parts=raw.split("."); if(parts.size!=2)return null
-        val cipher=Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE,key(),GCMParameterSpec(128,Base64.decode(parts[0],Base64.NO_WRAP)))
-        String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),Charsets.UTF_8)
-    }catch(_:Exception){null}
+    private fun secureGet(name:String):String?{
+        return try{
+            val raw=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).getString(name,null) ?: return null
+            val parts=raw.split(".")
+            if(parts.size!=2)return null
+            val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE,key(),GCMParameterSpec(128,Base64.decode(parts[0],Base64.NO_WRAP)))
+            String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),Charsets.UTF_8)
+        }catch(_:Exception){null}
+    }
 }
 }
