@@ -7,7 +7,7 @@ const pool = new Pool({
 
 const POLL_MS = Number(process.env.BLOCKCHAIN_POLL_MS || 15000);
 const BSC_RPC_URL = process.env.BSC_RPC_URL || "https://bsc-dataseed.binance.org";
-const TRON_API_URL = (process.env.TRON_API_URL || "https://api.trongrid.io").replace(/\\/$/, "");
+const TRON_API_URL = (process.env.TRON_API_URL || "https://api.trongrid.io").replace(/\/$/, "");
 const TRONGRID_API_KEY = process.env.TRONGRID_API_KEY || "";
 const BSC_USDT_CONTRACT = (process.env.BSC_USDT_CONTRACT || "").toLowerCase();
 const TRC20_USDT_CONTRACT = process.env.TRC20_USDT_CONTRACT || "";
