@@ -249,6 +249,7 @@ app.post("/api/funding/deposits", auth, async (req, res) => {
       "INSERT INTO deposits(user_id,wallet_address_id,network,amount,tx_hash) VALUES($1,$2,$3,$4,$5) RETURNING id,network,amount,tx_hash AS txHash,status,submitted_at AS submittedAt",
       [req.user.sub,wallet.rows[0].id,network,amount,txHash]
     );
+    if (txHash) { await pool.query("UPDATE blockchain_transfers SET deposit_id=$1 WHERE network=$2 AND tx_hash=$3 AND deposit_id IS NULL", [result.rows[0].id, network, txHash]); await pool.query("UPDATE deposits SET status='confirming' WHERE id=$1 AND EXISTS(SELECT 1 FROM blockchain_transfers WHERE deposit_id=$1)", [result.rows[0].id]); }
     res.status(201).json({ deposit: result.rows[0] });
   } catch (error) {
     if (error.code === "23505") return res.status(409).json({ error: "TX_HASH_EXISTS", message: "This transaction hash has already been submitted." });
