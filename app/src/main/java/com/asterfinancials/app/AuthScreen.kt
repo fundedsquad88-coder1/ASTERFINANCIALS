@@ -2,6 +2,8 @@ package com.asterfinancials.app
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -36,9 +38,11 @@ fun AuthScreen(
         horizontalAlignment=Alignment.CenterHorizontally
     ){
         Spacer(Modifier.height(30.dp))
-        Box(Modifier.size(58.dp).padding(1.dp),contentAlignment=Alignment.Center){
-            Text("A",color=Gold,fontSize=34.sp,fontWeight=FontWeight.Black)
-        }
+        Image(
+            painter=painterResource(com.asterfinancials.app.R.drawable.aster_watermark),
+            contentDescription="Aster",
+            modifier=Modifier.size(58.dp)
+        )
         Text("ASTER",color=Gold,fontSize=13.sp,fontWeight=FontWeight.Bold,letterSpacing=3.sp)
         Text(
             if(forgot)"Reset your password" else if(register)"Create your Aster account" else "Welcome back",
