@@ -50,7 +50,6 @@ fun DepositScreen(onBack:()->Unit){
     }
 
     val selected=wallets.firstOrNull{it.network==network}
-    val context=androidx.compose.ui.platform.LocalContext.current
 
     Column(Modifier.fillMaxSize()){
         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
