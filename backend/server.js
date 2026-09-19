@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const crypto = require("crypto");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 const port = Number(process.env.PORT || 8080);
@@ -25,8 +26,20 @@ const pool = new Pool({
 });
 
 app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = String(process.env.CORS_ORIGINS || "").split(",").map(x => x.trim()).filter(Boolean);
+app.use(cors({ origin: (origin, cb) => {
+  if (!origin || !allowedOrigins.length || allowedOrigins.includes(origin)) return cb(null, true);
+  return cb(new Error("CORS_ORIGIN_NOT_ALLOWED"));
+}, credentials: true }));
 app.use(express.json({ limit: "32kb" }));
+app.set("trust proxy", 1);
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: "draft-8", legacyHeaders: false });
+const sensitiveLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false });
+app.use((req,res,next)=>{ req.requestId=crypto.randomUUID(); res.setHeader("X-Request-ID",req.requestId); next(); });
+app.use("/api/auth/login",authLimiter);
+app.use("/api/auth/register",authLimiter);
+app.use("/api/auth/forgot-password",sensitiveLimiter);
+app.use("/api/auth/reset-password",sensitiveLimiter);
 
 app.get("/health", (_req, res) => res.json({ ok: true, service: "aster-financials-api" }));
 
@@ -231,323 +244,17 @@ app.get("/api/funding/wallets", auth, async (_req, res) => {
 });
 
 app.post("/api/funding/deposits", auth, async (req, res) => {
-  const network = String(req.body?.network || "").trim();
-  const amount = String(req.body?.amount || "").trim();
-  const txHash = String(req.body?.txHash || "").trim() || null;
-
-  if (!["TRC-20","BEP-20"].includes(network) || !/^\\d+(\\.\\d{1,8})?$/.test(amount)) {
-    return res.status(400).json({ error: "INVALID_INPUT" });
-  }
-
-  const wallet = await pool.query("SELECT id,address FROM wallet_addresses WHERE network=$1 AND active=TRUE LIMIT 1", [network]);
-  if (!wallet.rows[0]) return res.status(503).json({ error: "WALLET_NOT_CONFIGURED", message: "This deposit network is not configured yet." });
-
-  try {
-    const result = await pool.query(
-      "INSERT INTO deposits(user_id,wallet_address_id,network,amount,tx_hash) VALUES($1,$2,$3,$4,$5) RETURNING id,network,amount,tx_hash AS txHash,status,submitted_at AS submittedAt",
-      [req.user.sub,wallet.rows[0].id,network,amount,txHash]
-    );
-    res.status(201).json({ deposit: result.rows[0] });
-  } catch (error) {
-    if (error.code === "23505") return res.status(409).json({ error: "TX_HASH_EXISTS", message: "This transaction hash has already been submitted." });
-    console.error(error);
-    res.status(500).json({ error: "SERVER_ERROR" });
-  }
-});
-
-app.get("/api/funding/deposits", auth, async (req, res) => {
-  const result = await pool.query(
-    "SELECT id,network,amount,tx_hash AS \"txHash\",status,submitted_at AS \"submittedAt\",verified_at AS \"verifiedAt\" FROM deposits WHERE user_id=$1 ORDER BY submitted_at DESC LIMIT 50",
-    [req.user.sub]
-  );
-  res.json({ deposits: result.rows });
-});
-
-app.get("/api/account/summary", auth, async (req, res) => {
-  const result = await pool.query(
-    "SELECT " +
-    "COALESCE(SUM(CASE WHEN le.type IN ('deposit','referral_reward','adjustment') AND le.status='posted' THEN le.amount WHEN le.type IN ('withdrawal','investment_principal') AND le.status='posted' THEN -le.amount WHEN le.type='investment_gain' AND le.status='posted' AND NOT COALESCE(i.compounding,TRUE) THEN le.amount ELSE 0 END),0) AS available_balance, " +
-    "COALESCE((SELECT SUM(current_value) FROM investments WHERE user_id=$1 AND status IN ('active','withdrawal_pending')),0) AS invested_balance " +
-    "FROM ledger_entries le LEFT JOIN investments i ON i.id=le.reference_id WHERE le.user_id=$1",
-    [req.user.sub]
-  );
-  const available=Number(result.rows[0].available_balance);
-  const invested=Number(result.rows[0].invested_balance);
-  res.json({ availableBalance: available.toFixed(8), investedBalance: invested.toFixed(8), totalBalance: (available+invested).toFixed(8), currency: "USDT" });
-});
-
-app.get("/api/investments/:id/updates", auth, async (req,res)=>{
-  const result=await pool.query(
-    "SELECT iu.id,iu.period_ending AS \"periodEnding\",iu.opening_value AS \"openingValue\",iu.realized_rate AS \"realizedRate\",iu.gain_amount AS \"gainAmount\",iu.closing_value AS \"closingValue\" FROM investment_updates iu JOIN investments i ON i.id=iu.investment_id WHERE iu.investment_id=$1 AND i.user_id=$2 ORDER BY iu.period_ending DESC LIMIT 52",
-    [req.params.id,req.user.sub]
-  );
-  res.json({updates:result.rows});
-});
-
-// Internal weekly accounting worker.
-// It only applies a server-supplied REALIZED rate; projection_rate is never used as a gain.
-app.post("/api/internal/investments/publish-rate", async (req,res)=>{
-  const secret=req.headers["x-aster-job-secret"];
-  if(!process.env.JOB_SECRET || secret!==process.env.JOB_SECRET) return res.status(401).json({error:"JOB_UNAUTHORIZED"});
-  const category=String(req.body?.category||"").toLowerCase();
-  const periodEnding=new Date(req.body?.periodEnding||"");
-  const realizedRate=Number(req.body?.realizedRate);
-  if(!["crypto","forex"].includes(category) || !Number.isFinite(realizedRate) || realizedRate < -1 || realizedRate > 1 || Number.isNaN(periodEnding.getTime()))
-    return res.status(400).json({error:"INVALID_INPUT"});
-  await pool.query(
-    "INSERT INTO investment_weekly_rates(category,period_ending,realized_rate) VALUES($1,$2,$3) ON CONFLICT(category,period_ending) DO UPDATE SET realized_rate=EXCLUDED.realized_rate,published_at=NOW()",
-    [category,periodEnding.toISOString(),realizedRate]
-  );
-  res.json({ok:true});
-});
-
-app.post("/api/internal/investments/process-published-rates", async (req,res)=>{
-  const secret=req.headers["x-aster-job-secret"];
-  if(!process.env.JOB_SECRET || secret!==process.env.JOB_SECRET) return res.status(401).json({error:"JOB_UNAUTHORIZED"});
-  const periodEnding=new Date(req.body?.periodEnding||"");
-  if(Number.isNaN(periodEnding.getTime())) return res.status(400).json({error:"INVALID_PERIOD"});
-  const rates=await pool.query("SELECT category,realized_rate FROM investment_weekly_rates WHERE period_ending=$1",[periodEnding.toISOString()]);
-  const updates=[];
-  for(const r of rates.rows){
-    const invs=await pool.query("SELECT id FROM investments WHERE category=$1 AND status='active' AND (next_update_at IS NULL OR next_update_at<=$2)",[r.category,periodEnding.toISOString()]);
-    for(const i of invs.rows) updates.push({investmentId:i.id,realizedRate:Number(r.realized_rate)});
-  }
-  req.body.updates=updates;
-  // Reuse the same audited transactional worker below.
-  req.url="/api/internal/investments/weekly-update";
-  return weeklyUpdateHandler(req,res);
-});
-
-async function weeklyUpdateHandler(req,res){
-  const secret=req.headers["x-aster-job-secret"];
-  if(!process.env.JOB_SECRET || secret!==process.env.JOB_SECRET) return res.status(401).json({error:"JOB_UNAUTHORIZED"});
-  const periodEnding=req.body?.periodEnding ? new Date(req.body.periodEnding) : new Date();
-  const updates=Array.isArray(req.body?.updates) ? req.body.updates : [];
-  const client=await pool.connect();
-  let processed=0;
-  try{
-    await client.query("BEGIN");
-    for(const item of updates){
-      const id=String(item.investmentId||"");
-      const realizedRate=Number(item.realizedRate);
-      if(!id || !Number.isFinite(realizedRate) || realizedRate < -1 || realizedRate > 1) continue;
-      const locked=await client.query(
-        "SELECT id,user_id,current_value,compounding,status FROM investments WHERE id=$1 FOR UPDATE",
-        [id]
-      );
-      if(!locked.rows[0] || locked.rows[0].status!=="active") continue;
-      const inv=locked.rows[0];
-      const opening=Number(inv.current_value);
-      const gain=opening*realizedRate;
-      const closing=inv.compounding ? opening+gain : opening;
-      const inserted=await client.query(
-        "INSERT INTO investment_updates(investment_id,period_ending,opening_value,realized_rate,gain_amount,closing_value) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(investment_id,period_ending) DO NOTHING RETURNING id",
-        [id,periodEnding.toISOString(),opening,realizedRate,gain,closing]
-      );
-      if(!inserted.rows[0]) continue;
-      await client.query(
-        "UPDATE investments SET current_value=$1,realized_rate=$2,next_update_at=$3,updated_at=NOW() WHERE id=$4",
-        [closing,realizedRate,new Date(periodEnding.getTime()+7*24*60*60*1000).toISOString(),id]
-      );
-      if(gain!==0){
-        await client.query(
-          "INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'investment_gain',$2,'USDT',$3,'posted')",
-          [inv.user_id,gain,id]
-        );
-      }
-      processed++;
-    }
-    await client.query("COMMIT");
-    res.json({ok:true,processed,periodEnding:periodEnding.toISOString()});
-  }catch(error){
-    await client.query("ROLLBACK");
-    console.error(error);
-    res.status(500).json({error:"SERVER_ERROR"});
-  }finally{client.release();}
-}
-
-app.post("/api/internal/investments/weekly-update", weeklyUpdateHandler);
-
-app.post("/api/funding/withdrawals", auth, async (req,res)=>{
   const network=String(req.body?.network||"").trim();
-  const destinationAddress=String(req.body?.destinationAddress||"").trim();
-  const amount=String(req.body?.amount||"").trim();
-  const investmentId=String(req.body?.investmentId||"").trim() || null;
-
-  if(!["TRC-20","BEP-20"].includes(network) || !destinationAddress || !/^\\d+(\\.\\d{1,8})?$/.test(amount) || Number(amount)<=0){
-    return res.status(400).json({error:"INVALID_INPUT",message:"Enter a valid network, destination address and USDT amount."});
-  }
-
-  const value=Number(amount);
-  const client=await pool.connect();
-  try{
-    await client.query("BEGIN");
-    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[req.user.sub]);
-
-    let sourceType="available";
-    if(investmentId){
-      const inv=await client.query(
-        "SELECT id,current_value,status FROM investments WHERE id=$1 AND user_id=$2 FOR UPDATE",
-        [investmentId,req.user.sub]
-      );
-      if(!inv.rows[0]){ await client.query("ROLLBACK"); return res.status(404).json({error:"INVESTMENT_NOT_FOUND"}); }
-      if(inv.rows[0].status!=="active"){ await client.query("ROLLBACK"); return res.status(400).json({error:"INVESTMENT_NOT_ACTIVE"}); }
-      if(value!==Number(inv.rows[0].current_value)){ await client.query("ROLLBACK"); return res.status(400).json({error:"FULL_INVESTMENT_WITHDRAWAL_REQUIRED",message:"Investment withdrawals must request the full current investment value."}); }
-      const pending=await client.query("SELECT 1 FROM withdrawals WHERE investment_id=$1 AND status IN ('pending','processing') LIMIT 1",[investmentId]);
-      if(pending.rows[0]){ await client.query("ROLLBACK"); return res.status(409).json({error:"WITHDRAWAL_ALREADY_PENDING"}); }
-      sourceType="investment";
-    }else{
-      const balance=await client.query(
-        "SELECT COALESCE(SUM(CASE WHEN le.type IN ('deposit','referral_reward','adjustment') AND le.status='posted' THEN le.amount WHEN le.type IN ('withdrawal','investment_principal') AND le.status='posted' THEN -le.amount WHEN le.type='investment_gain' AND le.status='posted' AND NOT COALESCE(i.compounding,TRUE) THEN le.amount ELSE 0 END),0) - COALESCE((SELECT SUM(w.amount) FROM withdrawals w WHERE w.user_id=$1 AND w.status IN ('pending','processing') AND w.investment_id IS NULL),0) AS available_balance FROM ledger_entries le LEFT JOIN investments i ON i.id=le.reference_id WHERE le.user_id=$1",
-        [req.user.sub]
-      );
-      if(value>Number(balance.rows[0].available_balance)){
-        await client.query("ROLLBACK");
-        return res.status(400).json({error:"INSUFFICIENT_BALANCE",message:"Your verified available balance is insufficient."});
-      }
-    }
-
-    const result=await client.query(
-      "INSERT INTO withdrawals(user_id,network,destination_address,amount,status,investment_id) VALUES($1,$2,$3,$4,'pending',$5) RETURNING id,network,destination_address AS \"destinationAddress\",amount,status,requested_at AS \"requestedAt\"",
-      [req.user.sub,network,destinationAddress,amount,investmentId]
-    );
-
-    if(sourceType==="investment"){
-      await client.query("UPDATE investments SET status='withdrawal_pending',updated_at=NOW() WHERE id=$1",[investmentId]);
-    }
-
-    // Funds become unavailable immediately through this pending withdrawal only after processing;
-    // no balance is credited or debited until the withdrawal is approved/posted.
-    await client.query("COMMIT");
-    res.status(201).json({withdrawal:result.rows[0],source:sourceType});
-  }catch(error){
-    await client.query("ROLLBACK");
-    console.error(error);
-    res.status(500).json({error:"SERVER_ERROR"});
-  }finally{client.release();}
-});
-
-app.get("/api/funding/withdrawals", auth, async (req,res)=>{
-  const result=await pool.query(
-    "SELECT id,network,destination_address AS \"destinationAddress\",amount,status,investment_id AS \"investmentId\",requested_at AS \"requestedAt\",processed_at AS \"processedAt\" FROM withdrawals WHERE user_id=$1 ORDER BY requested_at DESC LIMIT 50",
-    [req.user.sub]
-  );
-  res.json({withdrawals:result.rows});
-});
-
-app.get("/api/account/activity", auth, async (req,res)=>{
-  const result=await pool.query(
-    "SELECT id,type,amount,currency,status,created_at AS \"createdAt\" FROM ledger_entries WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50",
-    [req.user.sub]
-  );
-  res.json({activity:result.rows});
-});
-
-app.post("/api/investments", auth, async (req,res)=>{
-  const category=String(req.body?.category||"").toLowerCase();
-  const principal=String(req.body?.principal||"").trim();
-  const rate=Number(req.body?.projectionRate);
-  const compounding=req.body?.compounding !== false;
-
-  if(!["crypto","forex"].includes(category) || !/^\\d+(\\.\\d{1,8})?$/.test(principal) ||
-     Number(principal)<=0 || !Number.isFinite(rate) || rate<0 || rate>100){
-    return res.status(400).json({error:"INVALID_INPUT",message:"Choose a valid strategy and investment amount."});
-  }
-
-  const client=await pool.connect();
-  try{
-    await client.query("BEGIN");
-    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[req.user.sub]);
-
-    const balance=await client.query(
-      "SELECT COALESCE(SUM(CASE WHEN type IN ('deposit','referral_reward','adjustment') AND status='posted' THEN amount WHEN type IN ('withdrawal','investment_principal') AND status='posted' THEN -amount ELSE 0 END),0) AS available_balance FROM ledger_entries WHERE user_id=$1",
-      [req.user.sub]
-    );
-    const available=Number(balance.rows[0].available_balance);
-    const amount=Number(principal);
-    if(amount>available){
-      await client.query("ROLLBACK");
-      return res.status(400).json({error:"INSUFFICIENT_BALANCE",message:"Your verified available balance is insufficient for this investment."});
-    }
-
-    const investment=await client.query(
-      "INSERT INTO investments(user_id,category,principal,current_value,projection_rate,compounding,status,next_update_at) VALUES($1,$2,$3,$3,$4,$5,'active',NOW()+INTERVAL '7 days') RETURNING id,category,principal,current_value AS \"currentValue\",projection_rate AS \"projectionRate\",compounding,status,started_at AS \"startedAt\",next_update_at AS \"nextUpdateAt\"",
-      [req.user.sub,category,principal,rate,compounding]
-    );
-    await client.query(
-      "INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'investment_principal',$2,'USDT',$3,'posted')",
-      [req.user.sub,principal,investment.rows[0].id]
-    );
-    await client.query("COMMIT");
-    res.status(201).json({investment:investment.rows[0]});
-  }catch(error){
-    await client.query("ROLLBACK");
-    console.error(error);
-    res.status(500).json({error:"SERVER_ERROR"});
-  }finally{
-    client.release();
-  }
-});
-
-app.get("/api/investments", auth, async (req,res)=>{
-  const result=await pool.query(
-    "SELECT id,category,principal,current_value AS \"currentValue\",projection_rate AS \"projectionRate\",compounding,status,started_at AS \"startedAt\",next_update_at AS \"nextUpdateAt\",updated_at AS \"updatedAt\" FROM investments WHERE user_id=$1 ORDER BY started_at DESC",
-    [req.user.sub]
-  );
-  res.json({investments:result.rows});
-});
-
-
-
-function adminOnly(req,res,next){
-  const admins=String(process.env.ADMIN_EMAILS||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
-  if(!admins.length || !admins.includes(String(req.user?.email||"").toLowerCase())) return res.status(403).json({error:"ADMIN_REQUIRED"});
-  next();
-}
-function withdrawalFeeBps(amount){
-  const tiers=String(process.env.WITHDRAWAL_FEE_TIERS_JSON||'[{"max":999.99999999,"bps":200},{"max":null,"bps":150}]');
-  try{
-    const parsed=JSON.parse(tiers).sort((a,b)=>(a.max===null?Infinity:a.max)-(b.max===null?Infinity:b.max));
-    const hit=parsed.find(t=>t.max===null || amount<=Number(t.max));
-    return Number(hit?.bps||200);
-  }catch{return 200;}
-}
-app.get("/api/admin/withdrawals",auth,adminOnly,async(req,res)=>{
-  const status=String(req.query?.status||"pending").trim();
-  const allowed=["pending","processing","completed","rejected"];
-  const s=allowed.includes(status)?status:"pending";
-  const result=await pool.query("SELECT w.id,w.user_id AS \\\"userId\\\",u.email,u.full_name AS \\\"fullName\\\",w.network,w.destination_address AS \\\"destinationAddress\\\",w.amount,w.fee_amount AS \\\"feeAmount\\\",w.net_amount AS \\\"netAmount\\\",w.status,w.requested_at AS \\\"requestedAt\\\",w.approved_at AS \\\"approvedAt\\\",w.outgoing_tx_hash AS \\\"outgoingTxHash\\\" FROM withdrawals w JOIN users u ON u.id=w.user_id WHERE w.status=$1 ORDER BY w.requested_at ASC LIMIT 200",[s]);
-  res.json({withdrawals:result.rows});
-});
-app.post("/api/admin/withdrawals/:id/approve",auth,adminOnly,async(req,res)=>{
-  const client=await pool.connect();
-  try{
-    await client.query("BEGIN");
-    const row=await client.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);
-    if(!row.rows[0]){await client.query("ROLLBACK");return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});}
-    const w=row.rows[0];
-    if(w.status!=="pending"){await client.query("ROLLBACK");return res.status(409).json({error:"WITHDRAWAL_NOT_PENDING"});}
-    const gross=Number(w.amount), bps=withdrawalFeeBps(gross), fee=gross*bps/10000, net=gross-fee;
-    await client.query("UPDATE withdrawals SET status='processing',fee_amount=$1,net_amount=$2,approved_at=NOW(),approved_by=$3 WHERE id=$4",[fee,net,req.user.sub,w.id]);
-    await client.query("INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'withdrawal',$2,'USDT',$3,'posted')",[w.user_id,gross,w.id]);
-    await client.query("INSERT INTO admin_audit_log(admin_user_id,action,entity_type,entity_id,metadata) VALUES($1,'withdrawal_approved','withdrawal',$2,$3)",[req.user.sub,w.id,JSON.stringify({feeBps:bps,feeAmount:fee,netAmount:net,network:w.network})]);
-    await client.query("COMMIT");
-    res.json({ok:true,withdrawal:{id:w.id,network:w.network,destinationAddress:w.destination_address,grossAmount:gross,feeAmount:fee,netAmount:net,status:"processing"},execution:{instruction:"Send the exact netAmount to the validated destination using the configured treasury signer/custody process, then record the blockchain transaction hash."}});
-  }catch(e){await client.query("ROLLBACK");console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
-});
-app.post("/api/admin/withdrawals/:id/reject",auth,adminOnly,async(req,res)=>{
-  const client=await pool.connect();
-  try{await client.query("BEGIN");const row=await client.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);if(!row.rows[0]){await client.query("ROLLBACK");return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});}if(!["pending","processing"].includes(row.rows[0].status)){await client.query("ROLLBACK");return res.status(409).json({error:"WITHDRAWAL_NOT_REVIEWABLE"});}await client.query("UPDATE withdrawals SET status='rejected',admin_note=$1,processed_at=NOW() WHERE id=$2",[String(req.body?.note||"Rejected by operations"),req.params.id]);if(row.rows[0].investment_id) await client.query("UPDATE investments SET status='active',updated_at=NOW() WHERE id=$1 AND status='withdrawal_pending'",[row.rows[0].investment_id]);await client.query("INSERT INTO admin_audit_log(admin_user_id,action,entity_type,entity_id,metadata) VALUES($1,'withdrawal_rejected','withdrawal',$2,$3)",[req.user.sub,req.params.id,JSON.stringify({note:String(req.body?.note||"")})]);await client.query("COMMIT");res.json({ok:true,status:"rejected"});}catch(e){await client.query("ROLLBACK");console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
-});
-app.post("/api/admin/withdrawals/:id/complete",auth,adminOnly,async(req,res)=>{
   const txHash=String(req.body?.txHash||"").trim();
-  if(!txHash) return res.status(400).json({error:"TX_HASH_REQUIRED"});
-  const client=await pool.connect();
-  try{await client.query("BEGIN");const row=await client.query("SELECT * FROM withdrawals WHERE id=$1 FOR UPDATE",[req.params.id]);if(!row.rows[0]){await client.query("ROLLBACK");return res.status(404).json({error:"WITHDRAWAL_NOT_FOUND"});}if(row.rows[0].status!=="processing"){await client.query("ROLLBACK");return res.status(409).json({error:"WITHDRAWAL_NOT_PROCESSING"});}await client.query("UPDATE withdrawals SET status='completed',outgoing_tx_hash=$1,completed_at=NOW(),processed_at=NOW() WHERE id=$2",[txHash,req.params.id]);await client.query("INSERT INTO admin_audit_log(admin_user_id,action,entity_type,entity_id,metadata) VALUES($1,'withdrawal_completed','withdrawal',$2,$3)",[req.user.sub,req.params.id,JSON.stringify({txHash})]);await client.query("COMMIT");res.json({ok:true,status:"completed",txHash});}catch(e){await client.query("ROLLBACK");if(e.code==='23505')return res.status(409).json({error:"TX_HASH_EXISTS"});console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
-});
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ error: "SERVER_ERROR" });
+  const claimedAmount=String(req.body?.amount||"").trim()||null;
+  if(!["TRC-20","BEP-20"].includes(network)||!txHash) return res.status(400).json({error:"INVALID_INPUT",message:"Network and transaction hash are required."});
+  if(claimedAmount&&!/^\d+(\.\d{1,8})?$/.test(claimedAmount)) return res.status(400).json({error:"INVALID_AMOUNT"});
+  const wallet=await pool.query("SELECT id,address FROM wallet_addresses WHERE network=$1 AND active=TRUE LIMIT 1",[network]);
+  if(!wallet.rows[0]) return res.status(503).json({error:"WALLET_NOT_CONFIGURED"});
+  try{
+    const result=await pool.query("INSERT INTO deposits(user_id,wallet_address_id,network,amount,tx_hash,user_submitted_amount,claim_expires_at,status,source) VALUES($1,$2,$3,0,$4,$5,NOW()+INTERVAL '7 days','pending','user_claim') RETURNING id,network,amount,tx_hash AS \"txHash\",status,submitted_at AS \"submittedAt\"",[req.user.sub,wallet.rows[0].id,network,txHash,claimedAmount]);
+    await pool.query("INSERT INTO deposit_claims(deposit_id,user_id,network,tx_hash) VALUES($1,$2,$3,$4) ON CONFLICT(network,tx_hash) DO NOTHING",[result.rows[0].id,req.user.sub,network,txHash]);
+    res.status(201).json({deposit:result.rows[0],message:"Submitted for independent blockchain verification. Balance changes only after verification."});
+  }catch(error){if(error.code==="23505")return res.status(409).json({error:"TX_HASH_EXISTS"});console.error(error);res.status(500).json({error:"SERVER_ERROR"});}
 });
 
-app.listen(port, () => console.log("Aster Financials API listening on " + port));
