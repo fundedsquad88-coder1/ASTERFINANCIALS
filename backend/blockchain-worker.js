@@ -81,8 +81,15 @@ async function reconcile(){
 }
 
 async function tick(){
-  try{ if(BSC_USDT_CONTRACT&&BSC_TREASURY) await bscScan(); if(TRC20_USDT_CONTRACT&&TRC20_TREASURY) await tronScan(); await reconcile(); console.log("Aster blockchain worker tick complete",new Date().toISOString()); }
-  catch(e){ console.error("Aster blockchain worker error",e); }
+  const lockClient=await pool.connect();
+  try{
+    const locked=await lockClient.query("SELECT pg_try_advisory_lock(hashtextextended('aster-blockchain-worker',0)) AS locked");
+    if(!locked.rows[0].locked) return;
+    try{ if(BSC_USDT_CONTRACT&&BSC_TREASURY) await bscScan(); if(TRC20_USDT_CONTRACT&&TRC20_TREASURY) await tronScan(); await reconcile(); console.log("Aster blockchain worker tick complete",new Date().toISOString()); }
+    }catch(e){ console.error("Aster blockchain worker error",e); }
+    finally{ await lockClient.query("SELECT pg_advisory_unlock(hashtextextended('aster-blockchain-worker',0))"); }
+  }catch(e){ console.error("Aster worker lock error",e); }
+  finally{ lockClient.release(); }
 }
 required("DATABASE_URL",process.env.DATABASE_URL);
 tick(); setInterval(tick,POLL_MS);
