@@ -255,6 +255,12 @@ app.post("/api/funding/deposits", auth, async (req, res) => {
   try{
     const result=await pool.query("INSERT INTO deposits(user_id,wallet_address_id,network,amount,tx_hash,user_submitted_amount,claim_expires_at,status,source) VALUES($1,$2,$3,0,$4,$5,NOW()+INTERVAL '7 days','pending','user_claim') RETURNING id,network,amount,tx_hash AS \"txHash\",status,submitted_at AS \"submittedAt\"",[req.user.sub,wallet.rows[0].id,network,txHash,claimedAmount]);
     await pool.query("INSERT INTO deposit_claims(deposit_id,user_id,network,tx_hash) VALUES($1,$2,$3,$4) ON CONFLICT(network,tx_hash) DO NOTHING",[result.rows[0].id,req.user.sub,network,txHash]);
+    const verified=await pool.query("SELECT id,amount,confirmations FROM blockchain_transfers WHERE network=$1 AND tx_hash=$2 AND status='verified' ORDER BY detected_at DESC LIMIT 1",[network,txHash]);
+    if(verified.rows[0]){
+      await pool.query("UPDATE deposits SET status='completed',amount=$1,verified_at=NOW(),confirmations=$2,transfer_id=$3 WHERE id=$4",[verified.rows[0].amount,verified.rows[0].confirmations,verified.rows[0].id,result.rows[0].id]);
+      await pool.query("INSERT INTO ledger_entries(user_id,type,amount,currency,reference_id,status) VALUES($1,'deposit',$2,'USDT',$3,'posted')",[req.user.sub,verified.rows[0].amount,result.rows[0].id]);
+      await pool.query("UPDATE blockchain_transfers SET deposit_id=$1 WHERE id=$2",[result.rows[0].id,verified.rows[0].id]);
+    }
     res.status(201).json({deposit:result.rows[0],message:"Submitted for independent blockchain verification. Balance changes only after verification."});
   }catch(error){if(error.code==="23505")return res.status(409).json({error:"TX_HASH_EXISTS"});console.error(error);res.status(500).json({error:"SERVER_ERROR"});}
 });
@@ -290,4 +296,8 @@ app.post("/api/admin/withdrawals/:id/cancel-processing",auth,adminOnly,requireRo
   }catch(e){await client.query("ROLLBACK");console.error(e);res.status(500).json({error:"SERVER_ERROR"});}finally{client.release();}
 });
 
+app.get("/api/admin/unmatched-transfers",auth,adminOnly,requireRole("super_admin","operations_admin","finance_admin"),async(req,res)=>{
+  const result=await pool.query("SELECT ut.id,ut.transfer_id AS \"transferId\",bt.network,bt.tx_hash AS \"txHash\",bt.amount,bt.from_address AS \"fromAddress\",bt.to_address AS \"toAddress\",bt.confirmations,bt.detected_at AS \"detectedAt\" FROM unmatched_transfers ut JOIN blockchain_transfers bt ON bt.id=ut.transfer_id WHERE ut.reviewed=FALSE ORDER BY ut.created_at ASC LIMIT 200");
+  res.json({transfers:result.rows});
+});
 
