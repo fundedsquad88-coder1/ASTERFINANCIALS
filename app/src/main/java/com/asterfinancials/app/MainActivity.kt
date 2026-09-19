@@ -78,7 +78,21 @@ fun AsterApp(){
         Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)){
             Box(Modifier.weight(1f)){
                 when(tab){
-                    Tab.HOME->Home({tab=it},toggleTheme={dark=!dark})
+                    Tab.HOME->MaterialTheme(
+                        colorScheme=lightColorScheme(
+                            background=Color(0xFFF7F7F5),
+                            surface=Color.White,
+                            surfaceVariant=Color(0xFFF0F0ED),
+                            primary=Color(0xFFA87518),
+                            onPrimary=Color.White,
+                            onBackground=Black,
+                            onSurface=Black
+                        )
+                    ){
+                        Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
+                            Home({tab=it})
+                        }
+                    }
                     Tab.MARKETS->Markets()
                     Tab.AUTO->AutoInvest()
                     Tab.CALC->Calculator()
@@ -124,7 +138,7 @@ fun AsterApp(){
     Card(mod,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),content=content)
 }
 
-@Composable private fun Home(go:(Tab)->Unit,toggleTheme:()->Unit){
+@Composable private fun Home(go:(Tab)->Unit){
     val context=LocalContext.current
     val account=remember{AccountRepository(context)}
     var summary by remember{mutableStateOf<AccountSummary?>(null)}
@@ -155,13 +169,7 @@ fun AsterApp(){
                             )
                             Spacer(Modifier.width(8.dp))
                         }
-                        IconButton(onClick=toggleTheme){
-                            Icon(
-                                if(MaterialTheme.colorScheme.background==Black) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription="Change theme",
-                                tint=Gold
-                            )
-                        }
+                        Spacer(Modifier.size(48.dp))
                     }
                     Text("Financial command center",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=9.dp))
                     Text("Premium automation & market intelligence",color=Muted,fontSize=10.sp,modifier=Modifier.padding(top=3.dp))
