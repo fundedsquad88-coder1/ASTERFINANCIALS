@@ -371,6 +371,7 @@ async function weeklyUpdateHandler(req,res){
 
 app.post("/api/internal/investments/weekly-update", weeklyUpdateHandler);
 
+app.get("/api/funding/withdrawals/quote",auth,async(req,res)=>{const amount=Number(req.query.amount||0);const network=String(req.query.network||"");if(!["TRC-20","BEP-20"].includes(network)||!Number.isFinite(amount)||amount<=0)return res.status(400).json({error:"INVALID_INPUT"});const q=await pool.query("SELECT fee_rate FROM withdrawal_fee_bands WHERE active=TRUE AND min_amount <= $1 AND (max_amount IS NULL OR $1 < max_amount) ORDER BY min_amount DESC LIMIT 1",[amount]);const rate=Number(q.rows[0]?.fee_rate||0.015);const fee=amount*rate;res.json({network,amount:amount.toFixed(8),feeRate:rate,feeAmount:fee.toFixed(8),netAmount:(amount-fee).toFixed(8),currency:"USDT"})});
 app.post("/api/funding/withdrawals", auth, async (req,res)=>{
   const network=String(req.body?.network||"").trim();
   const destinationAddress=String(req.body?.destinationAddress||"").trim();
