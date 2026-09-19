@@ -16,8 +16,8 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const emailFrom = process.env.EMAIL_FROM;
 const appBaseUrl = process.env.APP_BASE_URL;
 
-if (!jwtSecret || !databaseUrl) {
-  console.error("JWT_SECRET and DATABASE_URL are required.");
+if (!jwtSecret || !databaseUrl || (process.env.NODE_ENV === "production" && !process.env.CORS_ORIGINS)) {
+  console.error("JWT_SECRET, DATABASE_URL and production CORS_ORIGINS are required.");
   process.exit(1);
 }
 
@@ -29,7 +29,7 @@ const pool = new Pool({
 app.use(helmet());
 const allowedOrigins = String(process.env.CORS_ORIGINS || "").split(",").map(x => x.trim()).filter(Boolean);
 app.use(cors({ origin: (origin, cb) => {
-  if (!origin || !allowedOrigins.length || allowedOrigins.includes(origin)) return cb(null, true);
+  if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
   return cb(new Error("CORS_ORIGIN_NOT_ALLOWED"));
 }, credentials: true }));
 app.use(express.json({ limit: "32kb" }));
