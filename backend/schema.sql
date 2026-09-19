@@ -205,3 +205,63 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS admin_audit_log_created_idx ON admin_audit_log(created_at DESC);
+
+
+-- Production integrity extensions (additive migration)
+ALTER TABLE deposits ADD COLUMN IF NOT EXISTS user_submitted_amount NUMERIC(30,8);
+ALTER TABLE deposits ADD COLUMN IF NOT EXISTS claim_expires_at TIMESTAMPTZ;
+ALTER TABLE deposits ADD COLUMN IF NOT EXISTS rejection_code TEXT;
+ALTER TABLE deposits ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'user_claim';
+
+CREATE TABLE IF NOT EXISTS deposit_claims (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deposit_id UUID NOT NULL REFERENCES deposits(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  network TEXT NOT NULL CHECK (network IN ('TRC-20','BEP-20')),
+  tx_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(network, tx_hash)
+);
+CREATE INDEX IF NOT EXISTS deposit_claims_user_idx ON deposit_claims(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS unmatched_transfers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  transfer_id UUID NOT NULL UNIQUE REFERENCES blockchain_transfers(id) ON DELETE CASCADE,
+  reviewed BOOLEAN NOT NULL DEFAULT FALSE,
+  matched_user_id UUID REFERENCES users(id),
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  route TEXT NOT NULL,
+  key TEXT NOT NULL,
+  response_status INTEGER NOT NULL,
+  response_body JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, route, key)
+);
+
+CREATE TABLE IF NOT EXISTS admin_users (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('super_admin','operations_admin','finance_admin','support_admin')),
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS execution_provider TEXT;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS execution_reference TEXT;
+CREATE INDEX IF NOT EXISTS withdrawals_status_requested_idx ON withdrawals(status, requested_at);
+
+CREATE TABLE IF NOT EXISTS system_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'info' CHECK (severity IN ('info','warning','error','critical')),
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS system_events_created_idx ON system_events(created_at DESC);
