@@ -42,14 +42,15 @@ fun DepositScreen(onBack:()->Unit){
     var status by remember{mutableStateOf<String?>(null)}
     var loading by remember{mutableStateOf(true)}
     var submitting by remember{mutableStateOf(false)}
-    val scope=rememberCoroutineScope()\n    val context=androidx.compose.ui.platform.LocalContext.current\n
+    val scope=rememberCoroutineScope()
+    val context=androidx.compose.ui.platform.LocalContext.current
+
     LaunchedEffect(Unit){
         wallets=loadWallets(context)
         loading=false
     }
 
     val selected=wallets.firstOrNull{it.network==network}
-    val context=androidx.compose.ui.platform.LocalContext.current
 
     Column(Modifier.fillMaxSize()){
         Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){
