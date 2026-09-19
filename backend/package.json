@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js",
+    "check": "node --check server.js && node --check blockchain-worker.js",
     "worker": "node blockchain-worker.js"
   },
   "dependencies": {
