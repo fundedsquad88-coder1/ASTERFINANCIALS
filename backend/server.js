@@ -382,7 +382,11 @@ app.post("/api/funding/withdrawals", auth, async (req,res)=>{
     return res.status(400).json({error:"INVALID_INPUT",message:"Enter a valid network, destination address and USDT amount."});
   }
 
-  const value=Number(amount);\n  const feeResult=await pool.query("SELECT fee_rate FROM withdrawal_fee_bands WHERE active=TRUE AND min_amount <= $1 AND (max_amount IS NULL OR $1 < max_amount) ORDER BY min_amount DESC LIMIT 1",[value]);\n  const feeRate=Number(feeResult.rows[0]?.fee_rate||0.015);\n  const feeAmount=value*feeRate;\n  const netAmount=value-feeAmount;
+  const value=Number(amount);
+  const feeResult=await pool.query("SELECT fee_rate FROM withdrawal_fee_bands WHERE active=TRUE AND min_amount <= $1 AND (max_amount IS NULL OR $1 < max_amount) ORDER BY min_amount DESC LIMIT 1",[value]);
+  const feeRate=Number(feeResult.rows[0]?.fee_rate||0.015);
+  const feeAmount=value*feeRate;
+  const netAmount=value-feeAmount;
   const client=await pool.connect();
   try{
     await client.query("BEGIN");
@@ -416,7 +420,8 @@ app.post("/api/funding/withdrawals", auth, async (req,res)=>{
       [req.user.sub,network,destinationAddress,amount,investmentId]
     );
 
-    await client.query("UPDATE withdrawals SET fee_amount=$1,net_amount=$2,destination_normalized=$3 WHERE id=$4",[feeAmount,netAmount,destinationAddress,result.rows[0].id]);\n    if(sourceType==="investment"){
+    await client.query("UPDATE withdrawals SET fee_amount=$1,net_amount=$2,destination_normalized=$3 WHERE id=$4",[feeAmount,netAmount,destinationAddress,result.rows[0].id]);
+    if(sourceType==="investment"){
       await client.query("UPDATE investments SET status='withdrawal_pending',updated_at=NOW() WHERE id=$1",[investmentId]);
     }
 
