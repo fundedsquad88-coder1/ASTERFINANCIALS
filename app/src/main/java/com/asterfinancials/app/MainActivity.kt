@@ -67,7 +67,7 @@ class MainActivity:ComponentActivity(){
 
 @Composable
 fun AsterApp(){
-    var dark by remember{mutableStateOf(true)}
+    var dark by remember{mutableStateOf(false)}
     var tab by remember{mutableStateOf(Tab.HOME)}
     MaterialTheme(
         colorScheme=if(dark)
@@ -752,7 +752,30 @@ private fun formatPrice(v:Double):String{
     }
 
     LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
-        item{Header("Profile","Account, security & preferences")}
+        item{
+            Column(Modifier.padding(18.dp,18.dp,18.dp,12.dp)){
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+                    Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically){
+                        Image(
+                            painter=painterResource(com.asterfinancials.app.R.drawable.aster_watermark),
+                            contentDescription="Aster",
+                            modifier=Modifier.size(34.dp)
+                        )
+                        Spacer(Modifier.width(9.dp))
+                        Text("ASTER",color=Gold,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
+                    }
+                    IconButton(onClick=theme){
+                        Icon(
+                            if(MaterialTheme.colorScheme.background==Black) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription=if(MaterialTheme.colorScheme.background==Black) "Switch to light theme" else "Switch to dark theme",
+                            tint=Gold
+                        )
+                    }
+                }
+                Text("Profile",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=9.dp))
+                Text("Account, security & preferences",color=Muted,fontSize=10.sp,modifier=Modifier.padding(top=3.dp))
+            }
+        }
         item{
             CardBox(Modifier.padding(16.dp)){
                 Column(Modifier.padding(16.dp)){
@@ -772,7 +795,6 @@ private fun formatPrice(v:Double):String{
                 Preference("Withdraw USDT",Icons.Default.AccountBalanceWallet,"Request a transfer to your wallet"){ showWithdrawal=true }
                 Preference("Referrals",Icons.Default.People,"Your referral code & rewards"){ showReferral=true }
                 Preference("Activity",Icons.Default.ReceiptLong,"Deposits, withdrawals & investment ledger"){ showActivity=true }
-                Preference("Theme",Icons.Default.DarkMode,"Black-gold / white-gold"){theme()}
                 Preference("Security",Icons.Default.Security,"Account security controls"){}
                 Preference("Notifications",Icons.Default.Notifications,"Market & strategy alerts"){ showNotifications=true }
                 Preference("Support",Icons.Default.HelpOutline,"Help center"){}
