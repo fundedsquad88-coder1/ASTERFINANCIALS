@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from pwdlib import PasswordHash
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, create_engine, select
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./aster-dev.db")
@@ -53,6 +53,17 @@ class Wallet(Base):
     available: Mapped[Decimal] = mapped_column(Numeric(28, 8), default=0)
     invested: Mapped[Decimal] = mapped_column(Numeric(28, 8), default=0)
     pending: Mapped[Decimal] = mapped_column(Numeric(28, 8), default=0)
+
+class IdempotencyKey(Base):
+    __tablename__ = "idempotency_keys"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    key: Mapped[str] = mapped_column(String(128))
+    endpoint: Mapped[str] = mapped_column(String(120))
+    response_status: Mapped[int] = mapped_column(Integer)
+    response_body: Mapped[str] = mapped_column(String(4000))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    __table_args__ = (UniqueConstraint("user_id", "key", "endpoint", name="uq_idempotency_user_key_endpoint"),)
 
 class LedgerEntry(Base):
     __tablename__ = "ledger_entries"
@@ -141,6 +152,13 @@ def current_user(session_cookie: Optional[str] = Cookie(default=None, alias="__H
     if not user or user.status != "active":
         raise HTTPException(status_code=403, detail="Account unavailable")
     return user
+
+def require_idempotency_key(
+    key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
+):
+    if not key or len(key) < 16 or len(key) > 128:
+        raise HTTPException(status_code=400, detail="A valid Idempotency-Key is required")
+    return key
 
 def require_csrf(session_cookie: Optional[str] = Cookie(default=None, alias="__Host-AsterSession"),
                  csrf_cookie: Optional[str] = Cookie(default=None, alias="AsterCSRF"),
@@ -235,16 +253,40 @@ def active_autoinvest(user: User = Depends(current_user), dbs: Session = Depends
     return [{"id":r.id,"strategy":r.strategy,"amount":str(r.amount),"duration_weeks":r.duration_weeks,"status":r.status,"created_at":r.created_at} for r in rows]
 
 @app.post("/v1/autoinvest", status_code=201)
-def create_autoinvest(body: AutoInvestIn, user: User = Depends(current_user), _: None = Depends(require_csrf), dbs: Session = Depends(db)):
-    if body.amount < Decimal("10"): raise HTTPException(400, "Minimum investment is $10")
-    w=dbs.scalar(select(Wallet).where(Wallet.user_id==user.id))
-    if not w or w.available < body.amount: raise HTTPException(409, "Insufficient available balance")
-    w.available -= body.amount; w.invested += body.amount
-    strategy=AutoInvest(user_id=user.id,strategy=body.strategy,amount=body.amount,duration_weeks=body.duration_weeks)
+def create_autoinvest(
+    body: AutoInvestIn,
+    user: User = Depends(current_user),
+    _: None = Depends(require_csrf),
+    idempotency_key: str = Depends(require_idempotency_key),
+    dbs: Session = Depends(db),
+):
+    prior = dbs.scalar(select(IdempotencyKey).where(
+        IdempotencyKey.user_id == user.id,
+        IdempotencyKey.key == idempotency_key,
+        IdempotencyKey.endpoint == "/v1/autoinvest",
+    ))
+    if prior:
+        return Response(content=prior.response_body, status_code=prior.response_status, media_type="application/json")
+
+    if body.amount < Decimal("10"):
+        raise HTTPException(400, "Minimum investment is $10")
+    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    if not w or w.available < body.amount:
+        raise HTTPException(409, "Insufficient available balance")
+
+    w.available -= body.amount
+    w.invested += body.amount
+    strategy = AutoInvest(user_id=user.id, strategy=body.strategy, amount=body.amount, duration_weeks=body.duration_weeks)
     dbs.add(strategy)
-    dbs.add(LedgerEntry(user_id=user.id,kind="autoinvest_debit",amount=-body.amount,reference="AI-"+secrets.token_hex(6).upper(),status="posted"))
+    dbs.flush()
+    dbs.add(LedgerEntry(user_id=user.id, kind="autoinvest_debit", amount=-body.amount,
+                        reference="AI-"+secrets.token_hex(6).upper(), status="posted"))
+    payload = {"id": strategy.id, "status": strategy.status}
+    import json
+    dbs.add(IdempotencyKey(user_id=user.id, key=idempotency_key, endpoint="/v1/autoinvest",
+                           response_status=201, response_body=json.dumps(payload)))
     dbs.commit()
-    return {"id":strategy.id,"status":strategy.status}
+    return payload
 
 @app.post("/v1/autoinvest/{strategy_id}/pause")
 def pause_autoinvest(strategy_id:int,user:User=Depends(current_user),_:None=Depends(require_csrf),dbs:Session=Depends(db)):
