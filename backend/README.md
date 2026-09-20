@@ -1,38 +1,39 @@
-# Aster Financials Backend Foundation
+# Aster Financials Backend
 
-This directory is the production API contract and service boundary for V23 Auto-Invest.
+Production-oriented service foundation for Aster V23. This repository now contains a runnable FastAPI service with server-side sessions, password hashing, wallet/account records, ledger entries, Auto-Invest state, notifications and referral/account endpoints.
 
-## Principles
+## Run locally
 
-- No balances, returns, deposits, withdrawals, referrals or strategy activations are fabricated in the Android client.
-- Authentication/session state is server-side.
-- The ledger is the source of truth for money.
-- Deposit and withdrawal providers are adapters behind explicit interfaces.
-- Auto-Invest activation is a server-side transaction, never a localStorage action.
-- Admin actions require separate authorization and audit logging.
-- HTTPS is mandatory in production.
+1. Copy `.env.example` to `.env`.
+2. Set `DATABASE_URL` to PostgreSQL for production; SQLite is only a local development fallback.
+3. Install `requirements.txt`.
+4. Run `uvicorn app.main:app --reload`.
 
-## Planned services
+Docker:
 
-1. Auth + KYC/AML gateway
-2. User/account service
-3. Double-entry wallet ledger
-4. Deposit adapter (USDT/network/provider)
-5. Withdrawal adapter with risk checks and transaction authorization
-6. Auto-Invest strategy service
-7. Market/news aggregation
-8. Referral ledger
-9. Notifications
-10. Admin/audit service
+`docker compose -f docker-compose.yml up --build`
 
-## API
+## Security rules
 
-See `openapi.yaml`. The Android app is intentionally not wired to a fake base URL. Configure the production API origin only after the backend is deployed behind HTTPS.
+- HTTPS is mandatory outside local development.
+- Session credentials are opaque, HttpOnly cookies; passwords are Argon2-hashed.
+- Mutating authenticated requests require the Aster CSRF header.
+- Provider/API/database secrets never belong in the APK.
+- Wallet balances are ledger-backed records; the Android client must never fabricate balances or returns.
+- Auto-Invest activation checks authenticated identity and available balance before creating server state.
+- Deposits/withdrawals remain provider-gated. No blockchain address or private key is hard-coded.
+- KYC/AML, custody/provider adapters, push delivery, admin authorization and audit controls must be connected before handling real customer funds.
 
-## Security
+## Service boundaries
 
-Do not put private keys, provider secrets, API signing secrets or database credentials in the APK. Session credentials should use secure server-side session handling; do not place access/refresh tokens in WebView localStorage.
+1. Auth/session
+2. User/KYC state
+3. Wallet + ledger
+4. Deposit/withdrawal provider adapters
+5. Auto-Invest
+6. Market/news aggregation
+7. Referral ledger
+8. Notifications
+9. Admin/audit
 
-
-## Build verification
-The Android CI pipeline includes static source checks before Gradle compilation. Financial endpoints remain fail-closed until real provider credentials and deployment infrastructure are configured.
+The API is deliberately fail-closed where an external financial provider is not configured.
