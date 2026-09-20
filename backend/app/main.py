@@ -87,6 +87,16 @@ class AutoInvest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+
+class ValuationSource(Base):
+    __tablename__ = "valuation_sources"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    strategy: Mapped[str] = mapped_column(String(40), unique=True)
+    provider: Mapped[str] = mapped_column(String(80))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
 class StrategyValuation(Base):
     __tablename__ = "strategy_valuations"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -265,6 +275,12 @@ def strategies():
         {"id":"core-crypto","name":"Core Crypto","type":"crypto","status":"available"},
         {"id":"global-fx","name":"Global FX","type":"fx","status":"available"}]}
 
+
+
+@app.get("/v1/portfolio/valuation-status")
+def valuation_status(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    sources = dbs.scalars(select(ValuationSource).order_by(ValuationSource.strategy.asc())).all()
+    return {"sources":[{"strategy":s.strategy,"provider":s.provider,"enabled":s.enabled,"last_sync_at":s.last_sync_at,"last_error":s.last_error} for s in sources]}
 
 @app.get("/v1/portfolio/performance")
 def portfolio_performance(user: User = Depends(current_user), dbs: Session = Depends(db)):
