@@ -86,6 +86,15 @@ class AutoInvest(Base):
     status: Mapped[str] = mapped_column(String(24), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+
+class StrategyValuation(Base):
+    __tablename__ = "strategy_valuations"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    autoinvest_id: Mapped[int] = mapped_column(ForeignKey("autoinvest.id"), index=True)
+    value: Mapped[Decimal] = mapped_column(Numeric(28, 8))
+    source: Mapped[str] = mapped_column(String(40), default="server")
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
 class Notification(Base):
     __tablename__ = "notifications"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -260,6 +269,27 @@ def strategies():
 @app.get("/v1/portfolio/performance")
 def portfolio_performance(user: User = Depends(current_user), dbs: Session = Depends(db)):
     w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    rows = dbs.scalars(select(AutoInvest).where(AutoInvest.user_id == user.id)).all()
+    valuations = []
+    for strategy in rows:
+        latest = dbs.scalar(select(StrategyValuation).where(StrategyValuation.autoinvest_id == strategy.id).order_by(StrategyValuation.id.desc()))
+        valuations.append(latest.value if latest else strategy.amount)
+    strategy_value = sum(valuations, Decimal("0"))
+    total = (w.available if w else Decimal("0")) + strategy_value
+    contributed = sum((r.amount for r in dbs.scalars(select(LedgerEntry).where(LedgerEntry.user_id==user.id, LedgerEntry.kind=="autoinvest_debit", LedgerEntry.status=="posted")).all()), Decimal("0"))
+    return {
+        "currency":"USDT",
+        "available":str(w.available if w else Decimal("0")),
+        "invested":str(strategy_value),
+        "total":str(total),
+        "cost_basis":str(contributed),
+        "unrealized_pnl":str(strategy_value-contributed),
+        "valuation_status":"priced" if all(dbs.scalar(select(StrategyValuation).where(StrategyValuation.autoinvest_id==s.id).order_by(StrategyValuation.id.desc())) for s in rows) else "unpriced"
+    }
+
+@app.get("/v1/portfolio/performance")
+def portfolio_performance(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
     rows = dbs.scalars(select(LedgerEntry).where(LedgerEntry.user_id == user.id).order_by(LedgerEntry.id.asc()).limit(500)).all()
     deposits = sum((r.amount for r in rows if r.kind == "deposit" and r.status == "posted"), Decimal("0"))
     releases = sum((r.amount for r in rows if r.kind == "autoinvest_release" and r.status == "posted"), Decimal("0"))
@@ -336,6 +366,26 @@ def create_autoinvest(
     dbs.commit()
     return payload
 
+
+
+class ValuationIn(BaseModel):
+    value: Decimal = Field(ge=0)
+
+@app.post("/v1/autoinvest/{strategy_id}/valuation")
+def set_strategy_valuation(strategy_id:int, body:ValuationIn, user:User=Depends(current_user), _:None=Depends(require_csrf), dbs:Session=Depends(db)):
+    row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==strategy_id,AutoInvest.user_id==user.id))
+    if not row: raise HTTPException(404,"Strategy not found")
+    valuation=StrategyValuation(autoinvest_id=row.id,value=body.value,source="server",as_of=datetime.now(timezone.utc))
+    dbs.add(valuation); dbs.commit()
+    return {"strategy_id":row.id,"value":str(valuation.value),"as_of":valuation.as_of,"source":valuation.source}
+
+@app.get("/v1/autoinvest/{strategy_id}/valuation")
+def get_strategy_valuation(strategy_id:int,user:User=Depends(current_user),dbs:Session=Depends(db)):
+    row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==strategy_id,AutoInvest.user_id==user.id))
+    if not row: raise HTTPException(404,"Strategy not found")
+    valuation=dbs.scalar(select(StrategyValuation).where(StrategyValuation.autoinvest_id==row.id).order_by(StrategyValuation.id.desc()))
+    if not valuation: return {"strategy_id":row.id,"status":"unpriced","value":str(row.amount),"as_of":None,"source":None}
+    return {"strategy_id":row.id,"status":"priced","value":str(valuation.value),"as_of":valuation.as_of,"source":valuation.source}
 
 @app.get("/v1/autoinvest/{strategy_id}")
 def autoinvest_detail(strategy_id:int,user:User=Depends(current_user),dbs:Session=Depends(db)):
