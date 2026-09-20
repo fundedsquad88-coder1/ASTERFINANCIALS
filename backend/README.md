@@ -32,3 +32,7 @@ See `openapi.yaml`. The Android app is intentionally not wired to a fake base UR
 ## Security
 
 Do not put private keys, provider secrets, API signing secrets or database credentials in the APK. Session credentials should use secure server-side session handling; do not place access/refresh tokens in WebView localStorage.
+
+
+## Build verification
+The Android CI pipeline includes static source checks before Gradle compilation. Financial endpoints remain fail-closed until real provider credentials and deployment infrastructure are configured.
