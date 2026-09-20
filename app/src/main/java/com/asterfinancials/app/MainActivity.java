@@ -44,6 +44,16 @@ public class MainActivity extends Activity {
     }
 
     public class AsterNative {
+        @JavascriptInterface public void haptic(final String kind) {
+            main.post(() -> {
+                android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+                if (v == null || !v.hasVibrator()) return;
+                long[] pattern = "success".equals(kind) ? new long[]{0,18,30,28} : "medium".equals(kind) ? new long[]{0,24} : new long[]{0,10};
+                if (android.os.Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1));
+                else v.vibrate(pattern, -1);
+            });
+        }
+
         @JavascriptInterface public void fetch(final String urlString, final String callbackId) {
             if (!isAllowed(urlString)) {
                 deliver(callbackId, "Blocked host", false);
