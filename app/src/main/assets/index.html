@@ -325,11 +325,11 @@ function updateMarketStatus(ok){
   if(el){el.classList.toggle('off',!ok);el.innerHTML=ok?'<span class="live-dot"></span> LIVE DATA':'OFFLINE · RETRYING'}
 }
 const ASTER_API_BASE = window.ASTER_API_BASE || '';
-let asterSessionState={authenticated:false,me:null,wallet:null,transactions:[]};
+let asterSessionState={authenticated:false,me:null,wallet:null,transactions:[],csrf:''};
 function apiConfigured(){return /^https:\/\//.test(ASTER_API_BASE)}
 async function apiRequest(path,options={}){
   if(!apiConfigured()) throw new Error('Aster API is not deployed/configured on this build');
-  const res=await fetch(ASTER_API_BASE+path,{credentials:'include',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});
+  const res=await fetch(ASTER_API_BASE+path,{credentials:'include',headers:{'Content-Type':'application/json',...(asterSessionState.csrf?{'X-Aster-CSRF':asterSessionState.csrf}:{}),...(options.headers||{})},...options});
   const data=await res.json().catch(()=>({}));
   if(!res.ok) throw new Error(data.detail||('Aster API error '+res.status));
   return data;
@@ -348,8 +348,7 @@ async function refreshAccountState(){
   }
 }
 async function signIn(email,password){
-  const csrf=document.cookie.split('; ').find(x=>x.startsWith('AsterCSRF='))?.split('=')[1]||'';
-  return apiRequest('/v1/auth/login',{method:'POST',headers:{'X-Aster-CSRF':csrf},body:JSON.stringify({email,password})});
+  const result=await apiRequest('/v1/auth/login',{method:'POST',body:JSON.stringify({email,password})}); asterSessionState.csrf=result.csrf_token||''; await refreshAccountState(); return result;
 }
 function renderWalletState(){
   const note=$('#walletState');if(!note)return;
