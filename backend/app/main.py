@@ -7,6 +7,8 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from pwdlib import PasswordHash
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, create_engine, select
@@ -85,6 +87,13 @@ class Notification(Base):
 Base.metadata.create_all(engine)
 
 app = FastAPI(title="Aster Financials API", version="0.2.0")
+if ALLOWED_ORIGINS:
+    app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_credentials=True,
+                       allow_methods=["GET","POST","PATCH","DELETE","OPTIONS"],
+                       allow_headers=["Content-Type","X-Aster-CSRF"])
+allowed_hosts = [x.strip() for x in os.getenv("ALLOWED_HOSTS", "").split(",") if x.strip()]
+if allowed_hosts:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 class RegisterIn(BaseModel):
     email: EmailStr
