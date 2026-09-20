@@ -32,6 +32,7 @@ fun GenZHome(balance:String,userName:String,onInvest:()->Unit,onMarkets:()->Unit
         Pair(NeonCoral,Color(0xFFFFB35C))
     )
     val (accent,accent2)=palettes[accentIndex.coerceIn(0,3)]
+    val density=LocalDensity.current
     var rx by remember{mutableFloatStateOf(0f)}
     var ry by remember{mutableFloatStateOf(0f)}
     val transition=rememberInfiniteTransition(label="ambient")
@@ -59,7 +60,7 @@ fun GenZHome(balance:String,userName:String,onInvest:()->Unit,onMarkets:()->Unit
                             onDragEnd={rx=0f;ry=0f}
                         )
                     }
-                    .graphicsLayer{rotationX=rx;rotationY=ry;cameraDistance=28*LocalDensity.current.density}
+                    .graphicsLayer{rotationX=rx;rotationY=ry;cameraDistance=28*density.density}
                     .clip(RoundedCornerShape(30.dp))
                     .background(Brush.linearGradient(listOf(accent,accent2)))
                     .shadow(24.dp,RoundedCornerShape(30.dp),ambientColor=accent2,spotColor=accent)
