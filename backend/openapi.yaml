@@ -31,6 +31,26 @@ paths:
       summary: Current account
       responses:
         '200': {description: Account}
+  /v1/kyc/status:
+    get:
+      security: [{session: []}]
+      summary: Current KYC verification state
+      responses:
+        '200': {description: KYC state}
+  /v1/wallet/deposits:
+    post:
+      security: [{session: []}]
+      summary: Create a deposit intent when a provider is configured
+      responses:
+        '201': {description: Deposit intent}
+        '503': {description: Deposit provider not configured}
+  /v1/wallet/withdrawals:
+    post:
+      security: [{session: []}]
+      summary: Create a withdrawal request when a provider is configured
+      responses:
+        '201': {description: Withdrawal request}
+        '503': {description: Withdrawal provider not configured}
   /v1/wallet:
     get:
       security: [{session: []}]
