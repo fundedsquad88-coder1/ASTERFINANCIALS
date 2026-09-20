@@ -41,6 +41,41 @@ main{padding:8px 16px 0}.screen{display:none}.screen.on{display:block;animation:
 .input{width:100%;padding:13px 14px;border:1px solid var(--line);background:#fff;border-radius:14px;margin:7px 0 12px;outline:none}.input:focus{border-color:var(--gold)}
 .badge{font-size:10px;font-weight:900;padding:5px 8px;border-radius:99px;background:rgba(22,168,120,.1);color:var(--green)}.lock{font-size:10px;font-weight:900;padding:5px 8px;border-radius:99px;background:rgba(17,17,26,.08);color:var(--muted)}
 @media(max-width:370px){.invest-cards{grid-template-columns:1fr}.actions{grid-template-columns:1fr 1fr}.actions .action:last-child{grid-column:1/-1}}
+
+/* Aster 4-theme system */
+body.theme-dark{--bg:#0b0a10;--card:rgba(24,22,34,.82);--card2:#171520;--text:#f7f5fb;--muted:#a9a5b5;--line:rgba(255,255,255,.10);--gold:#e8b84c;--gold2:#f6d77b;--violet:#9b84ff;--cyan:#55e0dc;--green:#2bd39a;--red:#ff7189;--shadow:0 18px 55px rgba(0,0,0,.34)}
+body.theme-dark .top{background:linear-gradient(var(--bg) 55%,transparent)}
+body.theme-dark .tabs{background:rgba(255,255,255,.07)}
+body.theme-dark .tabs button.on,body.theme-dark .chip,body.theme-dark .secondary{background:rgba(255,255,255,.10);color:var(--text)}
+body.theme-dark .primary{background:#f5f1ff;color:#17131c}
+body.theme-dark .bottom{background:rgba(20,18,29,.86)}
+body.theme-dark .input{background:#171520;color:var(--text)}
+
+body.theme-aurora{--bg:#eefcff;--card:rgba(255,255,255,.76);--card2:#fff;--text:#10202a;--muted:#5d7480;--line:rgba(16,32,42,.10);--gold:#13b8b0;--gold2:#62eee7;--violet:#665cff;--cyan:#14cbd0;--shadow:0 18px 55px rgba(37,123,150,.14)}
+body.theme-aurora .b1{background:#6de7df}.theme-aurora .b2{background:#8d7dff}.theme-aurora .b3{background:#65d6ff}
+body.theme-aurora .hero{background:linear-gradient(135deg,#69e5d8,#6e7dff)}
+body.theme-aurora .orb,body.theme-aurora .avatar{background:linear-gradient(135deg,#62eee7,#746cff)}
+body.theme-aurora .chip.on,body.theme-aurora .bottom button.on{background:linear-gradient(135deg,#5fe8de,#a19aff)}
+body.theme-aurora .primary{background:#13232d}
+body.theme-aurora .link{color:#5148d9}
+
+body.theme-sunset{--bg:#fff7f3;--card:rgba(255,255,255,.80);--card2:#fff;--text:#24151a;--muted:#856c72;--line:rgba(36,21,26,.09);--gold:#ff8b63;--gold2:#ffc06e;--violet:#e86aa8;--cyan:#ffb45c;--shadow:0 18px 55px rgba(177,72,99,.13)}
+body.theme-sunset .b1{background:#ffc36e}.theme-sunset .b2{background:#f18ab7}.theme-sunset .b3{background:#ff9c7b}
+body.theme-sunset .hero{background:linear-gradient(135deg,#ffc56f,#ff906e 45%,#e86aa8)}
+body.theme-sunset .orb,body.theme-sunset .avatar{background:linear-gradient(135deg,#ffc56f,#e86aa8)}
+body.theme-sunset .chip.on,body.theme-sunset .bottom button.on{background:linear-gradient(135deg,#ffc56f,#ee8bb7)}
+body.theme-sunset .primary{background:#24151a}
+body.theme-sunset .link{color:#c24d7d}
+
+.theme-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.theme-option{padding:15px;border:1px solid var(--line);border-radius:18px;text-align:left;background:var(--card);font-weight:900}
+.theme-option small{display:block;color:var(--muted);font-weight:700;margin-top:4px}
+.theme-option.active{border:2px solid var(--gold);box-shadow:0 8px 25px rgba(0,0,0,.08)}
+.theme-dot{display:block;width:30px;height:30px;border-radius:10px;margin-bottom:9px;background:linear-gradient(135deg,#f2cc65,#b39bff)}
+.theme-dot.dark{background:linear-gradient(135deg,#17131c,#9b84ff)}
+.theme-dot.aurora{background:linear-gradient(135deg,#62eee7,#746cff)}
+.theme-dot.sunset{background:linear-gradient(135deg,#ffc56f,#e86aa8)}
+
 </style>
 </head>
 <body>
@@ -55,7 +90,8 @@ main{padding:8px 16px 0}.screen{display:none}.screen.on{display:block;animation:
   <div class="eyebrow">Aster Financials</div><div class="title">Build wealth on autopilot.</div><p class="sub">A Gen-Z Auto-Invest platform built around simple strategies, transparent projections and live market context.</p>
   <div class="hero"><div class="hero-label">Available balance</div><div class="balance">$0.00</div><div class="delta">Account not connected</div><div class="chart" id="homeChart"></div><div class="actions"><button class="action primary" data-go="invest">Auto-Invest</button><button class="action" data-go="wallet">Deposit</button><button class="action" data-go="markets">Markets</button></div></div>
   <div class="grid2"><div class="card"><div class="eyebrow">Active strategies</div><div class="stat">0</div><div class="small muted">Connect your Aster account to see live positions.</div></div><div class="card"><div class="eyebrow">Referral</div><div class="stat">15%</div><div class="small muted">Referral program · terms apply.</div></div></div>
-  <div class="card" style="margin-top:14px"><div class="row"><div><div class="eyebrow">Plan your capital</div><b>ROI Calculator</b><div class="small muted">Test 20–25% illustrative weekly compounding.</div></div><button class="primary" data-go="roiCalc" style="width:auto;padding:11px 15px">Calculate</button></div></div><div class="section-head"><h2>Market pulse</h2><button class="link" data-go="markets">View all</button></div>
+  <div class="card" style="margin-top:14px"><div class="row"><div><div class="eyebrow">Plan your capital</div><b>ROI Calculator</b><div class="small muted">Explore illustrative 20–25% weekly compounding.</div></div><button class="primary" data-go="roiCalc" style="width:auto;padding:11px 15px">Calculate</button></div></div>
+  <div class="section-head"><h2>Market pulse</h2><button class="link" data-go="markets">View all</button></div>
   <div class="card" id="homeMarkets"><div class="small muted">Loading live market data…</div></div>
   <div class="section-head"><h2>Latest market news</h2></div>
   <div class="card" id="news"><div class="small muted">Loading news…</div></div>
@@ -78,30 +114,13 @@ main{padding:8px 16px 0}.screen{display:none}.screen.on{display:block;animation:
 
 <section id="roiCalc" class="screen">
   <div class="eyebrow">ROI Calculator</div><div class="title">See the math before you invest.</div>
-  <p class="sub">Illustrative weekly compounding at 20–25% ROI. This is a calculator, not a promise or forecast.</p>
-  <div class="card">
-    <div class="eyebrow">Initial capital</div><div class="amount" id="roiAmtLabel">$1,000</div>
-    <input class="range" id="roiAmt" type="range" min="100" max="100000" step="100" value="1000">
-    <div class="chips" id="roiAmtChips"><button class="chip" data-v="500">$500</button><button class="chip on" data-v="1000">$1k</button><button class="chip" data-v="5000">$5k</button><button class="chip" data-v="10000">$10k</button></div>
-  </div>
-  <div class="card">
-    <div class="eyebrow">Illustrative weekly ROI</div><div class="amount" id="roiRateLabel">20%</div>
-    <input class="range" id="roiRate" type="range" min="20" max="25" step="0.5" value="20">
-    <div class="chips" id="roiRateChips"><button class="chip on" data-v="20">20%</button><button class="chip" data-v="22.5">22.5%</button><button class="chip" data-v="25">25%</button></div>
-  </div>
-  <div class="card">
-    <div class="row"><div><div class="eyebrow">Time period</div><b id="roiWeeksLabel">12 weeks</b></div><span class="badge">Compounded</span></div>
-    <input class="range" id="roiWeeks" type="range" min="1" max="52" step="1" value="12">
-    <div class="chips" id="roiWeekChips"><button class="chip" data-v="4">4w</button><button class="chip" data-v="12">12w</button><button class="chip on" data-v="24">24w</button><button class="chip" data-v="52">52w</button></div>
-  </div>
-  <div class="card">
-    <div class="eyebrow">Projected value</div><div class="big-proj" id="roiOut">$8,916</div>
-    <div class="row"><span class="small muted">Illustrative profit</span><b id="roiProfit">$7,916</b></div>
-    <div class="row"><span class="small muted">Capital multiplier</span><b id="roiMultiple">8.92×</b></div>
-    <div class="projection" id="roiChart"></div>
-    <div class="notice"><b>Important:</b> 20–25% every week is an extremely aggressive mathematical scenario. Real returns can be negative, and the calculator does not predict actual performance.</div>
-  </div>
+  <p class="sub">Illustrative weekly compounding from 20% to 25%. Adjust capital and time to explore the mathematics.</p>
+  <div class="card"><div class="eyebrow">Initial capital</div><div class="amount" id="roiAmtLabel">$1,000</div><input class="range" id="roiAmt" type="range" min="100" max="100000" step="100" value="1000"><div class="chips" id="roiAmtChips"><button class="chip" data-v="500">$500</button><button class="chip on" data-v="1000">$1k</button><button class="chip" data-v="5000">$5k</button><button class="chip" data-v="10000">$10k</button></div></div>
+  <div class="card"><div class="eyebrow">Illustrative weekly ROI</div><div class="amount" id="roiRateLabel">20%</div><input class="range" id="roiRate" type="range" min="20" max="25" step="0.5" value="20"><div class="chips" id="roiRateChips"><button class="chip on" data-v="20">20%</button><button class="chip" data-v="22.5">22.5%</button><button class="chip" data-v="25">25%</button></div></div>
+  <div class="card"><div class="row"><div><div class="eyebrow">Time period</div><b id="roiWeeksLabel">12 weeks</b></div><span class="badge">Compounded</span></div><input class="range" id="roiWeeks" type="range" min="1" max="52" step="1" value="12"><div class="chips" id="roiWeekChips"><button class="chip" data-v="4">4w</button><button class="chip on" data-v="12">12w</button><button class="chip" data-v="24">24w</button><button class="chip" data-v="52">52w</button></div></div>
+  <div class="card"><div class="eyebrow">Projected value</div><div class="big-proj" id="roiOut">$8,916</div><div class="row"><span class="small muted">Illustrative profit</span><b id="roiProfit">$7,916</b></div><div class="row"><span class="small muted">Capital multiplier</span><b id="roiMultiple">8.92×</b></div><div class="projection" id="roiChart"></div><div class="notice"><b>Important:</b> This calculator is mathematical only. A 20–25% weekly return is an extremely aggressive scenario; real investment returns can be negative. Nothing here is a promise, forecast or guarantee.</div></div>
 </section>
+
 <section id="markets" class="screen">
   <div class="eyebrow">Markets</div><div class="title">Live market context.</div><p class="sub">Informational market data for your Auto-Invest decisions. No trading terminal, no order execution.</p>
   <div class="tabs" id="marketTabs"><button class="on" data-filter="all">All</button><button data-filter="crypto">Crypto</button><button data-filter="forex">Forex</button></div>
@@ -138,7 +157,6 @@ function renderMarkets(){let keys=Object.keys(quotes).filter(k=>marketFilter==='
 async function loadMarkets(){try{let syms=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];let raw=await nativeFetch('https://api.binance.com/api/v3/ticker/24hr?symbols=['+syms.map(s=>'\\"'+s+'\\"').join(',')+']');let data=JSON.parse(raw);quotes={};data.forEach(x=>{quotes[x.symbol.replace('USDT','/USDT')]={symbol:x.symbol.replace('USDT','/USDT'),type:'crypto',price:+x.lastPrice,open:+x.openPrice}});renderMarkets()}catch(e){$('#marketList').innerHTML='<div class="small muted">Live market feed unavailable. No placeholder prices are shown.</div>';$('#homeMarkets').innerHTML='<div class="small muted">Live market feed unavailable.</div>'}}
 async function loadNews(target){try{let raw=await nativeFetch('https://news.google.com/rss/search?q=crypto%20markets%20bitcoin%20ethereum&hl=en-US&gl=US&ceid=US:en');let xml=new DOMParser().parseFromString(raw,'text/xml');let items=[...xml.querySelectorAll('item')].slice(0,6);$(target).innerHTML=items.length?items.map(i=>'<a class="news" href="'+i.querySelector('link')?.textContent+'" target="_blank"><b>'+i.querySelector('title')?.textContent+'</b><span>'+i.querySelector('pubDate')?.textContent+'</span></a>').join(''):'<div class="small muted">No headlines returned.</div>'}catch(e){$(target).innerHTML='<div class="small muted">News feed unavailable right now.</div>'}}
 function projection(){let amount=+$('#amt').value,weeks=+$('#weeks').value;$('#amtLabel').textContent='$'+fmt(amount,0);$('#weeksLabel').textContent=weeks+' weeks';$$('#amtChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.a===amount));let weekly=$('#investTabs button.on').dataset.type==='crypto'?.012:.004;let vals=[amount];for(let i=1;i<=weeks;i++)vals.push(vals[i-1]*(1+weekly));let end=vals.at(-1);$('#projValue').textContent='$'+fmt(end,0);$('#projChart').innerHTML=line(vals,'#8d72ff');$('#projNote').textContent='Illustrative '+(weekly*100).toFixed(1)+'% weekly assumption for visualization only. Actual returns can be negative and are not guaranteed.'}
-
 function roiCalc(){const a=+$('#roiAmt').value,r=+$('#roiRate').value/100,w=+$('#roiWeeks').value;$('#roiAmtLabel').textContent='$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets')loadMarkets()}
 $$('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
 $('#investTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');projection()});
@@ -154,13 +172,19 @@ $('#referral').onclick=()=>openSheet('Referral program','<p>Aster includes the V
 $('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
 $('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
 $('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
-$('#prefs').onclick=()=>openSheet('Preferences','<p>Theme: Premium Light. Motion and haptics are handled by the native shell.</p><button class="secondary" id="darkMode">Switch dark theme</button>');$('#theme').onclick=()=>document.body.classList.toggle('dark');
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'light'}
+function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());
+document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});
+$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
 $('#bell').onclick=()=>openSheet('Notifications','<p>No account alerts yet. Once the backend is connected, this area can show deposits, strategy events, withdrawals and security alerts.</p>');
-loadMarkets();loadNews('#news');loadNews('#news2');projection();roiCalc();$('#homeChart').innerHTML=line([1,1.02,1.01,1.05,1.04,1.08,1.07,1.11],'#17131c');
+applyTheme(currentTheme());roiCalc();loadMarkets();loadNews('#news');loadNews('#news2');projection();$('#homeChart').innerHTML=line([1,1.02,1.01,1.05,1.04,1.08,1.07,1.11],'#17131c');
 setInterval(loadMarkets,15000);
 </script>
 </body>
-</html>+fmt(a,0);$('#roiRateLabel').textContent=r*100+'%';$('#roiWeeksLabel').textContent=w+' weeks';$('#roiAmtChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===a));$('#roiRateChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===+r*100));$('#roiWeekChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===w));let vals=[a];for(let i=1;i<=w;i++)vals.push(vals[i-1]*(1+r));const end=vals[vals.length-1];$('#roiOut').textContent='$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets')loadMarkets()}
+</html>+fmt(a,0);$('#roiRateLabel').textContent=(r*100)+'%';$('#roiWeeksLabel').textContent=w+' weeks';$('#roiAmtChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===a));$('#roiRateChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===r*100));$('#roiWeekChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===w));let vals=[a];for(let i=1;i<=w;i++)vals.push(vals[i-1]*(1+r));const end=vals[vals.length-1];$('#roiOut').textContent='$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets')loadMarkets()}
 $$('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
 $('#investTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');projection()});
 $$('.invest-card').forEach(c=>c.addEventListener('click',()=>{$$('.invest-card').forEach(x=>x.classList.remove('on'));c.classList.add('on')}));
@@ -175,7 +199,13 @@ $('#referral').onclick=()=>openSheet('Referral program','<p>Aster includes the V
 $('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
 $('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
 $('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
-$('#prefs').onclick=()=>openSheet('Preferences','<p>Theme: Premium Light. Motion and haptics are handled by the native shell.</p><button class="secondary" id="darkMode">Switch dark theme</button>');$('#theme').onclick=()=>document.body.classList.toggle('dark');
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'light'}
+function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());
+document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});
+$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
 $('#bell').onclick=()=>openSheet('Notifications','<p>No account alerts yet. Once the backend is connected, this area can show deposits, strategy events, withdrawals and security alerts.</p>');
 loadMarkets();loadNews('#news');loadNews('#news2');projection();$('#homeChart').innerHTML=line([1,1.02,1.01,1.05,1.04,1.08,1.07,1.11],'#17131c');
 setInterval(loadMarkets,15000);
@@ -196,14 +226,24 @@ $('#referral').onclick=()=>openSheet('Referral program','<p>Aster includes the V
 $('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
 $('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
 $('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
-$('#prefs').onclick=()=>openSheet('Preferences','<p>Theme: Premium Light. Motion and haptics are handled by the native shell.</p><button class="secondary" id="darkMode">Switch dark theme</button>');$('#theme').onclick=()=>document.body.classList.toggle('dark');
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'light'}
+function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());
+document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});
+$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
 $('#bell').onclick=()=>openSheet('Notifications','<p>No account alerts yet. Once the backend is connected, this area can show deposits, strategy events, withdrawals and security alerts.</p>');
 loadMarkets();loadNews('#news');loadNews('#news2');projection();$('#homeChart').innerHTML=line([1,1.02,1.01,1.05,1.04,1.08,1.07,1.11],'#17131c');
 setInterval(loadMarkets,15000);
 </script>
 </body>
 </html>+fmt(end-a,0);$('#roiMultiple').textContent=(end/a).toFixed(2)+'×';$('#roiChart').innerHTML=line(vals,'#8d72ff')}
-['roiAmt','roiRate','roiWeeks'].forEach(id=>$('#'+id).oninput=roiCalc);$('#roiAmtChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiAmt').value=b.dataset.v;roiCalc()}};$('#roiRateChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiRate').value=b.dataset.v;roiCalc()}};$('#roiWeekChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiWeeks').value=b.dataset.v;roiCalc()}};
+['roiAmt','roiRate','roiWeeks'].forEach(id=>$('#'+id).oninput=roiCalc);
+$('#roiAmtChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiAmt').value=b.dataset.v;roiCalc()}};
+$('#roiRateChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiRate').value=b.dataset.v;roiCalc()}};
+$('#roiWeekChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiWeeks').value=b.dataset.v;roiCalc()}};
+
 function go(id){$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets')loadMarkets()}
 $$('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
 $('#investTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');projection()});
@@ -219,7 +259,13 @@ $('#referral').onclick=()=>openSheet('Referral program','<p>Aster includes the V
 $('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
 $('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
 $('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
-$('#prefs').onclick=()=>openSheet('Preferences','<p>Theme: Premium Light. Motion and haptics are handled by the native shell.</p><button class="secondary" id="darkMode">Switch dark theme</button>');$('#theme').onclick=()=>document.body.classList.toggle('dark');
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'light'}
+function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());
+document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});
+$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
 $('#bell').onclick=()=>openSheet('Notifications','<p>No account alerts yet. Once the backend is connected, this area can show deposits, strategy events, withdrawals and security alerts.</p>');
 loadMarkets();loadNews('#news');loadNews('#news2');projection();$('#homeChart').innerHTML=line([1,1.02,1.01,1.05,1.04,1.08,1.07,1.11],'#17131c');
 setInterval(loadMarkets,15000);
