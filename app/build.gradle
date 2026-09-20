@@ -6,6 +6,10 @@ android {
     namespace 'com.asterfinancials.app'
     compileSdk 35
 
+    dependencies {
+        implementation 'androidx.webkit:webkit:1.17.0'
+    }
+
     defaultConfig {
         applicationId 'com.asterfinancials.app'
         minSdk 24
