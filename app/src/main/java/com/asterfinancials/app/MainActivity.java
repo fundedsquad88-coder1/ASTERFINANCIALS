@@ -17,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -94,9 +95,5 @@ public class MainActivity extends Activity {
             });
         }
 
-        private String quote(String value) {
-            return """ + value.replace("\\", "\\\\").replace(""", "\\"")
-                    .replace("\r", "\\r").replace("\n", "\\n").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029") + """;
-        }
-    }
+        private String quote(String value) { return JSONObject.quote(value); }
 }
