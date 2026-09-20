@@ -219,9 +219,10 @@ async function loadMarketDetail(symbol){
   $('#detailSymbol').textContent=q.symbol;
   $('#detailType').textContent=q.type==='crypto'?'Crypto market':'Market';
   $('#detailPrice').textContent=q.price<2?q.price.toFixed(5):fmt(q.price,2);
-  const pct=((q.price-q.open)/q.open)*100;
-  $('#detailChange').textContent=(pct>=0?'+':'')+pct.toFixed(2)+'% today';
-  $('#detailChange').className='delta '+(pct>=0?'up':'down');
+  const pct=q.type==='forex'?null:((q.price-q.open)/q.open)*100;
+  $('#detailChange').textContent=q.type==='forex'?'Daily reference rate · '+(q.referenceDate||'latest'):(pct>=0?'+':'')+pct.toFixed(2)+'% today';
+  $('#detailChange').className='delta '+(pct===null?'':(pct>=0?'up':'down'));
+  $('#detailStatus').innerHTML=q.type==='forex'?'REFERENCE':'<span class="live-dot"></span> LIVE';
   $('#detailHigh').textContent=q.high<2?q.high.toFixed(5):fmt(q.high,2);
   $('#detailLow').textContent=q.low<2?q.low.toFixed(5):fmt(q.low,2);
   $('#detailVolume').textContent='$'+fmt(q.volume,0);
