@@ -277,6 +277,18 @@ def strategies():
 
 
 
+
+@app.post("/v1/internal/valuation-sources/{strategy}")
+def configure_valuation_source(strategy:str, provider:str, enabled:bool=False, dbs:Session=Depends(db)):
+    # Internal deployment hook; protect this route with network/admin authentication before production exposure.
+    row=dbs.scalar(select(ValuationSource).where(ValuationSource.strategy==strategy))
+    if not row:
+        row=ValuationSource(strategy=strategy,provider=provider,enabled=enabled); dbs.add(row)
+    else:
+        row.provider=provider; row.enabled=enabled
+    dbs.commit()
+    return {"strategy":row.strategy,"provider":row.provider,"enabled":row.enabled}
+
 @app.get("/v1/portfolio/valuation-status")
 def valuation_status(user: User = Depends(current_user), dbs: Session = Depends(db)):
     sources = dbs.scalars(select(ValuationSource).order_by(ValuationSource.strategy.asc())).all()
