@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [ main, claude-ui-v1 ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
@@ -52,6 +54,18 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
+      - name: Static source checks
+        shell: bash
+        run: |
+          set -e
+          test -s app/src/main/assets/index.html
+          test -s app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q 'WebViewAssetLoader' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.VIBRATE' app/src/main/AndroidManifest.xml
+          grep -q 'Live market feed' app/src/main/assets/index.html
+          grep -q 'Illustrative' app/src/main/assets/index.html
 
       - name: Build Android APK
         run: gradle assembleDebug --stacktrace
