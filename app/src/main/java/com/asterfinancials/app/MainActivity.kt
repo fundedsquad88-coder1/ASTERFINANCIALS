@@ -154,7 +154,6 @@ fun AsterApp(){
         onInvest={go(Tab.AUTO)},
         onMarkets={go(Tab.MARKETS)},
         onFunding={go(Tab.PROFILE)},
-        onProfile={go(Tab.PROFILE)},
         onNotifications={go(Tab.PROFILE)},
         dark=false,
         accentIndex=accentIndex
