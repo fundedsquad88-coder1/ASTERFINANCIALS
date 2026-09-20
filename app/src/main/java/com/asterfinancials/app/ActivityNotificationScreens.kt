@@ -22,6 +22,7 @@ fun ActivityScreen(onBack:()->Unit){
     val repo=remember{ActivityRepository(context)}
     var items by remember{mutableStateOf(emptyList<ActivityItem>())}
     var loading by remember{mutableStateOf(true)}
+    val scope=rememberCoroutineScope()
     var error by remember{mutableStateOf(false)}
     LaunchedEffect(Unit){
         loading=true
@@ -83,14 +84,14 @@ fun NotificationsScreen(onBack:()->Unit){
         Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,null,tint=Gold)}
             Column(Modifier.weight(1f)){Text("Notifications",fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold);Text("Account and strategy alerts",color=Muted,fontSize=9.sp)}
-            TextButton(onClick={LaunchedEffectScopeHolder.launch(repo){items=repo.list().getOrElse{emptyList()}}}){Text("Refresh",fontSize=9.sp)}
+            TextButton(onClick={scope.launch{items=repo.list().getOrElse{items}}}){Text("Refresh",fontSize=9.sp)}
         }
         if(loading)Text("Loading notifications…",color=Muted,fontSize=10.sp,modifier=Modifier.padding(16.dp))
         else if(items.isEmpty())Text("No notifications yet.",color=Muted,fontSize=10.sp,modifier=Modifier.padding(16.dp))
         else LazyColumn(contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
             items(items){n->
                 CardBox(Modifier.fillMaxWidth().clickable{
-                    LaunchedEffectScopeHolder.launch(repo){repo.read(n.id);items=repo.list().getOrElse{items}}
+                    scope.launch{kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){repo.read(n.id)};items=repo.list().getOrElse{items}}
                 }){
                     Column(Modifier.padding(14.dp)){
                         Row(verticalAlignment=Alignment.CenterVertically){
@@ -105,9 +106,5 @@ fun NotificationsScreen(onBack:()->Unit){
             }
         }
     }
-}
-
-private object LaunchedEffectScopeHolder{
-    fun launch(repo:NotificationRepository,block:suspend()->Unit){ kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch{kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){block()}} }
 }
 
