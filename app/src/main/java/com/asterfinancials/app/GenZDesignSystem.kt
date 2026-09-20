@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.clickable
 
 val AsterViolet = Color(0xFFA48BFF)
 val AsterCyan = Color(0xFF4FD8FF)
@@ -48,9 +50,9 @@ fun AsterGenZTheme(
         primary=a,onPrimary=AsterInk,onBackground=AsterInk,onSurface=AsterInk
     )
     MaterialTheme(colorScheme=scheme,typography=Typography(
-        headlineLarge=LocalTextStyle.current.copy(fontSize=30.sp),
-        titleLarge=LocalTextStyle.current.copy(fontSize=20.sp),
-        bodyMedium=LocalTextStyle.current.copy(fontSize=14.sp)
+        headlineLarge=TextStyle(fontSize=30.sp),
+        titleLarge=TextStyle(fontSize=20.sp),
+        bodyMedium=TextStyle(fontSize=14.sp)
     )){
         Box(Modifier.fillMaxSize().background(scheme.background)){
             AsterAmbientBackground(a,a2,dark)
