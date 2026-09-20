@@ -156,7 +156,7 @@ public class MainActivity extends Activity {
                         || "api2.binance.com".equals(host)
                         || "api3.binance.com".equals(host)
                         || "api4.binance.com".equals(host)
-                        || "news.google.com".equals(host);
+                        || "news.google.com".equals(host) || "api.frankfurter.dev".equals(host);
             } catch (Exception e) {
                 return false;
             }
