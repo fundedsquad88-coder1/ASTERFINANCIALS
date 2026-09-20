@@ -68,6 +68,7 @@ class MainActivity:ComponentActivity(){
 @Composable
 fun AsterApp(){
     var dark by remember{mutableStateOf(false)}
+    var accentIndex by remember{mutableIntStateOf(0)}
     var tab by remember{mutableStateOf(Tab.HOME)}
     MaterialTheme(
         colorScheme=if(dark)
@@ -96,7 +97,7 @@ fun AsterApp(){
                     Tab.MARKETS->Markets()
                     Tab.AUTO->AutoInvest()
                     Tab.CALC->Calculator()
-                    Tab.PROFILE->Profile{dark=!dark}
+                    Tab.PROFILE->Profile(theme={dark=!dark},accent=accentIndex,onAccent={accentIndex=it})
                 }
             }
             NavigationBar(containerColor=if(dark)Panel else Color.White){
@@ -156,6 +157,7 @@ fun AsterApp(){
         onProfile={go(Tab.PROFILE)},
         onNotifications={go(Tab.PROFILE)},
         dark=false,
+        accentIndex=accentIndex,
         onToggleTheme={}
     )
 }
@@ -731,7 +733,7 @@ private fun formatPrice(v:Double):String{
     return nf.format(v)
 }
 
-@Composable private fun Profile(theme:()->Unit){
+@Composable private fun Profile(theme:()->Unit,accent:Int=0,onAccent:(Int)->Unit={}){
     var showDeposit by remember{mutableStateOf(false)}
     var showWithdrawal by remember{mutableStateOf(false)}
     var showActivity by remember{mutableStateOf(false)}
@@ -779,6 +781,17 @@ private fun formatPrice(v:Double):String{
     }
 
     LazyColumn(contentPadding=PaddingValues(bottom=20.dp)){
+        item{
+            Text("Aster Account",fontSize=24.sp,fontWeight=FontWeight.Black,modifier=Modifier.padding(18.dp,18.dp,18.dp,4.dp))
+            Text("Personal control center",fontSize=9.sp,color=Muted,modifier=Modifier.padding(horizontal=18.dp))
+            Text("ACCENT",fontSize=9.sp,fontWeight=FontWeight.Black,color=Gold,modifier=Modifier.padding(18.dp,20.dp,18.dp,8.dp))
+            Row(Modifier.padding(horizontal=16.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                listOf("GOLD","VIOLET","MINT","CORAL").forEachIndexed{i,label->
+                    FilterChip(selected=accent==i,onClick={onAccent(i)},label={Text(label,fontSize=8.sp,fontWeight=FontWeight.Bold)})
+                }
+            }
+        }
+
         item{
             Column(Modifier.padding(18.dp,18.dp,18.dp,12.dp)){
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
