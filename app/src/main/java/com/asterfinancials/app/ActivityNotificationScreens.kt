@@ -79,6 +79,7 @@ fun NotificationsScreen(onBack:()->Unit){
     val repo=remember{NotificationRepository(context)}
     var items by remember{mutableStateOf(emptyList<AsterNotification>())}
     var loading by remember{mutableStateOf(true)}
+    val scope=rememberCoroutineScope()
     LaunchedEffect(Unit){loading=true;items=repo.list().getOrElse{emptyList()};loading=false}
     Column(Modifier.fillMaxSize()){
         Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){
