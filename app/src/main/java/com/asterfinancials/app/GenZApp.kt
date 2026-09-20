@@ -16,12 +16,28 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.*
 import kotlinx.coroutines.launch
 import kotlin.math.*
 import java.text.NumberFormat
 import java.util.Locale
+
+val Black=Color(0xFF050606)
+val Panel=Color(0xFF0D0E0E)
+val Panel2=Color(0xFF151616)
+val Gold=Color(0xFFD8AD37)
+val WhiteGold=Color(0xFFF1D98A)
+val Muted=Color(0xFF92928B)
+val Green=Color(0xFF18D779)
+val Red=Color(0xFFFF5C62)
+
+@Composable fun CardBox(mod:Modifier=Modifier,content:@Composable ColumnScope.()->Unit){
+    Card(mod,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),content=content)
+}
 
 private enum class GTab(val label:String,val icon:ImageVector){HOME("Home",Icons.Default.Home),MARKETS("Markets",Icons.Default.ShowChart),AUTO("Invest",Icons.Default.AutoGraph),CALC("Lab",Icons.Default.Calculate),MORE("More",Icons.Default.Person)}
 
