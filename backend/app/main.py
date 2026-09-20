@@ -237,6 +237,14 @@ def wallet(user: User = Depends(current_user), dbs: Session = Depends(db)):
     w = dbs.scalar(select(Wallet).where(Wallet.user_id==user.id))
     return {"available": str(w.available), "invested": str(w.invested), "pending": str(w.pending), "currency": "USDT"}
 
+
+@app.get("/v1/transactions/summary")
+def transactions_summary(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    rows = dbs.scalars(select(LedgerEntry).where(LedgerEntry.user_id==user.id).order_by(LedgerEntry.id.desc()).limit(100)).all()
+    posted = [r for r in rows if r.status=="posted"]
+    credits = sum((r.amount for r in posted if r.amount > 0), Decimal("0"))
+    debits = sum((-r.amount for r in posted if r.amount < 0), Decimal("0"))
+    return {"count":len(rows),"posted_credits":str(credits),"posted_debits":str(debits),"currency":"USDT"}
 @app.get("/v1/transactions")
 def transactions(user: User = Depends(current_user), dbs: Session = Depends(db)):
     rows = dbs.scalars(select(LedgerEntry).where(LedgerEntry.user_id==user.id).order_by(LedgerEntry.id.desc()).limit(100)).all()
@@ -247,6 +255,28 @@ def strategies():
     return {"strategies":[
         {"id":"core-crypto","name":"Core Crypto","type":"crypto","status":"available"},
         {"id":"global-fx","name":"Global FX","type":"fx","status":"available"}]}
+
+
+@app.get("/v1/portfolio/performance")
+def portfolio_performance(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    rows = dbs.scalars(select(LedgerEntry).where(LedgerEntry.user_id == user.id).order_by(LedgerEntry.id.asc()).limit(500)).all()
+    deposits = sum((r.amount for r in rows if r.kind == "deposit" and r.status == "posted"), Decimal("0"))
+    releases = sum((r.amount for r in rows if r.kind == "autoinvest_release" and r.status == "posted"), Decimal("0"))
+    invested_debits = sum((-r.amount for r in rows if r.kind == "autoinvest_debit" and r.status == "posted"), Decimal("0"))
+    net_contributed = deposits + releases
+    current_total = (w.available + w.invested) if w else Decimal("0")
+    realized = current_total - net_contributed
+    return {
+        "currency":"USDT",
+        "available":str(w.available if w else Decimal("0")),
+        "invested":str(w.invested if w else Decimal("0")),
+        "total":str(current_total),
+        "net_contributed":str(net_contributed),
+        "realized_unpriced_change":str(realized),
+        "ledger_autoinvest_debits":str(invested_debits),
+        "note":"Performance is unpriced until a real strategy valuation feed is connected."
+    }
 
 @app.get("/v1/portfolio")
 def portfolio(user: User = Depends(current_user), dbs: Session = Depends(db)):
