@@ -157,8 +157,7 @@ fun AsterApp(){
         onProfile={go(Tab.PROFILE)},
         onNotifications={go(Tab.PROFILE)},
         dark=false,
-        accentIndex=accentIndex,
-        onToggleTheme={}
+        accentIndex=accentIndex
     )
 }
 
