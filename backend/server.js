@@ -327,4 +327,16 @@ app.get("/api/admin/unmatched-transfers",auth,adminOnly,requireRole("super_admin
   const result=await pool.query("SELECT ut.id,ut.transfer_id AS \"transferId\",bt.network,bt.tx_hash AS \"txHash\",bt.amount,bt.from_address AS \"fromAddress\",bt.to_address AS \"toAddress\",bt.confirmations,bt.detected_at AS \"detectedAt\" FROM unmatched_transfers ut JOIN blockchain_transfers bt ON bt.id=ut.transfer_id WHERE ut.reviewed=FALSE ORDER BY ut.created_at ASC LIMIT 200");
   res.json({transfers:result.rows});
 });
+app.get("/api/notifications",auth,async(req,res)=>{
+  const result=await pool.query("SELECT id,category,title,body,read_at AS \"readAt\",created_at AS \"createdAt\" FROM user_notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100",[req.user.sub]);
+  res.json({notifications:result.rows});
+});
+app.post("/api/notifications/:id/read",auth,async(req,res)=>{
+  await pool.query("UPDATE user_notifications SET read_at=COALESCE(read_at,NOW()) WHERE id=$1 AND user_id=$2",[req.params.id,req.user.sub]);
+  res.json({ok:true});
+});
+app.post("/api/notifications/read-all",auth,async(req,res)=>{
+  await pool.query("UPDATE user_notifications SET read_at=COALESCE(read_at,NOW()) WHERE user_id=$1",[req.user.sub]);
+  res.json({ok:true});
+});
 
