@@ -341,8 +341,10 @@ async function refreshAccountState(){
     const wallet=await apiRequest('/v1/wallet');
     const transactions=await apiRequest('/v1/transactions');
     const portfolio=await apiRequest('/v1/portfolio');
+    const performance=await apiRequest('/v1/portfolio/performance');
+    const txSummary=await apiRequest('/v1/transactions/summary');
     const strategies=await apiRequest('/v1/autoinvest');
-    asterSessionState={authenticated:true,me,wallet,transactions,portfolio,strategies,csrf:asterSessionState.csrf};
+    asterSessionState={authenticated:true,me,wallet,transactions,portfolio,performance,txSummary,strategies,csrf:asterSessionState.csrf};
     renderWalletState(); renderPortfolioState();
   }catch(e){
     asterSessionState={authenticated:false,me:null,wallet:null,transactions:[]};
