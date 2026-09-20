@@ -139,6 +139,19 @@ class AutoInvestIn(BaseModel):
     amount: Decimal = Field(gt=0)
     duration_weeks: int = Field(ge=1, le=104)
 
+
+MAX_VALUATION_AGE_SECONDS = int(os.getenv("MAX_VALUATION_AGE_SECONDS", "300"))
+
+def validate_valuation(value: Decimal, as_of: datetime) -> None:
+    if value < Decimal("0"):
+        raise HTTPException(400, "Valuation cannot be negative")
+    age = (datetime.now(timezone.utc) - utc_datetime(as_of)).total_seconds()
+    if age < -30:
+        raise HTTPException(400, "Valuation timestamp is in the future")
+    if age > MAX_VALUATION_AGE_SECONDS:
+        raise HTTPException(409, "Valuation is stale")
+
+
 def db():
     with SessionLocal() as s:
         yield s
@@ -387,13 +400,23 @@ def create_autoinvest(
 
 class ValuationIn(BaseModel):
     value: Decimal = Field(ge=0)
+    as_of: Optional[datetime] = None
+    source: str = Field(min_length=2, max_length=80)
 
 @app.post("/v1/autoinvest/{strategy_id}/valuation")
 def set_strategy_valuation(strategy_id:int, body:ValuationIn, user:User=Depends(current_user), _:None=Depends(require_csrf), dbs:Session=Depends(db)):
     row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==strategy_id,AutoInvest.user_id==user.id))
     if not row: raise HTTPException(404,"Strategy not found")
-    valuation=StrategyValuation(autoinvest_id=row.id,value=body.value,source="server",as_of=datetime.now(timezone.utc))
-    dbs.add(valuation); dbs.commit()
+    as_of=body.as_of or datetime.now(timezone.utc)
+    validate_valuation(body.value, as_of)
+    source=dbs.scalar(select(ValuationSource).where(ValuationSource.strategy==row.strategy))
+    if source and not source.enabled:
+        raise HTTPException(409,"Valuation provider is disabled")
+    valuation=StrategyValuation(autoinvest_id=row.id,value=body.value,source=body.source,as_of=as_of)
+    dbs.add(valuation)
+    if source:
+        source.last_sync_at=as_of; source.last_error=None
+    dbs.commit()
     return {"strategy_id":row.id,"value":str(valuation.value),"as_of":valuation.as_of,"source":valuation.source}
 
 @app.get("/v1/autoinvest/{strategy_id}/valuation")
