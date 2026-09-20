@@ -141,9 +141,10 @@ class Notification(Base):
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-Base.metadata.create_all(engine)
+if os.getenv("ASTER_SKIP_CREATE_ALL", "false").lower() != "true":
+    Base.metadata.create_all(engine)
 
-# Production deployments must use versioned migrations; create_all remains only for local bootstrap.
+# Production deployments use versioned migrations; create_all is only a local bootstrap.
 
 app = FastAPI(title="Aster Financials API", version="0.3.0")
 if ALLOWED_ORIGINS:
