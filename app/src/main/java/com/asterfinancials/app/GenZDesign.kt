@@ -61,9 +61,11 @@ private val LocalGenAccent=compositionLocalOf{Pair(NeonGold,Color(0xFFFF8A4C))}
     onProfile:()->Unit,
     onNotifications:()->Unit,
     dark:Boolean,
+    accentIndex:Int=0,
     onToggleTheme:()->Unit
 ){
-    val (accent,accent2)=LocalGenAccent.current
+    val accents=listOf(Pair(NeonGold,Color(0xFFFF8A4C)),Pair(NeonViolet,Color(0xFF4FD8FF)),Pair(NeonMint,Color(0xFF59A8FF)),Pair(NeonCoral,Color(0xFFFFB35C)))
+    val (accent,accent2)=accents[accentIndex.coerceIn(0,3)]
     var rx by remember{mutableFloatStateOf(0f)}
     var ry by remember{mutableFloatStateOf(0f)}
     val infinite=rememberInfiniteTransition(label="ambient")
