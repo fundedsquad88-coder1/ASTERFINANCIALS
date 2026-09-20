@@ -55,6 +55,19 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Verify backend Python syntax
+        shell: bash
+        run: |
+          set -e
+          python -m compileall -q backend/app
+          python - <<'PY'
+          import pathlib
+          required = ['backend/requirements.txt','backend/Dockerfile','backend/docker-compose.yml','backend/app/main.py']
+          missing=[p for p in required if not pathlib.Path(p).is_file()]
+          if missing: raise SystemExit('Missing backend files: '+', '.join(missing))
+          print('Backend foundation checks passed')
+          PY
+
       - name: Static source checks
         shell: bash
         run: |
