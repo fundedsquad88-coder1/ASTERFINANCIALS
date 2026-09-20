@@ -76,6 +76,33 @@ class LedgerEntry(Base):
     status: Mapped[str] = mapped_column(String(24), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+class LedgerTransaction(Base):
+    __tablename__ = "ledger_transactions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    reference: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    currency: Mapped[str] = mapped_column(String(16), default="USDT")
+    status: Mapped[str] = mapped_column(String(24), default="posted")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+class LedgerPosting(Base):
+    __tablename__ = "ledger_postings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    transaction_id: Mapped[int] = mapped_column(ForeignKey("ledger_transactions.id"), index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    account: Mapped[str] = mapped_column(String(64), index=True)
+    debit: Mapped[Decimal] = mapped_column(Numeric(28, 8), default=0)
+    credit: Mapped[Decimal] = mapped_column(Numeric(28, 8), default=0)
+    currency: Mapped[str] = mapped_column(String(16), default="USDT")
+
+def post_double_entry(dbs: Session, *, user_id: int, reference: str, amount: Decimal, debit_account: str, credit_account: str, currency: str = "USDT") -> None:
+    if amount <= 0:
+        raise ValueError("Ledger amount must be positive")
+    tx = LedgerTransaction(reference=reference, currency=currency, status="posted")
+    dbs.add(tx)
+    dbs.flush()
+    dbs.add(LedgerPosting(transaction_id=tx.id, user_id=user_id, account=debit_account, debit=amount, credit=Decimal("0"), currency=currency))
+    dbs.add(LedgerPosting(transaction_id=tx.id, user_id=user_id, account=credit_account, debit=Decimal("0"), credit=amount, currency=currency))
+
 class AutoInvest(Base):
     __tablename__ = "autoinvest"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
