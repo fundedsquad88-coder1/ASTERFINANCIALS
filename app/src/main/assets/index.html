@@ -324,9 +324,120 @@ function updateMarketStatus(ok){
   const el=$('#marketStatus');
   if(el){el.classList.toggle('off',!ok);el.innerHTML=ok?'<span class="live-dot"></span> LIVE DATA':'OFFLINE · RETRYING'}
 }
-function renderWalletState(){
-  const note=$('#walletState');if(note)note.innerHTML='<div class="small muted">Account-backed balance and ledger history will appear after secure sign-in.</div>';
+const ASTER_API_BASE = window.ASTER_API_BASE || '';
+let asterSessionState={authenticated:false,me:null,wallet:null,transactions:[]};
+function apiConfigured(){return /^https:\/\//.test(ASTER_API_BASE)}
+async function apiRequest(path,options={}){
+  if(!apiConfigured()) throw new Error('Aster API is not deployed/configured on this build');
+  const res=await fetch(ASTER_API_BASE+path,{credentials:'include',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.detail||('Aster API error '+res.status));
+  return data;
 }
+async function refreshAccountState(){
+  if(!apiConfigured()) return;
+  try{
+    const me=await apiRequest('/v1/me');
+    const wallet=await apiRequest('/v1/wallet');
+    const transactions=await apiRequest('/v1/transactions');
+    asterSessionState={authenticated:true,me,wallet,transactions};
+    renderWalletState(); renderPortfolioState();
+  }catch(e){
+    asterSessionState={authenticated:false,me:null,wallet:null,transactions:[]};
+    renderWalletState(); renderPortfolioState();
+  }
+}
+async function signIn(email,password){
+  const csrf=document.cookie.split('; ').find(x=>x.startsWith('AsterCSRF='))?.split('=')[1]||'';
+  return apiRequest('/v1/auth/login',{method:'POST',headers:{'X-Aster-CSRF':csrf},body:JSON.stringify({email,password})});
+}
+function renderWalletState(){
+  const note=$('#walletState');if(!note)return;
+  if(!asterSessionState.authenticated){note.innerHTML='<div class="small muted">Secure account connection is not configured on this build yet. No local or fake balance is displayed.</div>';return}
+  const w=asterSessionState.wallet;
+  note.innerHTML='<div class="grid2"><div><div class="eyebrow">Available</div><div class="stat">
+function renderPortfolioState(){
+  const p=$('#portfolio');if(!p)return;
+}
+function renderProfileState(){}
+function showToast(msg){const t=$('#toast');if(!t)return;$('#toastText').textContent=msg;t.classList.add('on');clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>t.classList.remove('on'),2400)}
+$$('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+const investTabs=$('#investTabs');if(investTabs)investTabs.addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');projection()});
+$$('.strategy-photo').forEach(c=>c.addEventListener('click',()=>{$$('.strategy-photo').forEach(x=>x.classList.remove('on'));c.classList.add('on');haptic('light')}));
+$('#amt').oninput=projection;$('#amtChips').addEventListener('click',e=>{let b=e.target.closest('[data-a]');if(!b)return;if(b.dataset.a==='custom'){const v=prompt('Enter investment amount (minimum $10):', $('#amt').value);if(v!==null){const n=Math.max(10,Math.round(Number(v)/10)*10);if(Number.isFinite(n))$('#amt').value=Math.min(100000,n)}}else $('#amt').value=b.dataset.a;projection()});
+$('#marketTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');marketFilter=b.dataset.filter;renderMarkets()});document.addEventListener('click',e=>{const row=e.target.closest('.market-row[data-market]');if(row){loadMarketDetail(row.dataset.market)}});
+function openSheet(title,body){$('#sheet').innerHTML='<div class="grab"></div><h3>'+title+'</h3>'+body+'<button class="primary" id="closeSheet" style="margin-top:14px">Close</button>';$('#sheetBack').classList.add('on');$('#closeSheet').onclick=()=>$('#sheetBack').classList.remove('on')}
+$('#review').onclick=()=>openSheet('Review Auto-Invest','<p>Strategy: <b>'+($('.strategy-photo.on')?.dataset.strategy||'Core Crypto')+'</b><br>Amount: <b>'+$('#amtLabel').textContent+'</b><br>Projection: <b>22.5% weekly illustrative compounding</b></p><div class="notice">This is a review screen only. Activation requires a secure authenticated Aster backend and will not be faked in the app.</div>');
+function openAccountSheet(){openSheet('Create or sign in','<p>Aster account authentication, KYC/AML and session management are server-side features. This APK will not create a fake account or local balance.</p><div class="notice">Production rule: authentication/session tokens must not be stored in localStorage. The backend should use secure HTTPS session handling.</div><button class="secondary" id="request">Continue when backend is connected</button>')}
+$('#connect').onclick=openAccountSheet;
+$('#deposit').onclick=()=>openSheet('Deposit','<p>Your verified deposit address and network will be supplied by the production wallet service. No address is hard-coded into this app.</p>');
+$('#withdraw').onclick=()=>openSheet('Withdraw','<p>Withdrawals require an authenticated account, available balance and backend risk/compliance checks.</p>');
+$('#referral').onclick=()=>openSheet('Referral program','<p>Referral rate: <b>15%</b> concept from V23.</p><div class="card" style="margin:10px 0"><div class="eyebrow">Your code</div><div class="stat">—</div><div class="small muted">Generated only after an authenticated account exists.</div></div><div class="notice">Rewards, eligibility and payout are ledger events. This client will never fabricate a paid reward.</div>');
+$('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
+$('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
+$('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
+$('#securityOpen')?.addEventListener('click',()=>go('security'));
+const onboardBack=$('#onboardBack');
+$('#onboardLater')?.addEventListener('click',()=>{localStorage.setItem('aster-onboarded','1');onboardBack.classList.remove('on')});
+$('#onboardConnect')?.addEventListener('click',()=>{localStorage.setItem('aster-onboarded','1');onboardBack.classList.remove('on');openAccountSheet()});
+function maybeOnboard(){if(!localStorage.getItem('aster-onboarded'))setTimeout(()=>onboardBack?.classList.add('on'),1900)}
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'light'}function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
+$('#bell').onclick=()=>openSheet('Notifications','<div class="empty-state"><div class="empty-icon">♢</div><b>No alerts yet</b><p>Once your authenticated account is connected, Aster can surface deposit confirmations, Auto-Invest events, withdrawals and security alerts here.</p></div>');
+const haptic=(kind='light')=>{try{if(window.AsterNative?.haptic)AsterNative.haptic(kind);else if(navigator.vibrate)navigator.vibrate(kind==='success'?[18,30,28]:kind==='medium'?24:10)}catch(e){}};function confetti(){const box=$('#confetti');if(!box)return;haptic('success');for(let i=0;i<28;i++){let p=document.createElement('i');p.className='confetti-piece';p.style.left=(50+(Math.random()*22-11))+'%';p.style.top='43%';p.style.setProperty('--dx',(Math.random()*320-160)+'px');p.style.setProperty('--dy',(Math.random()*420+180)+'px');p.style.setProperty('--rot',(Math.random()*900-450)+'deg');p.style.background=['#e8b84c','#8d72ff','#55e0dc','#ff7189','#fff'][i%5];box.appendChild(p);setTimeout(()=>p.remove(),1000)}}function setupTouchPolish(){document.addEventListener('pointerdown',e=>{let b=e.target.closest('button,.card,.invest-card,.strategy-photo,.market-row,.icon,.action');if(b)haptic(b.classList.contains('primary')?'medium':'light')},{passive:true});$$('.hero,.invest-card,.strategy-photo').forEach(el=>{el.classList.add('tilt');el.addEventListener('pointermove',e=>{let r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.transform='perspective(900px) rotateX('+(-y*5)+'deg) rotateY('+(x*6)+'deg) translateY(-2px)'});el.addEventListener('pointerleave',()=>el.style.transform='')});document.addEventListener('click',e=>{let m=e.target.closest('.market-row');if(m){m.classList.remove('flash');void m.offsetWidth;m.classList.add('flash');confetti()}})}setTimeout(()=>{$('#splash')?.classList.add('hide');haptic('light')},1700);let touchStartY=0,touchTracking=false;
+document.addEventListener('touchstart',e=>{if(scrollY<=2){touchStartY=e.touches[0].clientY;touchTracking=true}},{passive:true});
+document.addEventListener('touchmove',e=>{if(!touchTracking)return;const d=e.touches[0].clientY-touchStartY;if(d>45)$('#pullIndicator')?.classList.add('on')},{passive:true});
+document.addEventListener('touchend',e=>{if(!touchTracking)return;const d=e.changedTouches[0].clientY-touchStartY;touchTracking=false;$('#pullIndicator')?.classList.remove('on');if(d>80){haptic('medium');loadMarkets();loadNews('#news');loadNews('#news2');showToast('Refreshing live market data…')}},{passive:true});
+setupTouchPolish(); maybeOnboard();
+applyTheme(currentTheme());roiCalc();refreshAccountState();loadMarkets();loadNews('#news');loadNews('#news2');projection();$('#homeChart').innerHTML='<div class="small muted" style="padding-top:25px">Portfolio performance will appear here after your account is connected.</div>';
+setInterval(loadMarkets,20000);
+</script>
+</body>
+</html>+fmt(Number(w.available||0),2)+'</div></div><div><div class="eyebrow">Invested</div><div class="stat">
+function renderPortfolioState(){
+  const p=$('#portfolio');if(!p)return;
+}
+function renderProfileState(){}
+function showToast(msg){const t=$('#toast');if(!t)return;$('#toastText').textContent=msg;t.classList.add('on');clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>t.classList.remove('on'),2400)}
+$$('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+const investTabs=$('#investTabs');if(investTabs)investTabs.addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');projection()});
+$$('.strategy-photo').forEach(c=>c.addEventListener('click',()=>{$$('.strategy-photo').forEach(x=>x.classList.remove('on'));c.classList.add('on');haptic('light')}));
+$('#amt').oninput=projection;$('#amtChips').addEventListener('click',e=>{let b=e.target.closest('[data-a]');if(!b)return;if(b.dataset.a==='custom'){const v=prompt('Enter investment amount (minimum $10):', $('#amt').value);if(v!==null){const n=Math.max(10,Math.round(Number(v)/10)*10);if(Number.isFinite(n))$('#amt').value=Math.min(100000,n)}}else $('#amt').value=b.dataset.a;projection()});
+$('#marketTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');marketFilter=b.dataset.filter;renderMarkets()});document.addEventListener('click',e=>{const row=e.target.closest('.market-row[data-market]');if(row){loadMarketDetail(row.dataset.market)}});
+function openSheet(title,body){$('#sheet').innerHTML='<div class="grab"></div><h3>'+title+'</h3>'+body+'<button class="primary" id="closeSheet" style="margin-top:14px">Close</button>';$('#sheetBack').classList.add('on');$('#closeSheet').onclick=()=>$('#sheetBack').classList.remove('on')}
+$('#review').onclick=()=>openSheet('Review Auto-Invest','<p>Strategy: <b>'+($('.strategy-photo.on')?.dataset.strategy||'Core Crypto')+'</b><br>Amount: <b>'+$('#amtLabel').textContent+'</b><br>Projection: <b>22.5% weekly illustrative compounding</b></p><div class="notice">This is a review screen only. Activation requires a secure authenticated Aster backend and will not be faked in the app.</div>');
+function openAccountSheet(){openSheet('Create or sign in','<p>Aster account authentication, KYC/AML and session management are server-side features. This APK will not create a fake account or local balance.</p><div class="notice">Production rule: authentication/session tokens must not be stored in localStorage. The backend should use secure HTTPS session handling.</div><button class="secondary" id="request">Continue when backend is connected</button>')}
+$('#connect').onclick=openAccountSheet;
+$('#deposit').onclick=()=>openSheet('Deposit','<p>Your verified deposit address and network will be supplied by the production wallet service. No address is hard-coded into this app.</p>');
+$('#withdraw').onclick=()=>openSheet('Withdraw','<p>Withdrawals require an authenticated account, available balance and backend risk/compliance checks.</p>');
+$('#referral').onclick=()=>openSheet('Referral program','<p>Referral rate: <b>15%</b> concept from V23.</p><div class="card" style="margin:10px 0"><div class="eyebrow">Your code</div><div class="stat">—</div><div class="small muted">Generated only after an authenticated account exists.</div></div><div class="notice">Rewards, eligibility and payout are ledger events. This client will never fabricate a paid reward.</div>');
+$('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
+$('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
+$('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
+$('#securityOpen')?.addEventListener('click',()=>go('security'));
+const onboardBack=$('#onboardBack');
+$('#onboardLater')?.addEventListener('click',()=>{localStorage.setItem('aster-onboarded','1');onboardBack.classList.remove('on')});
+$('#onboardConnect')?.addEventListener('click',()=>{localStorage.setItem('aster-onboarded','1');onboardBack.classList.remove('on');openAccountSheet()});
+function maybeOnboard(){if(!localStorage.getItem('aster-onboarded'))setTimeout(()=>onboardBack?.classList.add('on'),1900)}
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'light'}function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
+$('#bell').onclick=()=>openSheet('Notifications','<div class="empty-state"><div class="empty-icon">♢</div><b>No alerts yet</b><p>Once your authenticated account is connected, Aster can surface deposit confirmations, Auto-Invest events, withdrawals and security alerts here.</p></div>');
+const haptic=(kind='light')=>{try{if(window.AsterNative?.haptic)AsterNative.haptic(kind);else if(navigator.vibrate)navigator.vibrate(kind==='success'?[18,30,28]:kind==='medium'?24:10)}catch(e){}};function confetti(){const box=$('#confetti');if(!box)return;haptic('success');for(let i=0;i<28;i++){let p=document.createElement('i');p.className='confetti-piece';p.style.left=(50+(Math.random()*22-11))+'%';p.style.top='43%';p.style.setProperty('--dx',(Math.random()*320-160)+'px');p.style.setProperty('--dy',(Math.random()*420+180)+'px');p.style.setProperty('--rot',(Math.random()*900-450)+'deg');p.style.background=['#e8b84c','#8d72ff','#55e0dc','#ff7189','#fff'][i%5];box.appendChild(p);setTimeout(()=>p.remove(),1000)}}function setupTouchPolish(){document.addEventListener('pointerdown',e=>{let b=e.target.closest('button,.card,.invest-card,.strategy-photo,.market-row,.icon,.action');if(b)haptic(b.classList.contains('primary')?'medium':'light')},{passive:true});$$('.hero,.invest-card,.strategy-photo').forEach(el=>{el.classList.add('tilt');el.addEventListener('pointermove',e=>{let r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.transform='perspective(900px) rotateX('+(-y*5)+'deg) rotateY('+(x*6)+'deg) translateY(-2px)'});el.addEventListener('pointerleave',()=>el.style.transform='')});document.addEventListener('click',e=>{let m=e.target.closest('.market-row');if(m){m.classList.remove('flash');void m.offsetWidth;m.classList.add('flash');confetti()}})}setTimeout(()=>{$('#splash')?.classList.add('hide');haptic('light')},1700);let touchStartY=0,touchTracking=false;
+document.addEventListener('touchstart',e=>{if(scrollY<=2){touchStartY=e.touches[0].clientY;touchTracking=true}},{passive:true});
+document.addEventListener('touchmove',e=>{if(!touchTracking)return;const d=e.touches[0].clientY-touchStartY;if(d>45)$('#pullIndicator')?.classList.add('on')},{passive:true});
+document.addEventListener('touchend',e=>{if(!touchTracking)return;const d=e.changedTouches[0].clientY-touchStartY;touchTracking=false;$('#pullIndicator')?.classList.remove('on');if(d>80){haptic('medium');loadMarkets();loadNews('#news');loadNews('#news2');showToast('Refreshing live market data…')}},{passive:true});
+setupTouchPolish(); maybeOnboard();
+applyTheme(currentTheme());roiCalc();loadMarkets();loadNews('#news');loadNews('#news2');projection();$('#homeChart').innerHTML='<div class="small muted" style="padding-top:25px">Portfolio performance will appear here after your account is connected.</div>';
+setInterval(loadMarkets,20000);
+</script>
+</body>
+</html>+fmt(Number(w.invested||0),2)+'</div></div></div>';
+}
+
 function renderPortfolioState(){
   const p=$('#portfolio');if(!p)return;
 }
