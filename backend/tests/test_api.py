@@ -42,3 +42,20 @@ def test_autoinvest_idempotency_replays_same_result():
                         json={"strategy": "Core Crypto", "amount": "10", "duration_weeks": 4})
     assert first.status_code == 409
     assert first.json()["detail"] == "Insufficient available balance"
+
+
+def test_portfolio_and_autoinvest_lifecycle():
+    email = "life-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+    portfolio = client.get("/v1/portfolio")
+    assert portfolio.status_code == 200
+    assert portfolio.json()["strategy_count"] == 0
+    # Account starts with no funds; activation must fail rather than fabricate capital.
+    create = client.post(
+        "/v1/autoinvest",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "life-" + __import__("secrets").token_hex(16)},
+        json={"strategy": "Core Crypto", "amount": "10", "duration_weeks": 4},
+    )
+    assert create.status_code == 409
