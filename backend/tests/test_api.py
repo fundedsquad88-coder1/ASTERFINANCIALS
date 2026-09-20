@@ -9,7 +9,7 @@ def test_health():
     assert response.json()["ok"] is True
 
 def test_register_login_and_protected_wallet():
-    email = "qa-" + __import__("secrets").token_hex(5) + "@aster.test"
+    email = "qa-" + __import__("secrets").token_hex(5) + "@example.com"
     response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
     assert response.status_code == 201
     assert any("AsterSession" in key for key in response.cookies.keys())
