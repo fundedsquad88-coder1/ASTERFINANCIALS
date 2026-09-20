@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
@@ -43,6 +44,7 @@ val Red=Color(0xFFFF5C62)
 
 private enum class GTab(val label:String,val icon:ImageVector){HOME("Home",Icons.Default.Home),MARKETS("Markets",Icons.Default.ShowChart),AUTO("Invest",Icons.Default.AutoGraph),CALC("Lab",Icons.Default.Calculate),MORE("More",Icons.Default.Person)}
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun GenZApp(){
     val context=LocalContext.current
     val auth=remember{AuthRepository(context)}
