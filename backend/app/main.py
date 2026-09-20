@@ -306,6 +306,29 @@ def create_autoinvest(
     dbs.commit()
     return payload
 
+
+@app.get("/v1/autoinvest/{strategy_id}")
+def autoinvest_detail(strategy_id:int,user:User=Depends(current_user),dbs:Session=Depends(db)):
+    row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==strategy_id,AutoInvest.user_id==user.id))
+    if not row: raise HTTPException(404,"Strategy not found")
+    return {"id":row.id,"strategy":row.strategy,"amount":str(row.amount),"duration_weeks":row.duration_weeks,
+            "status":row.status,"created_at":row.created_at}
+
+@app.post("/v1/autoinvest/{strategy_id}/cancel")
+def cancel_autoinvest(strategy_id:int,user:User=Depends(current_user),_:None=Depends(require_csrf),dbs:Session=Depends(db)):
+    row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==strategy_id,AutoInvest.user_id==user.id))
+    if not row: raise HTTPException(404,"Strategy not found")
+    if row.status=="cancelled": raise HTTPException(409,"Strategy is already cancelled")
+    w=dbs.scalar(select(Wallet).where(Wallet.user_id==user.id))
+    if not w: raise HTTPException(409,"Wallet not found")
+    w.invested -= row.amount
+    w.available += row.amount
+    row.status="cancelled"
+    dbs.add(LedgerEntry(user_id=user.id,kind="autoinvest_release",amount=row.amount,
+                        reference="AIR-"+secrets.token_hex(6).upper(),status="posted"))
+    dbs.commit()
+    return {"id":row.id,"status":row.status,"released_amount":str(row.amount)}
+
 @app.post("/v1/autoinvest/{strategy_id}/resume")
 def resume_autoinvest(strategy_id:int,user:User=Depends(current_user),_:None=Depends(require_csrf),dbs:Session=Depends(db)):
     row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==strategy_id,AutoInvest.user_id==user.id))
