@@ -116,6 +116,9 @@ def db():
 def digest(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
+def utc_datetime(value: datetime) -> datetime:
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
 def issue_session(response: Response, dbs: Session, user_id: int):
     raw = secrets.token_urlsafe(48)
     csrf = secrets.token_urlsafe(32)
@@ -132,7 +135,7 @@ def current_user(session_cookie: Optional[str] = Cookie(default=None, alias="__H
     if not session_cookie:
         raise HTTPException(status_code=401, detail="Authentication required")
     row = dbs.scalar(select(SessionToken).where(SessionToken.token_hash==digest(session_cookie)))
-    if not row or row.expires_at < datetime.now(timezone.utc):
+    if not row or utc_datetime(row.expires_at) < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Session expired")
     user = dbs.get(User, row.user_id)
     if not user or user.status != "active":
