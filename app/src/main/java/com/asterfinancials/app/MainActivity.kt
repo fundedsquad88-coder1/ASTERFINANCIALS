@@ -142,6 +142,28 @@ fun AsterApp(){
     val context=LocalContext.current
     val account=remember{AccountRepository(context)}
     var summary by remember{mutableStateOf<AccountSummary?>(null)}
+    var loading by remember{mutableStateOf(false)}
+    val user=remember{AuthRepository(context).currentUser()}
+    LaunchedEffect(Unit){
+        if(user!=null){loading=true;summary=account.summary().getOrNull();loading=false}
+    }
+    GenZHome(
+        balance=when{loading->"SYNCING…";summary==null->"— — —";else->"%.2f USDT".format(summary!!.total)},
+        userName=user?.fullName.orEmpty(),
+        onInvest={go(Tab.INVEST)},
+        onMarkets={go(Tab.MARKETS)},
+        onFunding={go(Tab.PROFILE)},
+        onProfile={go(Tab.PROFILE)},
+        onNotifications={go(Tab.PROFILE)},
+        dark=false,
+        onToggleTheme={}
+    )
+}
+
+@Composable private fun LegacyHome(go:(Tab)->Unit){
+    val context=LocalContext.current
+    val account=remember{AccountRepository(context)}
+    var summary by remember{mutableStateOf<AccountSummary?>(null)}
     var accountLoading by remember{mutableStateOf(false)}
     LaunchedEffect(Unit){
         if(AuthRepository(context).currentUser()!=null){
