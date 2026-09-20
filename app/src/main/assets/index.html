@@ -325,7 +325,7 @@ function updateMarketStatus(ok){
   if(el){el.classList.toggle('off',!ok);el.innerHTML=ok?'<span class="live-dot"></span> LIVE DATA':'OFFLINE · RETRYING'}
 }
 const ASTER_API_BASE = window.ASTER_API_BASE || '';
-let asterSessionState={authenticated:false,me:null,wallet:null,transactions:[],csrf:''};
+let asterSessionState={authenticated:false,me:null,wallet:null,transactions:[],portfolio:null,strategies:[],csrf:''};
 function apiConfigured(){return /^https:\/\//.test(ASTER_API_BASE)}
 async function apiRequest(path,options={}){
   if(!apiConfigured()) throw new Error('Aster API is not deployed/configured on this build');
@@ -340,7 +340,9 @@ async function refreshAccountState(){
     const me=await apiRequest('/v1/me');
     const wallet=await apiRequest('/v1/wallet');
     const transactions=await apiRequest('/v1/transactions');
-    asterSessionState={authenticated:true,me,wallet,transactions};
+    const portfolio=await apiRequest('/v1/portfolio');
+    const strategies=await apiRequest('/v1/autoinvest');
+    asterSessionState={authenticated:true,me,wallet,transactions,portfolio,strategies,csrf:asterSessionState.csrf};
     renderWalletState(); renderPortfolioState();
   }catch(e){
     asterSessionState={authenticated:false,me:null,wallet:null,transactions:[]};
@@ -366,9 +368,23 @@ $$('.strategy-photo').forEach(c=>c.addEventListener('click',()=>{$$('.strategy-p
 $('#amt').oninput=projection;$('#amtChips').addEventListener('click',e=>{let b=e.target.closest('[data-a]');if(!b)return;if(b.dataset.a==='custom'){const v=prompt('Enter investment amount (minimum $10):', $('#amt').value);if(v!==null){const n=Math.max(10,Math.round(Number(v)/10)*10);if(Number.isFinite(n))$('#amt').value=Math.min(100000,n)}}else $('#amt').value=b.dataset.a;projection()});
 $('#marketTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');marketFilter=b.dataset.filter;renderMarkets()});document.addEventListener('click',e=>{const row=e.target.closest('.market-row[data-market]');if(row){loadMarketDetail(row.dataset.market)}});
 function openSheet(title,body){$('#sheet').innerHTML='<div class="grab"></div><h3>'+title+'</h3>'+body+'<button class="primary" id="closeSheet" style="margin-top:14px">Close</button>';$('#sheetBack').classList.add('on');$('#closeSheet').onclick=()=>$('#sheetBack').classList.remove('on')}
-$('#review').onclick=()=>openSheet('Review Auto-Invest','<p>Strategy: <b>'+($('.strategy-photo.on')?.dataset.strategy||'Core Crypto')+'</b><br>Amount: <b>'+$('#amtLabel').textContent+'</b><br>Projection: <b>22.5% weekly illustrative compounding</b></p><div class="notice">This is a review screen only. Activation requires a secure authenticated Aster backend and will not be faked in the app.</div>');
+async function activateAutoInvest(){
+  if(!apiConfigured()){openSheet('Secure account connection','<p>Auto-Invest activation is wired to the real Aster API, but this build has no deployed HTTPS API URL configured yet.</p>');return}
+  if(!asterSessionState.authenticated){openAccountSheet();return}
+  const amount=Math.max(10,+$('#amt').value||10), strategy=$('.strategy-photo.on')?.dataset.strategy==='Global FX'?'Global FX':'Core Crypto';
+  const key=(crypto.randomUUID?crypto.randomUUID():'aster-'+Date.now()+'-'+Math.random());
+  try{
+    await apiRequest('/v1/autoinvest',{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify({strategy,amount:String(amount),duration_weeks:4})});
+    await refreshAccountState(); haptic('success'); confetti(); showToast('Auto-Invest activated');
+    go('portfolio');
+  }catch(e){openSheet('Auto-Invest could not start','<p>'+esc(e.message)+'</p><div class="notice">No funds are moved when activation fails.</div>')}
+}
+$('#review').onclick=()=>openSheet('Review Auto-Invest','<p>Strategy: <b>'+($('.strategy-photo.on')?.dataset.strategy||'Core Crypto')+'</b><br>Amount: <b>'+$('#amtLabel').textContent+'</b><br>Projection: <b>Illustrative only</b></p><div class="notice">Activation uses your authenticated Aster wallet and a server-side idempotency key. No client-side balance is fabricated.</div><button class="primary" id="confirmAutoInvest">Confirm & Activate</button>');,'<p>Strategy: <b>'+($('.strategy-photo.on')?.dataset.strategy||'Core Crypto')+'</b><br>Amount: <b>'+$('#amtLabel').textContent+'</b><br>Projection: <b>22.5% weekly illustrative compounding</b></p><div class="notice">This is a review screen only. Activation requires a secure authenticated Aster backend and will not be faked in the app.</div>');
 function openAccountSheet(){openSheet('Create or sign in','<p>Aster account authentication, KYC/AML and session management are server-side features. This APK will not create a fake account or local balance.</p><div class="notice">Production rule: authentication/session tokens must not be stored in localStorage. The backend should use secure HTTPS session handling.</div><button class="secondary" id="request">Continue when backend is connected</button>')}
 $('#connect').onclick=openAccountSheet;
+document.addEventListener('click',async e=>{
+  if(e.target.id==='confirmAutoInvest'){e.target.disabled=true;await activateAutoInvest()}
+});
 $('#deposit').onclick=()=>openSheet('Deposit','<p>Your verified deposit address and network will be supplied by the production wallet service. No address is hard-coded into this app.</p>');
 $('#withdraw').onclick=()=>openSheet('Withdraw','<p>Withdrawals require an authenticated account, available balance and backend risk/compliance checks.</p>');
 $('#referral').onclick=()=>openSheet('Referral program','<p>Referral rate: <b>15%</b> concept from V23.</p><div class="card" style="margin:10px 0"><div class="eyebrow">Your code</div><div class="stat">—</div><div class="small muted">Generated only after an authenticated account exists.</div></div><div class="notice">Rewards, eligibility and payout are ledger events. This client will never fabricate a paid reward.</div>');
