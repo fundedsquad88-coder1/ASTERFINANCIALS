@@ -108,7 +108,7 @@ body.theme-dark .onboard{background:var(--bg)}body.theme-dark .metric{background
 
 <section id="markets" class="screen">
   <div class="eyebrow">Markets</div><div class="title">Live market context.</div><p class="sub">Informational market data for your Auto-Invest decisions. No trading terminal, no order execution.</p>
-  <div class="tabs" id="marketTabs"><button class="on" data-filter="all">All</button><button data-filter="crypto">Crypto</button><button data-filter="forex">Forex</button></div>
+  <div class="row" style="margin:0 2px 10px"><span class="status-pill" id="marketStatus"><span class="live-dot"></span> LIVE DATA</span><span class="small muted">Crypto live · FX daily reference</span></div><div class="tabs" id="marketTabs"><button class="on" data-filter="all">All</button><button data-filter="crypto">Crypto</button><button data-filter="forex">Forex</button></div>
   <div class="card" id="marketList"><div class="small muted">Loading live data…</div></div>
   <div class="section-head"><h2>Market news</h2><span class="small muted" id="newsStatus">Live feed</span></div>
   <div class="card" id="news2"><div class="small muted">Loading…</div></div>
@@ -152,11 +152,31 @@ body.theme-dark .onboard{background:var(--bg)}body.theme-dark .metric{background
 <script>
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
-const nativeFetch=url=>new Promise((resolve,reject)=>{const id='a'+Date.now()+Math.random();window.__asterCallbacks=window.__asterCallbacks||{};window.__asterCallbacks[id]={resolve,reject};if(window.AsterNative)AsterNative.fetch(url,id);else fetch(url).then(r=>r.text()).then(resolve).catch(reject)});
+const nativeFetch=url=>new Promise((resolve,reject)=>{const id='a'+Date.now()+Math.random();window.__asterCallbacks=window.__asterCallbacks||{};window.__asterCallbacks[id]={resolve,reject};let timer=setTimeout(()=>{if(window.__asterCallbacks[id]){delete window.__asterCallbacks[id];reject(new Error('Network timeout'))}},12000);const ok=v=>{clearTimeout(timer);resolve(v)};const fail=e=>{clearTimeout(timer);reject(e)};window.__asterCallbacks[id]={resolve:ok,reject:fail};try{if(window.AsterNative?.fetch)AsterNative.fetch(url,id);else fetch(url).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.text()}).then(ok).catch(fail)}catch(e){fail(e)}});
 window.__asterNativeResult=(id,body,ok)=>{const c=window.__asterCallbacks?.[id];if(!c)return;delete window.__asterCallbacks[id];ok?c.resolve(body):c.reject(body)};
 function line(vals,color='#17131c'){if(!vals.length)return '';let min=Math.min(...vals),max=Math.max(...vals),r=max-min||1,w=320,h=70;let d=vals.map((v,i)=>(i?'L':'M')+(i/(vals.length-1)*w).toFixed(1)+' '+(h-5-(v-min)/r*(h-10)).toFixed(1)).join('');return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
-let quotes={};let marketFilter='all';
-function miniSpark(seed){let vals=[1],x=seed||1;for(let i=0;i<8;i++){x=(x*9301+49297)%233280;vals.push(vals[vals.length-1]*(1+((x/233280)-.46)*.035))}return line(vals,'#7b61ff')}function renderMarkets(){let keys=Object.keys(quotes).filter(k=>marketFilter==='all'||quotes[k].type===marketFilter);$('#marketList').innerHTML=keys.length?keys.map(k=>{let q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+' · H '+(q.high<2?q.high.toFixed(4):fmt(q.high,0))+' · L '+(q.low<2?q.low.toFixed(4):fmt(q.low,0))+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(Math.abs(q.price)%97+1)+'</div></div>'}).join(''):'<div class="small muted">No live quotes available right now.</div>';let top=keys.slice(0,5);$('#homeMarkets').innerHTML=top.length?'<div class="market-card-head"><span class="small muted">Live data</span><span class="live-dot"></span></div>'+top.map(k=>{let q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(Math.abs(q.price)%97+1)+'</div></div>'}).join(''):'<div class="small muted">Waiting for live market data…</div>'}
+let quotes={};let history={};let fxQuotes={};let marketFilter='all';
+function miniSpark(symbol){const vals=history[symbol];return vals&&vals.length>1?line(vals,'#7b61ff'):'<div class="small muted" style="font-size:9px;text-align:right">LIVE</div>'}function renderMarkets(){
+  const merged={...quotes,...fxQuotes};
+  let keys=Object.keys(merged).filter(k=>marketFilter==='all'||merged[k].type===marketFilter);
+  $('#marketList').innerHTML=keys.length?keys.map(k=>{
+    let q=merged[k],pct=q.open?((q.price-q.open)/q.open)*100:0;
+    const meta=q.type==='forex'?'Daily reference · '+(q.referenceDate||'latest'):'24h H '+(q.high<2?q.high.toFixed(4):fmt(q.high,0))+' · L '+(q.low<2?q.low.toFixed(4):fmt(q.low,0));
+    return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+meta+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(5):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(k)+'</div></div>'
+  }).join(''):'<div class="small muted">'+(marketFilter==='forex'?'FX reference data unavailable right now.':'No live quotes available right now.')+'</div>';
+  const top=Object.keys({...quotes,...fxQuotes}).slice(0,5);
+  $('#homeMarkets').innerHTML=top.length?'<div class="market-card-head"><span class="small muted">Live crypto + FX reference</span><span class="live-dot"></span></div>'+top.map(k=>{let q=({...quotes,...fxQuotes})[k],pct=q.open?((q.price-q.open)/q.open)*100:0;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(5):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(k)+'</div></div>'}).join(''):'<div class="small muted">Waiting for live market data…</div>'
+}
+async function loadForex(){
+  try{
+    const raw=await nativeFetch('https://api.frankfurter.dev/v2/rates?base=USD&quotes=EUR,GBP,JPY,AUD,CAD,CHF');
+    const rows=JSON.parse(raw);
+    if(!Array.isArray(rows))throw new Error('No FX data');
+    fxQuotes={};
+    rows.forEach(x=>{const pair='USD/'+String(x.quote).toUpperCase();fxQuotes[pair]={symbol:pair,type:'forex',price:Number(x.rate),open:Number(x.rate),high:Number(x.rate),low:Number(x.rate),volume:null,closeTime:Date.now(),referenceDate:x.date}});
+    renderMarkets();
+  }catch(e){fxQuotes={};renderMarkets()}
+}
 async function loadMarkets(){
   const syms=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
   const encoded=encodeURIComponent(JSON.stringify(syms));
@@ -172,6 +192,8 @@ async function loadMarkets(){
         quotes[symbol]={symbol,type:'crypto',price:Number(x.lastPrice),open:Number(x.openPrice),high:Number(x.highPrice),low:Number(x.lowPrice),volume:Number(x.quoteVolume||x.volume),closeTime:Number(x.closeTime)};
       });
       lastMarketUpdate=Date.now();
+      await loadForex();
+      await loadMarketHistory();
       renderMarkets();
       updateMarketStatus(true);
       return;
@@ -181,8 +203,17 @@ async function loadMarkets(){
   $('#marketList').innerHTML='<div class="small muted">Live market feed temporarily unavailable. Retrying automatically…</div>';
   $('#homeMarkets').innerHTML='<div class="small muted">Live market feed temporarily unavailable. Retrying…</div>';
 }
+async function loadMarketHistory(){
+  const symbols=Object.keys(quotes);
+  const tasks=symbols.map(async symbol=>{
+    const rawSymbol=symbol.replace('/USDT','USDT');
+    const endpoints=basesForMarket().map(base=>base+'/api/v3/klines?symbol='+encodeURIComponent(rawSymbol)+'&interval=1h&limit=24');
+    for(const ep of endpoints){try{const rows=JSON.parse(await nativeFetch(ep));if(Array.isArray(rows)&&rows.length>1){history[symbol]=rows.map(x=>Number(x[4])).filter(Number.isFinite);return}}catch(e){}}
+  });
+  await Promise.all(tasks);
+}
 async function loadMarketDetail(symbol){
-  const q=quotes[symbol];
+  const q=({...quotes,...fxQuotes})[symbol];
   if(!q){showToast('Live quote unavailable — retrying');return}
   go('marketDetail');
   $('#detailSymbol').textContent=q.symbol;
@@ -196,6 +227,7 @@ async function loadMarketDetail(symbol){
   $('#detailVolume').textContent='$'+fmt(q.volume,0);
   $('#detailUpdated').textContent=q.closeTime?new Date(q.closeTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'just now';
   $('#detailChart').innerHTML='<div class="small muted">Loading live candles…</div>';
+  if(q.type==='forex'){ $('#detailChart').innerHTML='<div class="small muted">FX reference rates are daily and do not provide an intraday trading chart here.</div>';loadNews('#detailNews');return; }
   const rawSymbol=q.symbol.replace('/USDT','USDT');
   const endpoints=basesForMarket().map(base=>base+'/api/v3/klines?symbol='+encodeURIComponent(rawSymbol)+'&interval=1h&limit=24');
   for(const ep of endpoints){
