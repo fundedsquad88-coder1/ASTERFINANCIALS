@@ -14,6 +14,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.detectDragGestures
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.*
@@ -115,7 +117,7 @@ private enum class GTab(val label:String,val icon:ImageVector){HOME("Home",Icons
     val total=summary?.total?:0.0
     LazyColumn(contentPadding=PaddingValues(16.dp,4.dp,16.dp,125.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         item{Text("gm 👋",fontSize=30.sp,fontWeight=FontWeight.Black,color=text);Text("Your Aster command center.",color=mute,fontSize=13.sp)}
-        item{GlassCard(a,a2,true){Text("TOTAL BALANCE · VERIFIED",color=Color(0xFF14112A).copy(alpha=.72f),fontSize=11.sp,fontWeight=FontWeight.Bold);Text(if(summary==null)"— — —" else fmt(total),fontSize=46.sp,fontWeight=FontWeight.Black,color=Color(0xFF14112A));Text("USDT",color=Color(0xFF14112A).copy(alpha=.7f),fontSize=10.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.height(14.dp));PulseBand(Color(0xFF14112A));Row(horizontalArrangement=Arrangement.spacedBy(9.dp),modifier=Modifier.padding(top=12.dp)){Button({go(GTab.AUTO)},colors=ButtonDefaults.buttonColors(Color(0xFF14112A)),shape=RoundedCornerShape(16.dp),modifier=Modifier.weight(1f)){Text("Auto-Invest",color=Color.White,fontWeight=FontWeight.Black,fontSize=10.sp)};Button({go(GTab.MARKETS)},colors=ButtonDefaults.buttonColors(Color(0x3314112A)),shape=RoundedCornerShape(16.dp),modifier=Modifier.weight(1f)){Text("Markets",color=Color(0xFF14112A),fontWeight=FontWeight.Black,fontSize=10.sp)}}}}
+        item{var rx by remember{mutableFloatStateOf(0f)};var ry by remember{mutableFloatStateOf(0f)};val h=LocalHapticFeedback.current;GlassCard(a,a2,true,Modifier.graphicsLayer{rotationX=rx;rotationY=ry}.pointerInput(Unit){detectDragGestures(onDragEnd={rx=0f;ry=0f}){change,drag->change.consume();ry=(ry+drag.x*.08f).coerceIn(-5f,5f);rx=(rx-drag.y*.06f).coerceIn(-5f,5f)}},haptic=true){Text("TOTAL BALANCE · VERIFIED",color=Color(0xFF14112A).copy(alpha=.72f),fontSize=11.sp,fontWeight=FontWeight.Bold);Text(if(summary==null)"— — —" else fmt(total),fontSize=46.sp,fontWeight=FontWeight.Black,color=Color(0xFF14112A));Text("USDT",color=Color(0xFF14112A).copy(alpha=.7f),fontSize=10.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.height(14.dp));PulseBand(Color(0xFF14112A));Row(horizontalArrangement=Arrangement.spacedBy(9.dp),modifier=Modifier.padding(top=12.dp)){Button({h.performHapticFeedback(HapticFeedbackType.LongPress);go(GTab.AUTO)},colors=ButtonDefaults.buttonColors(Color(0xFF14112A)),shape=RoundedCornerShape(16.dp),modifier=Modifier.weight(1f)){Text("Auto-Invest",color=Color.White,fontWeight=FontWeight.Black,fontSize=10.sp)};Button({h.performHapticFeedback(HapticFeedbackType.TextHandleMove);go(GTab.MARKETS)},colors=ButtonDefaults.buttonColors(Color(0x3314112A)),shape=RoundedCornerShape(16.dp),modifier=Modifier.weight(1f)){Text("Markets",color=Color(0xFF14112A),fontWeight=FontWeight.Black,fontSize=10.sp)}}}}
         item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){StatTile("LEVEL","1",a,Modifier.weight(1f));StatTile("LIVE PLANS","—",a,Modifier.weight(1f));StatTile("BEST WEEK","—",a,Modifier.weight(1f))}}
         item{SectionTitle("QUICK ACCESS",a)}
         item{Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(10.dp)){QuickTile("Deposit",Icons.Default.SouthWest,a){go(GTab.MORE)};QuickTile("Invest",Icons.Default.AutoGraph,a){go(GTab.AUTO)};QuickTile("Markets",Icons.Default.ShowChart,a){go(GTab.MARKETS)};QuickTile("Lab",Icons.Default.Calculate,a){go(GTab.CALC)}}}
@@ -159,13 +161,13 @@ private enum class GTab(val label:String,val icon:ImageVector){HOME("Home",Icons
     LazyColumn(contentPadding=PaddingValues(16.dp,4.dp,16.dp,125.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         item{Text("More",fontSize=30.sp,fontWeight=FontWeight.Black,color=text);Text("Your account, funding and Aster tools.",color=mute,fontSize=13.sp)}
         item{GlassCard(a,a2,false){ProfileAction("Deposit USDT",Icons.Default.SouthWest,a){open("deposit")};ProfileAction("Withdraw USDT",Icons.Default.NorthEast,a){open("withdraw")};ProfileAction("Funding history",Icons.Default.AccountBalanceWallet,a){open("funding")};ProfileAction("Referrals",Icons.Default.People,a){open("referrals")};ProfileAction("Notifications",Icons.Default.Notifications,a){open("notifications")};ProfileAction("Activity",Icons.Default.ReceiptLong,a){open("activity")}}}
-        item{GlassCard(a,a2,false){Text("APPEARANCE",color=a,fontSize=9.sp,fontWeight=FontWeight.Black);Row(Modifier.fillMaxWidth().padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(if(dark)"Dark mode" else "Light mode",fontWeight=FontWeight.Bold,color=text);Text("Tap to switch the Aster atmosphere.",fontSize=9.sp,color=mute)};Switch(dark,{ _:Boolean -> toggleTheme()},colors=SwitchDefaults.colors(checkedThumbColor=Color(0xFF14112A),checkedTrackColor=a))};Text("Accent",color=mute,fontSize=9.sp,modifier=Modifier.padding(top=12.dp))}}
+        item{GlassCard(a,a2,false){Text("APPEARANCE",color=a,fontSize=9.sp,fontWeight=FontWeight.Black);Row(Modifier.fillMaxWidth().padding(top=8.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(if(dark)"Dark mode" else "Light mode",fontWeight=FontWeight.Bold,color=text);Text("Tap to switch the Aster atmosphere.",fontSize=9.sp,color=mute)};Switch(dark,{ _:Boolean -> toggleTheme()},colors=SwitchDefaults.colors(checkedThumbColor=Color(0xFF14112A),checkedTrackColor=a))};Text("ACCENT",color=mute,fontSize=9.sp,modifier=Modifier.padding(top=12.dp));Row(Modifier.padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)){AccentDot(Color(0xFFFFCF4A),a==Color(0xFFFFCF4A)){setAccent(0)};AccentDot(Color(0xFFA48BFF),a==Color(0xFFA48BFF)){setAccent(1)};AccentDot(Color(0xFF4DF2C1),a==Color(0xFF4DF2C1)){setAccent(2)};AccentDot(Color(0xFFFF7A93),a==Color(0xFFFF7A93)){setAccent(3)}}}}
     }
 }
 
-@Composable private fun GlassCard(a:Color,a2:Color,hero:Boolean,content:@Composable ColumnScope.()->Unit){
+@Composable private fun GlassCard(a:Color,a2:Color,hero:Boolean,modifier:Modifier=Modifier,haptic:Boolean=false,content:@Composable ColumnScope.()->Unit){
     val shape=RoundedCornerShape(if(hero)30.dp else 24.dp)
-    Box(Modifier.fillMaxWidth().clip(shape).background(if(hero)Brush.linearGradient(listOf(a,a2)) else Brush.linearGradient(listOf(MaterialTheme.colorScheme.surface,MaterialTheme.colorScheme.surface))).border(1.dp,Color.White.copy(alpha=.12f),shape).padding(16.dp)){Column(content=content)}
+    Box(modifier.fillMaxWidth().clip(shape).background(if(hero)Brush.linearGradient(listOf(a,a2)) else Brush.linearGradient(listOf(MaterialTheme.colorScheme.surface,MaterialTheme.colorScheme.surface))).border(1.dp,Color.White.copy(alpha=.12f),shape).padding(16.dp)){Column(content=content)}
 }
 @Composable private fun SectionTitle(t:String,a:Color){Text(t,color=a,fontSize=9.sp,fontWeight=FontWeight.Black)}
 @Composable private fun StatTile(label:String,value:String,a:Color,modifier:Modifier){Box(modifier){GlassCard(a,a,false){Text(label,fontSize=8.sp,color=MaterialTheme.colorScheme.onBackground.copy(alpha=.6f),fontWeight=FontWeight.Bold);Text(value,fontSize=23.sp,fontWeight=FontWeight.Black,modifier=Modifier.padding(top=2.dp))}}}
