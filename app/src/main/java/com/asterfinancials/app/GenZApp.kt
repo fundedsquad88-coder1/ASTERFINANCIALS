@@ -74,7 +74,7 @@ private enum class GTab(val label:String,val icon:ImageVector){HOME("Home",Icons
                             GTab.MARKETS->GenMarkets(a,a2,text,mute)
                             GTab.AUTO->GenAuto(a,a2,text,mute)
                             GTab.CALC->GenLab(a,a2,text,mute)
-                            GTab.MORE->GenMore(a,a2,text,mute,dark,{dark=!dark},{overlay=it})
+                            GTab.MORE->GenMore(a,a2,text,mute,dark,{dark=!dark},{accent=it},{overlay=it})
                         }
                     }
                 }
@@ -153,7 +153,7 @@ private enum class GTab(val label:String,val icon:ImageVector){HOME("Home",Icons
     }
 }
 
-@Composable private fun GenMore(a:Color,a2:Color,text:Color,mute:Color,dark:Boolean,toggleTheme:()->Unit,open:(String)->Unit){
+@Composable private fun GenMore(a:Color,a2:Color,text:Color,mute:Color,dark:Boolean,toggleTheme:()->Unit,setAccent:(Int)->Unit,open:(String)->Unit){
     LazyColumn(contentPadding=PaddingValues(16.dp,4.dp,16.dp,125.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         item{Text("More",fontSize=30.sp,fontWeight=FontWeight.Black,color=text);Text("Your account, funding and Aster tools.",color=mute,fontSize=13.sp)}
         item{GlassCard(a,a2,false){ProfileAction("Deposit USDT",Icons.Default.SouthWest,a){open("deposit")};ProfileAction("Withdraw USDT",Icons.Default.NorthEast,a){open("withdraw")};ProfileAction("Funding history",Icons.Default.AccountBalanceWallet,a){open("funding")};ProfileAction("Referrals",Icons.Default.People,a){open("referrals")};ProfileAction("Notifications",Icons.Default.Notifications,a){open("notifications")};ProfileAction("Activity",Icons.Default.ReceiptLong,a){open("activity")}}}
