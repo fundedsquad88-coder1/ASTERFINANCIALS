@@ -178,6 +178,29 @@ def logout(response: Response, session_cookie: Optional[str] = Cookie(default=No
 def me(user: User = Depends(current_user)):
     return {"id": user.id, "email": user.email, "status": user.status, "kyc_status": user.kyc_status, "referral_code": user.referral_code}
 
+
+class DepositIn(BaseModel):
+    currency: str = Field(default="USDT", pattern="^USDT$")
+    network: str = Field(min_length=2, max_length=24)
+
+class WithdrawalIn(BaseModel):
+    currency: str = Field(default="USDT", pattern="^USDT$")
+    network: str = Field(min_length=2, max_length=24)
+    address: str = Field(min_length=10, max_length=256)
+    amount: Decimal = Field(gt=0)
+
+@app.get("/v1/kyc/status")
+def kyc_status(user: User = Depends(current_user)):
+    return {"status": user.kyc_status, "next_action": None if user.kyc_status == "verified" else "verification_required"}
+
+@app.post("/v1/wallet/deposits", status_code=503)
+def create_deposit(_: DepositIn, user: User = Depends(current_user), __: None = Depends(require_csrf)):
+    raise HTTPException(503, "Deposit provider is not configured")
+
+@app.post("/v1/wallet/withdrawals", status_code=503)
+def create_withdrawal(_: WithdrawalIn, user: User = Depends(current_user), __: None = Depends(require_csrf)):
+    raise HTTPException(503, "Withdrawal provider is not configured")
+
 @app.get("/v1/wallet")
 def wallet(user: User = Depends(current_user), dbs: Session = Depends(db)):
     w = dbs.scalar(select(Wallet).where(Wallet.user_id==user.id))
