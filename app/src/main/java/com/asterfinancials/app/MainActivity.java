@@ -49,8 +49,10 @@ public class MainActivity extends Activity {
                 android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
                 if (v == null || !v.hasVibrator()) return;
                 long[] pattern = "success".equals(kind) ? new long[]{0,18,30,28} : "medium".equals(kind) ? new long[]{0,24} : new long[]{0,10};
-                if (android.os.Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1));
-                else v.vibrate(pattern, -1);
+                try {
+                    if (android.os.Build.VERSION.SDK_INT >= 26) v.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1));
+                    else v.vibrate(pattern, -1);
+                } catch (SecurityException ignored) { }
             });
         }
 
@@ -84,7 +86,7 @@ public class MainActivity extends Activity {
         private boolean isAllowed(String value) {
             try {
                 String host = new URL(value).getHost();
-                return "api.binance.com".equals(host) || "news.google.com".equals(host);
+                return "api.binance.com".equals(host) || "data-api.binance.vision".equals(host) || "api1.binance.com".equals(host) || "api2.binance.com".equals(host) || "news.google.com".equals(host);
             } catch (Exception e) { return false; }
         }
 
