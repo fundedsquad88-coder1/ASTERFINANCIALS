@@ -97,7 +97,7 @@ class Notification(Base):
 
 Base.metadata.create_all(engine)
 
-app = FastAPI(title="Aster Financials API", version="0.2.0")
+app = FastAPI(title="Aster Financials API", version="0.3.0")
 if ALLOWED_ORIGINS:
     app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_credentials=True,
                        allow_methods=["GET","POST","PATCH","DELETE","OPTIONS"],
@@ -248,6 +248,23 @@ def strategies():
         {"id":"core-crypto","name":"Core Crypto","type":"crypto","status":"available"},
         {"id":"global-fx","name":"Global FX","type":"fx","status":"available"}]}
 
+@app.get("/v1/portfolio")
+def portfolio(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    rows = dbs.scalars(select(AutoInvest).where(AutoInvest.user_id == user.id).order_by(AutoInvest.id.desc())).all()
+    active = [r for r in rows if r.status == "active"]
+    paused = [r for r in rows if r.status == "paused"]
+    return {
+        "currency": "USDT",
+        "available": str(w.available if w else Decimal("0")),
+        "invested": str(w.invested if w else Decimal("0")),
+        "pending": str(w.pending if w else Decimal("0")),
+        "strategy_count": len(rows),
+        "active_count": len(active),
+        "paused_count": len(paused),
+        "strategies": [{"id":r.id,"strategy":r.strategy,"amount":str(r.amount),"duration_weeks":r.duration_weeks,"status":r.status,"created_at":r.created_at} for r in rows],
+    }
+
 @app.get("/v1/autoinvest")
 def active_autoinvest(user: User = Depends(current_user), dbs: Session = Depends(db)):
     rows=dbs.scalars(select(AutoInvest).where(AutoInvest.user_id==user.id).order_by(AutoInvest.id.desc())).all()
@@ -288,6 +305,14 @@ def create_autoinvest(
                            response_status=201, response_body=json.dumps(payload)))
     dbs.commit()
     return payload
+
+@app.post("/v1/autoinvest/{strategy_id}/resume")
+def resume_autoinvest(strategy_id:int,user:User=Depends(current_user),_:None=Depends(require_csrf),dbs:Session=Depends(db)):
+    row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==strategy_id,AutoInvest.user_id==user.id))
+    if not row: raise HTTPException(404,"Strategy not found")
+    if row.status!="paused": raise HTTPException(409,"Strategy is not paused")
+    row.status="active"; dbs.commit()
+    return {"id":row.id,"status":row.status}
 
 @app.post("/v1/autoinvest/{strategy_id}/pause")
 def pause_autoinvest(strategy_id:int,user:User=Depends(current_user),_:None=Depends(require_csrf),dbs:Session=Depends(db)):
