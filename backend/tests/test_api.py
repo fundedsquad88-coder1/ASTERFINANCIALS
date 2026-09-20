@@ -94,3 +94,16 @@ def test_strategy_valuation_is_account_scoped():
     portfolio = client.get("/v1/portfolio/performance")
     assert portfolio.status_code == 200
     assert portfolio.json()["valuation_status"] == "priced"
+
+
+def test_valuation_rejects_future_timestamp():
+    email = "fresh-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+    response = client.post(
+        "/v1/autoinvest/999999/valuation",
+        headers={"X-Aster-CSRF": csrf},
+        json={"value":"10","source":"test","as_of":"2099-01-01T00:00:00Z"},
+    )
+    assert response.status_code == 404
