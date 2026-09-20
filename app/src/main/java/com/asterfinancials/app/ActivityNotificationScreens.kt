@@ -75,36 +75,39 @@ private fun activityIcon(type:String)=when(type){
 @Composable
 fun NotificationsScreen(onBack:()->Unit){
     val context=androidx.compose.ui.platform.LocalContext.current
-    val prefs=remember{context.getSharedPreferences("aster_notifications",Context.MODE_PRIVATE)}
-    var market by remember{mutableStateOf(prefs.getBoolean("market",true))}
-    var strategy by remember{mutableStateOf(prefs.getBoolean("strategy",true))}
-    var account by remember{mutableStateOf(prefs.getBoolean("account",true))}
+    val repo=remember{NotificationRepository(context)}
+    var items by remember{mutableStateOf(emptyList<AsterNotification>())}
+    var loading by remember{mutableStateOf(true)}
+    LaunchedEffect(Unit){loading=true;items=repo.list().getOrElse{emptyList()};loading=false}
     Column(Modifier.fillMaxSize()){
         Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){
             IconButton(onClick=onBack){Icon(Icons.Default.ArrowBack,null,tint=Gold)}
-            Column{
-                Text("Notifications",fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
-                Text("Control alerts shown by Aster",color=Muted,fontSize=9.sp)
+            Column(Modifier.weight(1f)){Text("Notifications",fontSize=20.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold);Text("Account and strategy alerts",color=Muted,fontSize=9.sp)}
+            TextButton(onClick={LaunchedEffectScopeHolder.launch(repo){items=repo.list().getOrElse{emptyList()}}}){Text("Refresh",fontSize=9.sp)}
+        }
+        if(loading)Text("Loading notifications…",color=Muted,fontSize=10.sp,modifier=Modifier.padding(16.dp))
+        else if(items.isEmpty())Text("No notifications yet.",color=Muted,fontSize=10.sp,modifier=Modifier.padding(16.dp))
+        else LazyColumn(contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+            items(items){n->
+                CardBox(Modifier.fillMaxWidth().clickable{
+                    LaunchedEffectScopeHolder.launch(repo){repo.read(n.id);items=repo.list().getOrElse{items}}
+                }){
+                    Column(Modifier.padding(14.dp)){
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            Icon(if(n.category=="account")Icons.Default.AccountBalanceWallet else Icons.Default.Notifications,null,tint=Gold,modifier=Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp));Text(n.title,fontSize=11.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                            if(n.readAt==null)Text(" NEW",color=Gold,fontSize=7.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
+                        }
+                        Text(n.body,fontSize=9.sp,modifier=Modifier.padding(top=6.dp))
+                        Text(n.createdAt.replace('T',' ').take(19),color=Muted,fontSize=7.sp,modifier=Modifier.padding(top=6.dp))
+                    }
+                }
             }
         }
-        CardBox(Modifier.padding(horizontal=16.dp)){
-            Column(Modifier.padding(16.dp)){
-                NotificationToggle("Market updates","News and market-rate alerts",market){market=it;prefs.edit().putBoolean("market",it).apply()}
-                NotificationToggle("Strategy updates","Auto-Invest and weekly update notices",strategy){strategy=it;prefs.edit().putBoolean("strategy",it).apply()}
-                NotificationToggle("Account activity","Deposits, withdrawals and security events",account){account=it;prefs.edit().putBoolean("account",it).apply()}
-            }
-        }
-        Text("Notification policy",color=Gold,fontSize=9.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold,modifier=Modifier.padding(16.dp,18.dp,16.dp,5.dp))
-        Text("These preferences control in-app notification categories. Push delivery requires a production notification service and user permission.",color=Muted,fontSize=9.sp,modifier=Modifier.padding(horizontal=16.dp))
     }
 }
 
-@Composable private fun NotificationToggle(title:String,sub:String,checked:Boolean,on:(Boolean)->Unit){
-    Row(Modifier.fillMaxWidth().padding(vertical=9.dp),verticalAlignment=Alignment.CenterVertically){
-        Column(Modifier.weight(1f)){
-            Text(title,fontSize=11.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.Bold)
-            Text(sub,color=Muted,fontSize=8.sp)
-        }
-        Switch(checked=checked,onCheckedChange=on)
-    }
+private object LaunchedEffectScopeHolder{
+    fun launch(repo:NotificationRepository,block:suspend()->Unit){ kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch{kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO){block()}} }
 }
+
