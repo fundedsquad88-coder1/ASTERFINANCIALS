@@ -96,4 +96,5 @@ public class MainActivity extends Activity {
         }
 
         private String quote(String value) { return JSONObject.quote(value); }
+    }
 }
