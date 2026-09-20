@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from pwdlib import PasswordHash
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, create_engine, select
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, create_engine, select, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./aster-dev.db")
@@ -142,6 +142,8 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 Base.metadata.create_all(engine)
+
+# Production deployments must use versioned migrations; create_all remains only for local bootstrap.
 
 app = FastAPI(title="Aster Financials API", version="0.3.0")
 if ALLOWED_ORIGINS:
@@ -317,6 +319,21 @@ def strategies():
 
 
 
+
+
+
+@app.get("/v1/ledger/integrity")
+def ledger_integrity(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    tx_ids = dbs.scalars(select(LedgerTransaction.id)).all()
+    checked = 0
+    unbalanced = []
+    for tx_id in tx_ids:
+        debits = dbs.scalar(select(func.coalesce(func.sum(LedgerPosting.debit), 0)).where(LedgerPosting.transaction_id == tx_id))
+        credits = dbs.scalar(select(func.coalesce(func.sum(LedgerPosting.credit), 0)).where(LedgerPosting.transaction_id == tx_id))
+        checked += 1
+        if Decimal(str(debits)) != Decimal(str(credits)):
+            unbalanced.append(tx_id)
+    return {"currency":"USDT","checked_transactions":checked,"balanced":not unbalanced,"unbalanced_transaction_ids":unbalanced[:20]}
 
 @app.get("/v1/portfolio/valuation-status")
 def valuation_status(user: User = Depends(current_user), dbs: Session = Depends(db)):
