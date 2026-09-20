@@ -91,7 +91,7 @@ fun AsterApp(){
                         )
                     ){
                         Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
-                            Home({tab=it})
+                            Home({tab=it},accentIndex)
                         }
                     }
                     Tab.MARKETS->Markets()
@@ -139,7 +139,7 @@ fun AsterApp(){
     Card(mod,colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),content=content)
 }
 
-@Composable private fun Home(go:(Tab)->Unit){
+@Composable private fun Home(go:(Tab)->Unit,accentIndex:Int=0){
     val context=LocalContext.current
     val account=remember{AccountRepository(context)}
     var summary by remember{mutableStateOf<AccountSummary?>(null)}
@@ -151,7 +151,7 @@ fun AsterApp(){
     GenZHome(
         balance=when{loading->"SYNCING…";summary==null->"— — —";else->"%.2f USDT".format(summary!!.total)},
         userName=user?.fullName.orEmpty(),
-        onInvest={go(Tab.INVEST)},
+        onInvest={go(Tab.AUTO)},
         onMarkets={go(Tab.MARKETS)},
         onFunding={go(Tab.PROFILE)},
         onProfile={go(Tab.PROFILE)},
