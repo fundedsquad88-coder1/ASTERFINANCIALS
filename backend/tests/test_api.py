@@ -107,3 +107,12 @@ def test_valuation_rejects_future_timestamp():
         json={"value":"10","source":"test","as_of":"2099-01-01T00:00:00Z"},
     )
     assert response.status_code == 404
+
+
+def test_double_entry_created_for_autoinvest():
+    email = "ledger-" + __import__("secrets").token_hex(5) + "@example.com"
+    client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    csrf = client.cookies.get("AsterCSRF")
+    # No funded wallet is available in the public API yet, so this boundary must remain fail-closed.
+    response = client.post("/v1/autoinvest", headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "ledger-test-key-123456"}, json={"strategy":"core-crypto","amount":"10","duration_weeks":1})
+    assert response.status_code == 409
