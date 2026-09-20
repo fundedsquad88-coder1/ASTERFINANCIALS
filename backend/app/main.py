@@ -130,7 +130,7 @@ def digest(value: str) -> str:
 def utc_datetime(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
-def issue_session(response: Response, dbs: Session, user_id: int):
+def issue_session(response: Response, dbs: Session, user_id: int) -> str:
     raw = secrets.token_urlsafe(48)
     csrf = secrets.token_urlsafe(32)
     dbs.add(SessionToken(user_id=user_id, token_hash=digest(raw), csrf_hash=digest(csrf),
@@ -140,6 +140,7 @@ def issue_session(response: Response, dbs: Session, user_id: int):
                         path="/", max_age=SESSION_TTL_HOURS*3600)
     response.set_cookie("AsterCSRF", csrf, httponly=False, secure=COOKIE_SECURE, samesite="lax",
                         path="/", max_age=SESSION_TTL_HOURS*3600)
+    return csrf
 
 def current_user(session_cookie: Optional[str] = Cookie(default=None, alias="__Host-AsterSession"),
                  dbs: Session = Depends(db)):
@@ -183,16 +184,16 @@ def register(body: RegisterIn, response: Response, dbs: Session = Depends(db)):
     dbs.add(user); dbs.flush()
     dbs.add(Wallet(user_id=user.id))
     dbs.commit()
-    issue_session(response, dbs, user.id)
-    return {"id": user.id, "email": user.email, "kyc_status": user.kyc_status}
+    csrf = issue_session(response, dbs, user.id)
+    return {"id": user.id, "email": user.email, "kyc_status": user.kyc_status, "csrf_token": csrf}
 
 @app.post("/v1/auth/login")
 def login(body: LoginIn, response: Response, dbs: Session = Depends(db)):
     user = dbs.scalar(select(User).where(User.email==body.email.lower()))
     if not user or not password_hash.verify(body.password, user.password_hash):
         raise HTTPException(401, "Invalid credentials")
-    issue_session(response, dbs, user.id)
-    return {"id": user.id, "email": user.email, "kyc_status": user.kyc_status}
+    csrf = issue_session(response, dbs, user.id)
+    return {"id": user.id, "email": user.email, "kyc_status": user.kyc_status, "csrf_token": csrf}
 
 @app.post("/v1/auth/logout")
 def logout(response: Response, session_cookie: Optional[str] = Cookie(default=None, alias="__Host-AsterSession"),
