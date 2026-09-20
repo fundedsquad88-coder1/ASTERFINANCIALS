@@ -68,7 +68,7 @@ public class MainActivity extends Activity {
 
     private class SecureWebViewClient extends WebViewClient {
         @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-            WebResourceResponse local = assetLoader.interceptRequest(request.getUrl());
+            WebResourceResponse local = assetLoader.shouldInterceptRequest(request.getUrl());
             return local != null ? local : super.shouldInterceptRequest(view, request);
         }
 
