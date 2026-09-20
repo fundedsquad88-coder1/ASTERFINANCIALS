@@ -59,3 +59,14 @@ def test_portfolio_and_autoinvest_lifecycle():
         json={"strategy": "Core Crypto", "amount": "10", "duration_weeks": 4},
     )
     assert create.status_code == 409
+
+
+def test_autoinvest_cancel_boundary_without_funds():
+    email = "cancel-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+    missing = client.get("/v1/autoinvest/999999")
+    assert missing.status_code == 404
+    cancel = client.post("/v1/autoinvest/999999/cancel", headers={"X-Aster-CSRF": csrf})
+    assert cancel.status_code == 404
