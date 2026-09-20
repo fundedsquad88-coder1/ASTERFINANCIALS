@@ -7,9 +7,9 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    # Initial schema is created by SQLAlchemy metadata during local bootstrap.
-    # This revision establishes a stable migration baseline; future schema changes must be additive migrations.
-    pass
+    from app.main import Base
+    Base.metadata.create_all(bind=op.get_bind())
 
 def downgrade():
-    pass
+    from app.main import Base
+    Base.metadata.drop_all(bind=op.get_bind())
