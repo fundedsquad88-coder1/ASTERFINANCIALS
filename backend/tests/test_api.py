@@ -70,3 +70,15 @@ def test_autoinvest_cancel_boundary_without_funds():
     assert missing.status_code == 404
     cancel = client.post("/v1/autoinvest/999999/cancel", headers={"X-Aster-CSRF": csrf})
     assert cancel.status_code == 404
+
+
+def test_portfolio_performance_and_transaction_summary():
+    email = "perf-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    perf = client.get("/v1/portfolio/performance")
+    assert perf.status_code == 200
+    assert perf.json()["total"] == "0E-8" or perf.json()["total"] == "0"
+    summary = client.get("/v1/transactions/summary")
+    assert summary.status_code == 200
+    assert summary.json()["count"] == 0
