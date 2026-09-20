@@ -1,4 +1,5 @@
 from logging.config import fileConfig
+os.environ["ASTER_SKIP_CREATE_ALL"] = "true"
 import os
 from sqlalchemy import engine_from_config, pool
 from alembic import context
