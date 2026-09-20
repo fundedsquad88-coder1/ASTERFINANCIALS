@@ -271,3 +271,16 @@ CREATE INDEX IF NOT EXISTS system_events_created_idx ON system_events(created_at
 ALTER TABLE deposits ALTER COLUMN amount DROP NOT NULL;
 ALTER TABLE deposits DROP CONSTRAINT IF EXISTS deposits_amount_check;
 ALTER TABLE deposits ADD CONSTRAINT deposits_amount_check CHECK (amount IS NULL OR amount > 0);
+
+
+CREATE TABLE IF NOT EXISTS user_notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('market','strategy','account','security')),
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS user_notifications_user_created_idx ON user_notifications(user_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS user_notifications_unread_idx ON user_notifications(user_id,read_at,created_at DESC);
