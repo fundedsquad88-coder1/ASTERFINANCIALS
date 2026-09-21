@@ -37,18 +37,30 @@ paths:
       summary: Current KYC verification state
       responses:
         '200': {description: KYC state}
+  /v1/wallet/deposit-addresses:
+    get:
+      summary: Public Aster USDT treasury receiving addresses
+      responses:
+        '200': {description: BEP20 and TRC20 treasury addresses}
   /v1/wallet/deposits:
     post:
       security: [{session: []}]
-      summary: Create an idempotent deposit intent
+      summary: Create an idempotent USDT deposit intent using an Aster treasury address
       parameters:
         - in: header
           name: Idempotency-Key
           required: true
           schema: {type: string, minLength: 16, maxLength: 128}
       responses:
-        '201': {description: Deposit intent}
-        '503': {description: Funding provider not configured}
+        '201': {description: Deposit intent with treasury address}
+        '422': {description: Unsupported network}
+  /v1/wallet/deposits/{id}:
+    get:
+      security: [{session: []}]
+      summary: Get a user's deposit intent status
+      responses:
+        '200': {description: Deposit status}
+        '404': {description: Deposit not found}
   /v1/wallet/withdrawals:
     post:
       security: [{session: []}]
@@ -61,7 +73,8 @@ paths:
       responses:
         '201': {description: Withdrawal request}
         '409': {description: Insufficient available balance}
-        '503': {description: Funding provider not configured}
+        '422': {description: Invalid destination address or unsupported network}
+        '409': {description: Insufficient available balance}
   /v1/wallet/provider/webhook:
     post:
       summary: Verified funding-provider webhook
