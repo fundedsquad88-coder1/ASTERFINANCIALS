@@ -3,7 +3,7 @@ name: Build Aster APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, claude-ui-v1 ]
+    branches: [ main, claude-ui-v1, v24-premium-upgrade ]
   pull_request:
     branches: [ main ]
 
@@ -30,25 +30,17 @@ jobs:
         run: |
           set -e
           echo "ANDROID_HOME=$ANDROID_HOME"
-
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -1 || true)
-
           if [ -z "$SDKMANAGER" ]; then
             echo "ERROR: sdkmanager was not found"
             find "$ANDROID_HOME" -maxdepth 4 -type f -name sdkmanager -print || true
             exit 1
           fi
-
           SDK_BIN=$(dirname "$SDKMANAGER")
           echo "$SDK_BIN" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-
-          "$SDKMANAGER" \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -79,6 +71,8 @@ jobs:
           grep -q 'android.permission.VIBRATE' app/src/main/AndroidManifest.xml
           grep -q 'Live market feed' app/src/main/assets/index.html
           grep -q 'Illustrative' app/src/main/assets/index.html
+          test -s app/src/main/assets/v24-upgrade.js
+          test -s app/src/main/assets/v24-upgrade.css
 
       - name: Build Android APK
         run: gradle assembleDebug --stacktrace
