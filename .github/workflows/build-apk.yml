@@ -73,6 +73,14 @@ jobs:
           grep -q 'Illustrative' app/src/main/assets/index.html
           test -s app/src/main/assets/v24-upgrade.js
           test -s app/src/main/assets/v24-upgrade.css
+          test -s app/src/main/assets/v25-max.js
+          test -s app/src/main/assets/v25-max.css
+          test -s app/src/main/assets/v26-production.js
+          test -s app/src/main/assets/v26-production.css
+          test -s backend/alembic/versions/0003_production_core.py
+          grep -q 'withdrawals/webhook' backend/app/funding_routes.py
+          grep -q 'password-reset' backend/app/main.py
+          grep -q 'autoinvest/{autoinvest_id}/pause' backend/app/main.py
 
       - name: Build Android APK
         run: gradle assembleDebug --stacktrace
