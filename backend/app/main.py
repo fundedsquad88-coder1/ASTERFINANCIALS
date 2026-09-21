@@ -106,7 +106,7 @@ def post_double_entry(dbs: Session, *, user_id: int, reference: str, amount: Dec
 def transfer_wallet_balance(dbs: Session, *, user_id: int, amount: Decimal, source: str, destination: str, reference: str) -> None:
     if amount <= 0:
         raise HTTPException(400, "Amount must be positive")
-    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user_id))
+    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user_id).with_for_update())
     if not w:
         raise HTTPException(404, "Wallet not found")
     balances = ledger_account_balances(dbs, user_id)
