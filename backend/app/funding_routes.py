@@ -24,6 +24,8 @@ from app.main import (
     require_idempotency_key,
     transfer_wallet_balance,
     post_double_entry,
+    Referral,
+    AuditEvent,
 )
 from app.treasury import NETWORKS, normalize_network, treasury_address, valid_address
 
@@ -38,6 +40,15 @@ class WithdrawalCreateIn(BaseModel):
     network: str = Field(min_length=2, max_length=32)
     address: str = Field(min_length=10, max_length=256)
     amount: Decimal = Field(gt=0)
+
+
+
+class WithdrawalWebhookIn(BaseModel):
+    event_id: str = Field(min_length=8, max_length=200)
+    event_type: str = Field(min_length=3, max_length=80)
+    provider_reference: str = Field(min_length=3, max_length=160)
+    status: str = Field(pattern="^(confirmed|failed|reversed)$")
+    tx_hash: Optional[str] = Field(default=None, max_length=256)
 
 class ProviderWebhookIn(BaseModel):
     event_id: str = Field(min_length=8, max_length=200)
@@ -341,3 +352,48 @@ def create_withdrawal(
     )
     dbs.commit()
     return result
+
+
+@router.get("/v1/wallet/withdrawals")
+def list_withdrawals(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    rows = dbs.scalars(select(WithdrawalRequest).where(WithdrawalRequest.user_id == user.id).order_by(WithdrawalRequest.id.desc()).limit(100)).all()
+    return [{"id":r.id,"status":r.status,"amount":str(r.amount),"currency":r.currency,"network":r.network,"address":r.address,"provider_reference":r.provider_reference,"created_at":r.created_at.isoformat(),"updated_at":r.updated_at.isoformat()} for r in rows]
+
+@router.get("/v1/wallet/withdrawals/{withdrawal_id}")
+def get_withdrawal(withdrawal_id:int,user:User=Depends(current_user),dbs:Session=Depends(db)):
+    r=dbs.scalar(select(WithdrawalRequest).where(WithdrawalRequest.id==withdrawal_id,WithdrawalRequest.user_id==user.id))
+    if not r: raise HTTPException(404,"Withdrawal not found")
+    return {"id":r.id,"status":r.status,"amount":str(r.amount),"currency":r.currency,"network":r.network,"address":r.address,"provider_reference":r.provider_reference,"created_at":r.created_at.isoformat(),"updated_at":r.updated_at.isoformat()}
+
+@router.post("/v1/wallet/withdrawals/webhook")
+async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
+    raw=await request.body(); verify_signature(raw, request.headers.get("X-Aster-Provider-Signature"))
+    try: body=WithdrawalWebhookIn.model_validate_json(raw)
+    except Exception: raise HTTPException(400,"Invalid withdrawal provider payload")
+    provider=provider_name()
+    existing=dbs.scalar(select(ProviderEvent).where(ProviderEvent.event_id==body.event_id))
+    if existing: return {"ok":True,"status":existing.status,"duplicate":True}
+    row=dbs.scalar(select(WithdrawalRequest).where(WithdrawalRequest.provider_reference==body.provider_reference))
+    if not row or row.provider != provider: raise HTTPException(404,"Withdrawal request not found")
+    event=ProviderEvent(provider=provider,event_id=body.event_id,event_type=body.event_type,payload_hash=hashlib.sha256(raw).hexdigest()); dbs.add(event)
+    if row.status == "confirmed":
+        event.status="processed"; event.processed_at=datetime.now(timezone.utc); dbs.commit(); return {"ok":True,"status":"confirmed","duplicate":True}
+    w=dbs.scalar(select(Wallet).where(Wallet.user_id==row.user_id).with_for_update())
+    if not w: raise HTTPException(404,"Wallet not found")
+    ref="WD-"+str(row.id)
+    if body.status == "confirmed":
+        post_double_entry(dbs,user_id=row.user_id,reference=ref+"-SETTLED",amount=row.amount,debit_account="platform.withdrawals",credit_account="user.pending")
+        w.pending -= row.amount
+        row.status="confirmed"
+        entry=dbs.scalar(select(LedgerEntry).where(LedgerEntry.reference==ref))
+        if entry: entry.status="posted"
+        dbs.add(AuditEvent(user_id=row.user_id,event_type="withdrawal_confirmed",metadata_json=json.dumps({"withdrawal_id":row.id,"tx_hash":body.tx_hash})))
+    else:
+        post_double_entry(dbs,user_id=row.user_id,reference=ref+"-RELEASE",amount=row.amount,debit_account="user.available",credit_account="user.pending")
+        w.pending -= row.amount; w.available += row.amount; row.status=body.status
+        entry=dbs.scalar(select(LedgerEntry).where(LedgerEntry.reference==ref))
+        if entry: entry.status="reversed"
+        dbs.add(LedgerEntry(user_id=row.user_id,kind="withdrawal_reversal",amount=row.amount,reference=ref+"-RELEASE",currency=row.currency,status="posted"))
+        dbs.add(AuditEvent(user_id=row.user_id,event_type="withdrawal_released",metadata_json=json.dumps({"withdrawal_id":row.id,"reason":body.status})))
+    event.status="processed"; event.processed_at=datetime.now(timezone.utc); dbs.commit()
+    return {"ok":True,"status":row.status,"withdrawal_id":row.id,"tx_hash":body.tx_hash}
