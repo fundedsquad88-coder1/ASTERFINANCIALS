@@ -126,3 +126,14 @@ def test_ledger_integrity_endpoint_reports_balanced_state():
     body = response.json()
     assert body["balanced"] is True
     assert body["unbalanced_transaction_ids"] == []
+
+
+def test_wallet_ledger_reconciliation_starts_balanced():
+    email = "recon-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    response = client.get("/v1/ledger/integrity")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["wallet_balanced"] is True
+    assert body["wallet_mismatches"] == {"available":"0","invested":"0","pending":"0"}
