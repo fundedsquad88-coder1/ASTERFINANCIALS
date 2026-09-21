@@ -475,6 +475,46 @@ def create_autoinvest(body: AutoInvestIn, user: User = Depends(current_user), db
         dbs.rollback()
         raise
 
+
+
+@app.get("/v1/autoinvest/active")
+def active_autoinvest(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    rows = dbs.scalars(select(AutoInvest).where(AutoInvest.user_id == user.id).order_by(AutoInvest.id.desc())).all()
+    return [{"id":r.id,"strategy":r.strategy,"amount":str(r.amount),"duration_weeks":r.duration_weeks,"status":r.status,"created_at":r.created_at} for r in rows]
+
+@app.post("/v1/autoinvest/{autoinvest_id}/pause")
+def pause_autoinvest(autoinvest_id:int,user:User=Depends(current_user),dbs:Session=Depends(db),_:None=Depends(require_csrf)):
+    row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==autoinvest_id,AutoInvest.user_id==user.id))
+    if not row: raise HTTPException(404,"Auto-Invest not found")
+    if row.status != "active": raise HTTPException(409,"Only active strategies can be paused")
+    row.status="paused"; dbs.add(Notification(user_id=user.id,title="Auto-Invest paused",body=f"{row.strategy} has been paused.")); dbs.commit()
+    return {"id":row.id,"status":row.status}
+
+@app.post("/v1/autoinvest/{autoinvest_id}/resume")
+def resume_autoinvest(autoinvest_id:int,user:User=Depends(current_user),dbs:Session=Depends(db),_:None=Depends(require_csrf)):
+    row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==autoinvest_id,AutoInvest.user_id==user.id))
+    if not row: raise HTTPException(404,"Auto-Invest not found")
+    if row.status != "paused": raise HTTPException(409,"Only paused strategies can be resumed")
+    row.status="active"; dbs.add(Notification(user_id=user.id,title="Auto-Invest resumed",body=f"{row.strategy} is active again.")); dbs.commit()
+    return {"id":row.id,"status":row.status}
+
+@app.post("/v1/autoinvest/{autoinvest_id}/release")
+def release_autoinvest(autoinvest_id:int,user:User=Depends(current_user),dbs:Session=Depends(db),_:None=Depends(require_csrf),idem:str=Depends(require_idempotency_key)):
+    existing=dbs.scalar(select(IdempotencyKey).where(IdempotencyKey.user_id==user.id,IdempotencyKey.key==idem,IdempotencyKey.endpoint==f"/v1/autoinvest/{autoinvest_id}/release"))
+    if existing: return json.loads(existing.response_body)
+    row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==autoinvest_id,AutoInvest.user_id==user.id).with_for_update())
+    if not row: raise HTTPException(404,"Auto-Invest not found")
+    if row.status not in ("active","paused"): raise HTTPException(409,"Strategy cannot be released")
+    reference="AIR-"+secrets.token_hex(6).upper()
+    transfer_wallet_balance(dbs,user_id=user.id,amount=row.amount,source="user.invested",destination="user.available",reference=reference)
+    w=dbs.scalar(select(Wallet).where(Wallet.user_id==user.id).with_for_update()); w.invested-=row.amount; w.available+=row.amount
+    row.status="released"
+    dbs.add(LedgerEntry(user_id=user.id,kind="autoinvest_release",amount=row.amount,reference=reference,status="posted"))
+    dbs.add(Notification(user_id=user.id,title="Funds released",body=f"{row.strategy} principal returned to your available balance."))
+    result={"id":row.id,"status":row.status,"released_amount":str(row.amount)}
+    dbs.add(IdempotencyKey(user_id=user.id,key=idem,endpoint=f"/v1/autoinvest/{autoinvest_id}/release",response_status=200,response_body=json.dumps(result)))
+    dbs.commit(); return result
+
 @app.get("/v1/portfolio")
 def portfolio(user: User = Depends(current_user), dbs: Session = Depends(db)):
     w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
