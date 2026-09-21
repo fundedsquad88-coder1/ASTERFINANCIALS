@@ -323,6 +323,14 @@ def strategies():
 
 
 
+def ledger_account_balances(dbs: Session, user_id: int) -> dict[str, Decimal]:
+    rows = dbs.execute(
+        select(LedgerPosting.account, func.coalesce(func.sum(LedgerPosting.debit), 0), func.coalesce(func.sum(LedgerPosting.credit), 0))
+        .where(LedgerPosting.user_id == user_id)
+        .group_by(LedgerPosting.account)
+    ).all()
+    return {account: Decimal(str(debits)) - Decimal(str(credits)) for account, debits, credits in rows}
+
 @app.get("/v1/ledger/integrity")
 def ledger_integrity(user: User = Depends(current_user), dbs: Session = Depends(db)):
     tx_ids = dbs.scalars(select(LedgerTransaction.id)).all()
@@ -334,7 +342,23 @@ def ledger_integrity(user: User = Depends(current_user), dbs: Session = Depends(
         checked += 1
         if Decimal(str(debits)) != Decimal(str(credits)):
             unbalanced.append(tx_id)
-    return {"currency":"USDT","checked_transactions":checked,"balanced":not unbalanced,"unbalanced_transaction_ids":unbalanced[:20]}
+    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    balances = ledger_account_balances(dbs, user.id)
+    wallet_available = w.available if w else Decimal("0")
+    wallet_invested = w.invested if w else Decimal("0")
+    wallet_pending = w.pending if w else Decimal("0")
+    expected_available = balances.get("user.available", Decimal("0"))
+    expected_invested = balances.get("user.invested", Decimal("0"))
+    expected_pending = balances.get("user.pending", Decimal("0"))
+    wallet_mismatches = {
+        "available": str(wallet_available - expected_available),
+        "invested": str(wallet_invested - expected_invested),
+        "pending": str(wallet_pending - expected_pending),
+    }
+    wallet_balanced = all(Decimal(v) == Decimal("0") for v in wallet_mismatches.values())
+    return {"currency":"USDT","checked_transactions":checked,"balanced":not unbalanced,
+            "unbalanced_transaction_ids":unbalanced[:20],"wallet_balanced":wallet_balanced,
+            "wallet_mismatches":wallet_mismatches}
 
 @app.get("/v1/portfolio/valuation-status")
 def valuation_status(user: User = Depends(current_user), dbs: Session = Depends(db)):
