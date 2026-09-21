@@ -176,7 +176,35 @@ window.__asterNativeResult=(id,body,ok)=>{const c=window.__asterCallbacks?.[id];
 function line(vals,color='#17131c'){if(!vals.length)return '';let min=Math.min(...vals),max=Math.max(...vals),r=max-min||1,w=320,h=70;let d=vals.map((v,i)=>(i?'L':'M')+(i/(vals.length-1)*w).toFixed(1)+' '+(h-5-(v-min)/r*(h-10)).toFixed(1)).join('');return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
 let quotes={};let marketFilter='all';
 function miniSpark(seed){let vals=[1],x=seed||1;for(let i=0;i<8;i++){x=(x*9301+49297)%233280;vals.push(vals.at(-1)*(1+((x/233280)-.46)*.035))}return line(vals,'#7b61ff')}function renderMarkets(){let keys=Object.keys(quotes).filter(k=>marketFilter==='all'||quotes[k].type===marketFilter);$('#marketList').innerHTML=keys.length?keys.map(k=>{let q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(Math.abs(q.price)%97+1)+'</div></div>'}).join(''):'<div class="small muted">No live quotes available right now.</div>';let top=keys.slice(0,5);$('#homeMarkets').innerHTML=top.length?'<div class="market-card-head"><span class="small muted">Live data</span><span class="live-dot"></span></div>'+top.map(k=>{let q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(Math.abs(q.price)%97+1)+'</div></div>'}).join(''):'<div class="small muted">Waiting for live market data…</div>'}
-async function loadMarkets(){try{let syms=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];let raw=await nativeFetch('https://api.binance.com/api/v3/ticker/24hr?symbols=['+syms.map(s=>'\\"'+s+'\\"').join(',')+']');let data=JSON.parse(raw);quotes={};data.forEach(x=>{quotes[x.symbol.replace('USDT','/USDT')]={symbol:x.symbol.replace('USDT','/USDT'),type:'crypto',price:+x.lastPrice,open:+x.openPrice}});renderMarkets()}catch(e){$('#marketList').innerHTML='<div class="small muted">Live market feed unavailable. No placeholder prices are shown.</div>';$('#homeMarkets').innerHTML='<div class="small muted">Live market feed unavailable.</div>'}}
+async function loadMarkets(){
+  const syms=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
+  const encoded=encodeURIComponent(JSON.stringify(syms));
+  const endpoints=[
+    'https://data-api.binance.vision/api/v3/ticker/24hr?symbols='+encoded,
+    'https://api.binance.com/api/v3/ticker/24hr?symbols='+encoded,
+    'https://api1.binance.com/api/v3/ticker/24hr?symbols='+encoded,
+    'https://api2.binance.com/api/v3/ticker/24hr?symbols='+encoded
+  ];
+  let lastError=null;
+  for(const endpoint of endpoints){
+    try{
+      const raw=await nativeFetch(endpoint);
+      const data=JSON.parse(raw);
+      if(!Array.isArray(data)||!data.length)throw new Error('Empty market response');
+      quotes={};
+      data.forEach(x=>{
+        if(!x.symbol||x.lastPrice==null||x.openPrice==null)return;
+        const symbol=x.symbol.replace('USDT','/USDT');
+        quotes[symbol]={symbol,type:'crypto',price:+x.lastPrice,open:+x.openPrice};
+      });
+      if(Object.keys(quotes).length){renderMarkets();return}
+      throw new Error('No supported symbols returned');
+    }catch(e){lastError=e}
+  }
+  console.warn('Aster live market feed failed',lastError);
+  $('#marketList').innerHTML='<div class="small muted">Live market feed temporarily unavailable. Retrying automatically…</div>';
+  $('#homeMarkets').innerHTML='<div class="small muted">Live market feed temporarily unavailable.</div>';
+}
 async function loadNews(target){try{let raw=await nativeFetch('https://news.google.com/rss/search?q=crypto%20markets%20bitcoin%20ethereum&hl=en-US&gl=US&ceid=US:en');let xml=new DOMParser().parseFromString(raw,'text/xml');let items=[...xml.querySelectorAll('item')].slice(0,6);$(target).innerHTML=items.length?items.map(i=>'<a class="news" href="'+i.querySelector('link')?.textContent+'" target="_blank"><b>'+i.querySelector('title')?.textContent+'</b><span>'+i.querySelector('pubDate')?.textContent+'</span></a>').join(''):'<div class="small muted">No headlines returned.</div>'}catch(e){$(target).innerHTML='<div class="small muted">News feed unavailable right now.</div>'}}
 function projection(){let amount=+$('#amt').value,weeks=+$('#weeks').value;$('#amtLabel').textContent='$'+fmt(amount,0);$('#weeksLabel').textContent=weeks+' weeks';$$('#amtChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.a===amount));let weekly=$('#investTabs button.on').dataset.type==='crypto'?.012:.004;let vals=[amount];for(let i=1;i<=weeks;i++)vals.push(vals[i-1]*(1+weekly));let end=vals.at(-1);$('#projValue').textContent='$'+fmt(end,0);$('#projChart').innerHTML=line(vals,'#8d72ff');$('#projNote').textContent='Illustrative '+(weekly*100).toFixed(1)+'% weekly assumption for visualization only. Actual returns can be negative and are not guaranteed.'}
 function roiCalc(){const a=+$('#roiAmt').value,r=+$('#roiRate').value/100,w=+$('#roiWeeks').value;$('#roiAmtLabel').textContent='$'+fmt(a,0);$('#roiRateLabel').textContent=(r*100)+'%';$('#roiWeeksLabel').textContent=w+' weeks';$$('#roiAmtChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===a));$$('#roiRateChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===r*100));$$('#roiWeekChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.v===w));let vals=[a];for(let i=1;i<=w;i++)vals.push(vals[i-1]*(1+r));const end=vals[vals.length-1];$('#roiOut').textContent='$'+fmt(end,0);$('#roiProfit').textContent='$'+fmt(end-a,0);$('#roiMultiple').textContent=(end/a).toFixed(2)+'×';$('#roiChart').innerHTML=line(vals,'#8d72ff')}['roiAmt','roiRate','roiWeeks'].forEach(id=>$('#'+id).oninput=roiCalc);$('#roiAmtChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiAmt').value=b.dataset.v;roiCalc()}};$('#roiRateChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiRate').value=b.dataset.v;roiCalc()}};$('#roiWeekChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiWeeks').value=b.dataset.v;roiCalc()}};function go(id){$$('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets')loadMarkets()}
