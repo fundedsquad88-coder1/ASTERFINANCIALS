@@ -74,7 +74,6 @@ paths:
         '201': {description: Withdrawal request}
         '409': {description: Insufficient available balance}
         '422': {description: Invalid destination address or unsupported network}
-        '409': {description: Insufficient available balance}
   /v1/wallet/provider/webhook:
     post:
       summary: Verified funding-provider webhook
