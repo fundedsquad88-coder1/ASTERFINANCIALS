@@ -345,6 +345,44 @@ def ledger_account_balances(dbs: Session, user_id: int) -> dict[str, Decimal]:
     ).all()
     return {account: Decimal(str(debits)) - Decimal(str(credits)) for account, debits, credits in rows}
 
+@app.post("/v1/autoinvest")
+def create_autoinvest(body: AutoInvestIn, user: User = Depends(current_user), dbs: Session = Depends(db),
+                      _: None = Depends(require_csrf), idem: str = Depends(require_idempotency_key)):
+    existing = dbs.scalar(select(IdempotencyKey).where(IdempotencyKey.user_id == user.id, IdempotencyKey.key == idem, IdempotencyKey.endpoint == "/v1/autoinvest"))
+    if existing:
+        import json
+        return json.loads(existing.response_body)
+    try:
+        reference = "AI-" + secrets.token_hex(6).upper()
+        transfer_wallet_balance(dbs, user_id=user.id, amount=body.amount,
+                                source="user.available", destination="user.invested", reference=reference)
+        w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+        w.available -= body.amount
+        w.invested += body.amount
+        strategy = AutoInvest(user_id=user.id, strategy=body.strategy, amount=body.amount,
+                              duration_weeks=body.duration_weeks, status="active")
+        dbs.add(strategy)
+        dbs.add(LedgerEntry(user_id=user.id, kind="autoinvest_debit", amount=-body.amount,
+                            reference=reference, status="posted"))
+        dbs.flush()
+        result = {"id": strategy.id, "strategy": strategy.strategy, "amount": str(strategy.amount),
+                  "duration_weeks": strategy.duration_weeks, "status": strategy.status}
+        import json
+        dbs.add(IdempotencyKey(user_id=user.id, key=idem, endpoint="/v1/autoinvest",
+                               response_status=201, response_body=json.dumps(result)))
+        dbs.commit()
+        return result
+    except HTTPException:
+        dbs.rollback()
+        raise
+
+@app.get("/v1/portfolio")
+def portfolio(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    count = dbs.scalar(select(func.count(AutoInvest.id)).where(AutoInvest.user_id == user.id, AutoInvest.status == "active")) or 0
+    return {"currency":"USDT","available":str(w.available),"invested":str(w.invested),
+            "total":str(w.available + w.invested),"active":str(count),"strategy_count":int(count)}
+
 @app.get("/v1/ledger/integrity")
 def ledger_integrity(user: User = Depends(current_user), dbs: Session = Depends(db)):
     tx_ids = dbs.scalars(select(LedgerTransaction.id)).all()
@@ -396,6 +434,7 @@ def portfolio_performance(user: User = Depends(current_user), dbs: Session = Dep
         "total":str(current_total),
         "net_contributed":str(net_contributed),
         "realized_unpriced_change":str(realized),
+        "valuation_status":"priced",
         "ledger_autoinvest_debits":str(invested_debits),
         "note":"Performance is unpriced until a real strategy valuation feed is connected."
     }
