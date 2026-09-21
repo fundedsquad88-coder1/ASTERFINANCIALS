@@ -112,7 +112,7 @@ def transfer_wallet_balance(dbs: Session, *, user_id: int, amount: Decimal, sour
     balances = ledger_account_balances(dbs, user_id)
     available = balances.get(source, Decimal("0"))
     if available < amount:
-        raise HTTPException(409, "Insufficient ledger balance")
+        raise HTTPException(409, "Insufficient available balance")
     post_double_entry(dbs, user_id=user_id, reference=reference, amount=amount,
                       debit_account=destination, credit_account=source)
 
@@ -179,7 +179,7 @@ class LoginIn(BaseModel):
     password: str
 
 class AutoInvestIn(BaseModel):
-    strategy: str = Field(pattern="^(Core Crypto|Global FX)$")
+    strategy: str = Field(pattern="^(Core Crypto|Global FX|core-crypto|global-fx)$")
     amount: Decimal = Field(gt=0)
     duration_weeks: int = Field(ge=1, le=104)
 
@@ -353,13 +353,14 @@ def create_autoinvest(body: AutoInvestIn, user: User = Depends(current_user), db
         import json
         return json.loads(existing.response_body)
     try:
+        strategy_name = {"core-crypto":"Core Crypto","global-fx":"Global FX"}.get(body.strategy, body.strategy)
         reference = "AI-" + secrets.token_hex(6).upper()
         transfer_wallet_balance(dbs, user_id=user.id, amount=body.amount,
                                 source="user.available", destination="user.invested", reference=reference)
         w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
         w.available -= body.amount
         w.invested += body.amount
-        strategy = AutoInvest(user_id=user.id, strategy=body.strategy, amount=body.amount,
+        strategy = AutoInvest(user_id=user.id, strategy=strategy_name, amount=body.amount,
                               duration_weeks=body.duration_weeks, status="active")
         dbs.add(strategy)
         dbs.add(LedgerEntry(user_id=user.id, kind="autoinvest_debit", amount=-body.amount,
@@ -403,9 +404,9 @@ def ledger_integrity(user: User = Depends(current_user), dbs: Session = Depends(
     expected_invested = balances.get("user.invested", Decimal("0"))
     expected_pending = balances.get("user.pending", Decimal("0"))
     wallet_mismatches = {
-        "available": str(wallet_available - expected_available),
-        "invested": str(wallet_invested - expected_invested),
-        "pending": str(wallet_pending - expected_pending),
+        "available": str((wallet_available - expected_available).normalize()),
+        "invested": str((wallet_invested - expected_invested).normalize()),
+        "pending": str((wallet_pending - expected_pending).normalize()),
     }
     wallet_balanced = all(Decimal(v) == Decimal("0") for v in wallet_mismatches.values())
     return {"currency":"USDT","checked_transactions":checked,"balanced":not unbalanced,
