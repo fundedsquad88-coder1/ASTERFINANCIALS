@@ -155,6 +155,8 @@ class Notification(Base):
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+from app.funding import DepositIntent, WithdrawalRequest, ProviderEvent
+
 if os.getenv("ASTER_SKIP_CREATE_ALL", "false").lower() != "true":
     Base.metadata.create_all(engine)
 
@@ -300,14 +302,6 @@ class WithdrawalIn(BaseModel):
 def kyc_status(user: User = Depends(current_user)):
     return {"status": user.kyc_status, "next_action": None if user.kyc_status == "verified" else "verification_required"}
 
-@app.post("/v1/wallet/deposits", status_code=503)
-def create_deposit(_: DepositIn, user: User = Depends(current_user), __: None = Depends(require_csrf)):
-    raise HTTPException(503, "Deposit provider is not configured")
-
-@app.post("/v1/wallet/withdrawals", status_code=503)
-def create_withdrawal(_: WithdrawalIn, user: User = Depends(current_user), __: None = Depends(require_csrf)):
-    raise HTTPException(503, "Withdrawal provider is not configured")
-
 @app.get("/v1/wallet")
 def wallet(user: User = Depends(current_user), dbs: Session = Depends(db)):
     w = dbs.scalar(select(Wallet).where(Wallet.user_id==user.id))
@@ -440,3 +434,7 @@ def portfolio_performance(user: User = Depends(current_user), dbs: Session = Dep
         "note":"Performance is unpriced until a real strategy valuation feed is connected."
     }
 
+
+
+from app.funding_routes import router as funding_router
+app.include_router(funding_router)
