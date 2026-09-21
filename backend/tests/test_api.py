@@ -139,7 +139,7 @@ def test_wallet_ledger_reconciliation_starts_balanced():
     assert body["wallet_mismatches"] == {"available":"0","invested":"0","pending":"0"}
 
 
-def test_deposit_and_withdrawal_fail_closed_without_provider():
+def test_deposit_uses_aster_treasury_and_withdrawal_stays_fail_closed_without_funds():
     email = "fund-" + __import__("secrets").token_hex(5) + "@example.com"
     response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
     assert response.status_code == 201
@@ -147,11 +147,27 @@ def test_deposit_and_withdrawal_fail_closed_without_provider():
     deposit = client.post("/v1/wallet/deposits",
         headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "fund-deposit-" + __import__("secrets").token_hex(8)},
         json={"currency":"USDT","network":"TRC20"})
-    assert deposit.status_code == 503
+    assert deposit.status_code == 201
+    deposit_body = deposit.json()
+    assert deposit_body["custody"] == "Aster treasury"
+    assert deposit_body["network"] == "TRC20"
+    assert deposit_body["deposit_address"].startswith("T")
     withdrawal = client.post("/v1/wallet/withdrawals",
         headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "fund-withdraw-" + __import__("secrets").token_hex(8)},
         json={"currency":"USDT","network":"TRC20","address":"T" + "1"*33,"amount":"1"})
-    assert withdrawal.status_code == 503
+    assert withdrawal.status_code == 409
+    assert withdrawal.json()["detail"] == "Insufficient available balance"
+
+
+def test_treasury_deposit_addresses_expose_only_public_receiving_addresses():
+    response = client.get("/v1/wallet/deposit-addresses")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["custody"] == "Aster treasury"
+    assert {x["network"] for x in body["networks"]} == {"BEP20", "TRC20"}
+    by_network = {x["network"]: x for x in body["networks"]}
+    assert by_network["BEP20"]["address"].startswith("0x")
+    assert by_network["TRC20"]["address"].startswith("T")
 
 def test_provider_webhook_requires_signature_secret():
     response = client.post("/v1/wallet/provider/webhook", json={
