@@ -1,4 +1,5 @@
 import hashlib
+import json
 import hmac
 import os
 import secrets
@@ -155,6 +156,37 @@ class Notification(Base):
     read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+
+
+class AuthToken(Base):
+    __tablename__ = "auth_tokens"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    purpose: Mapped[str] = mapped_column(String(32), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+class Referral(Base):
+    __tablename__ = "referrals"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    referrer_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    referred_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+    bonus_rate: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal("0.1500"))
+    pending_bonus: Mapped[Decimal] = mapped_column(Numeric(28, 8), default=0)
+    paid_bonus: Mapped[Decimal] = mapped_column(Numeric(28, 8), default=0)
+    status: Mapped[str] = mapped_column(String(24), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(80), index=True)
+    metadata_json: Mapped[str] = mapped_column(String(4000), default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
 from app.funding import DepositIntent, WithdrawalRequest, ProviderEvent
 
 if os.getenv("ASTER_SKIP_CREATE_ALL", "false").lower() != "true":
@@ -162,7 +194,7 @@ if os.getenv("ASTER_SKIP_CREATE_ALL", "false").lower() != "true":
 
 # Production deployments use versioned migrations; create_all is only a local bootstrap.
 
-app = FastAPI(title="Aster Financials API", version="0.3.0")
+app = FastAPI(title="Aster Financials API", version="0.4.0")
 if ALLOWED_ORIGINS:
     app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_credentials=True,
                        allow_methods=["GET","POST","PATCH","DELETE","OPTIONS"],
@@ -260,6 +292,9 @@ def register(body: RegisterIn, response: Response, dbs: Session = Depends(db)):
     user = User(email=email, password_hash=password_hash.hash(body.password),
                 referral_code="ASTER-"+secrets.token_hex(4).upper())
     dbs.add(user); dbs.flush()
+    if body.referral_code:
+        referrer = dbs.scalar(select(User).where(User.referral_code == body.referral_code.strip().upper()))
+        if referrer and referrer.id != user.id: dbs.add(Referral(referrer_user_id=referrer.id, referred_user_id=user.id))
     dbs.add(Wallet(user_id=user.id))
     dbs.commit()
     csrf = issue_session(response, dbs, user.id)
@@ -297,6 +332,75 @@ class WithdrawalIn(BaseModel):
     network: str = Field(min_length=2, max_length=24)
     address: str = Field(min_length=10, max_length=256)
     amount: Decimal = Field(gt=0)
+
+
+
+class PasswordResetIn(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirmIn(BaseModel):
+    token: str = Field(min_length=20, max_length=256)
+    password: str = Field(min_length=12, max_length=128)
+
+def make_token() -> str:
+    return secrets.token_urlsafe(48)
+
+def create_auth_token(dbs: Session, user_id: int, purpose: str, ttl_hours: int = 1) -> str:
+    raw = make_token()
+    dbs.add(AuthToken(user_id=user_id, token_hash=digest(raw), purpose=purpose, expires_at=datetime.now(timezone.utc)+timedelta(hours=ttl_hours)))
+    return raw
+
+@app.post("/v1/auth/password-reset/request")
+def password_reset_request(body: PasswordResetIn, dbs: Session = Depends(db)):
+    user = dbs.scalar(select(User).where(User.email == body.email.lower()))
+    if not user:
+        return {"ok": True, "message": "If the account exists, reset instructions will be sent."}
+    token = create_auth_token(dbs, user.id, "password_reset", 1)
+    dbs.add(AuditEvent(user_id=user.id, event_type="password_reset_requested", metadata_json=json.dumps({"delivery":"provider_required"})))
+    dbs.commit()
+    if os.getenv("ASTER_EXPOSE_DEV_RESET_TOKEN", "false").lower() == "true":
+        return {"ok": True, "dev_token": token}
+    return {"ok": True, "message": "If the account exists, reset instructions will be sent."}
+
+@app.post("/v1/auth/password-reset/confirm")
+def password_reset_confirm(body: PasswordResetConfirmIn, response: Response, dbs: Session = Depends(db)):
+    row = dbs.scalar(select(AuthToken).where(AuthToken.token_hash == digest(body.token), AuthToken.purpose == "password_reset"))
+    if not row or row.used_at or utc_datetime(row.expires_at) < datetime.now(timezone.utc): raise HTTPException(400, "Invalid or expired reset token")
+    user = dbs.get(User, row.user_id)
+    if not user or user.status != "active": raise HTTPException(403, "Account unavailable")
+    user.password_hash = password_hash.hash(body.password); row.used_at = datetime.now(timezone.utc)
+    dbs.query(SessionToken).filter(SessionToken.user_id == user.id).delete(synchronize_session=False)
+    dbs.add(AuditEvent(user_id=user.id, event_type="password_reset_completed")); dbs.commit()
+    response.delete_cookie("__Host-AsterSession", path="/"); response.delete_cookie("AsterCSRF", path="/")
+    return {"ok": True}
+
+@app.get("/v1/security/sessions")
+def security_sessions(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    rows = dbs.scalars(select(SessionToken).where(SessionToken.user_id == user.id).order_by(SessionToken.created_at.desc())).all()
+    return [{"id":r.id,"created_at":r.created_at,"expires_at":r.expires_at} for r in rows]
+
+@app.delete("/v1/security/sessions/{session_id}")
+def revoke_session(session_id: int, user: User = Depends(current_user), dbs: Session = Depends(db), _: None = Depends(require_csrf)):
+    row = dbs.scalar(select(SessionToken).where(SessionToken.id == session_id, SessionToken.user_id == user.id))
+    if not row: raise HTTPException(404, "Session not found")
+    dbs.delete(row); dbs.add(AuditEvent(user_id=user.id, event_type="session_revoked", metadata_json=json.dumps({"session_id":session_id}))); dbs.commit()
+    return {"ok": True}
+
+@app.get("/v1/referrals")
+def referrals(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    rows = dbs.scalars(select(Referral).where(Referral.referrer_user_id == user.id).order_by(Referral.id.desc())).all()
+    return {"code":user.referral_code,"rate":"15%","count":len(rows),"pending_bonus":str(sum((r.pending_bonus for r in rows),Decimal("0"))),"paid_bonus":str(sum((r.paid_bonus for r in rows),Decimal("0"))),"referrals":[{"id":r.id,"referred_user_id":r.referred_user_id,"status":r.status,"pending_bonus":str(r.pending_bonus),"paid_bonus":str(r.paid_bonus)} for r in rows]}
+
+@app.get("/v1/notifications")
+def notifications(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    rows = dbs.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.id.desc()).limit(100)).all()
+    return [{"id":n.id,"title":n.title,"body":n.body,"read":n.read,"created_at":n.created_at} for n in rows]
+
+@app.post("/v1/notifications/{notification_id}/read")
+def mark_notification_read(notification_id:int,user:User=Depends(current_user),dbs:Session=Depends(db),_:None=Depends(require_csrf)):
+    n=dbs.scalar(select(Notification).where(Notification.id==notification_id,Notification.user_id==user.id))
+    if not n: raise HTTPException(404,"Notification not found")
+    n.read=True; dbs.commit(); return {"ok":True}
 
 @app.get("/v1/kyc/status")
 def kyc_status(user: User = Depends(current_user)):
