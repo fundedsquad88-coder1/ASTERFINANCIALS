@@ -2,6 +2,8 @@ package com.asterfinancials.app;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -72,6 +74,11 @@ public class MainActivity extends Activity {
             return local != null ? local : super.shouldInterceptRequest(view, request);
         }
 
+        @Override public void onPageFinished(WebView view, String url) {
+            super.onPageFinished(view, url);
+            injectTreasuryWalletUi(view);
+        }
+
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             Uri uri = request.getUrl();
             String scheme = uri.getScheme();
@@ -95,6 +102,44 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void injectTreasuryWalletUi(WebView view) {
+        String js = "(function(){"
+                + "if(window.__asterTreasuryUi)return;window.__asterTreasuryUi=1;"
+                + "const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\\"/g,'&quot;');"
+                + "const cfg=JSON.parse(AsterNative.treasuryConfig());"
+                + "function sheet(title,body){"
+                + " const back=document.getElementById('sheetBack'),sh=document.getElementById('sheet');"
+                + " if(!back||!sh)return;"
+                + " sh.innerHTML='<div class=\\\"grab\\\"></div><h3>'+title+'</h3>'+body+'<button class=\\\"primary\\\" id=\\\"closeTreasurySheet\\\" style=\\\"margin-top:14px\\\">Close</button>';"
+                + " back.classList.add('on');document.getElementById('closeTreasurySheet').onclick=()=>back.classList.remove('on');"
+                + "}"
+                + "function deposit(){"
+                + " let net='BEP20';"
+                + " const render=()=>{const x=cfg.networks.find(n=>n.network===net)||cfg.networks[0];"
+                + " return '<div class=\\\"tabs\\\" id=\\\"treasuryTabs\\\">'+cfg.networks.map(n=>'<button class=\\\"'+(n.network===net?'on':'')+'\\\" data-net=\\\"'+n.network+'\\\">'+n.label+'</button>').join('')+'</div>'"
+                + " +'<div class=\\\"card\\\" style=\\\"margin:10px 0\\\"><div class=\\\"eyebrow\\\">Aster treasury address</div><div style=\\\"font-size:15px;font-weight:900;word-break:break-all;margin:8px 0 12px\\\">'+esc(x.address)+'</div><div class=\\\"small muted\\\">'+esc(x.name)+' · Send <b>USDT only</b> on this network.</div><div class=\\\"outline-row\\\" style=\\\"margin-top:12px\\\"><button class=\\\"secondary\\\" id=\\\"copyTreasury\\\">Copy address</button><button class=\\\"secondary\\\" id=\\\"shareTreasury\\\">Share</button></div></div>'"
+                + " +'<div class=\\\"notice\\\"><b>Important:</b> Sending USDT on another network can permanently lose funds. After sending, keep the blockchain transaction hash for verification.</div>';"
+                + " };"
+                + " const body=render();sheet('Deposit USDT',body);"
+                + " setTimeout(()=>{"
+                + "  document.querySelectorAll('#treasuryTabs button').forEach(b=>b.onclick=()=>{net=b.dataset.net;sheet('Deposit USDT',render());bind();});"
+                + "  bind();"
+                + " },0);"
+                + " function bind(){const x=cfg.networks.find(n=>n.network===net)||cfg.networks[0];"
+                + "  document.getElementById('copyTreasury')?.addEventListener('click',()=>{AsterNative.copyText(x.address);window.showToast?.('Address copied');});"
+                + "  document.getElementById('shareTreasury')?.addEventListener('click',()=>AsterNative.shareText('Aster Financials USDT '+x.label+' deposit address: '+x.address));"
+                + " }"
+                + "}"
+                + "function withdraw(){"
+                + " sheet('Withdraw USDT','<div class=\\\"tabs\\\"><button class=\\\"on\\\">BEP20</button><button>TRC20</button></div><label class=\\\"eyebrow\\\">Destination address</label><input class=\\\"input\\\" id=\\\"wdAddress\\\" placeholder=\\\"Paste your wallet address\\\"><label class=\\\"eyebrow\\\">Amount (USDT)</label><input class=\\\"input\\\" id=\\\"wdAmount\\\" inputmode=\\\"decimal\\\" placeholder=\\\"0.00\\\"><div class=\\\"notice\\\">Withdrawals are submitted from Aster treasury after authentication, balance, compliance and transaction checks. This screen never fabricates a withdrawal.</div>');"
+                + "}"
+                + " document.getElementById('deposit')?.addEventListener('click',deposit,true);"
+                + " document.getElementById('withdraw')?.addEventListener('click',withdraw,true);"
+                + " document.getElementById('deposit').onclick=deposit;document.getElementById('withdraw').onclick=withdraw;"
+                + "})()";
+        view.evaluateJavascript(js, null);
+    }
+
     public class AsterNative {
         @JavascriptInterface public void haptic(final String kind) {
             main.post(() -> {
@@ -112,6 +157,31 @@ public class MainActivity extends Activity {
                         v.vibrate(pattern, -1);
                     }
                 } catch (SecurityException ignored) { }
+            });
+        }
+
+        @JavascriptInterface public String treasuryConfig() {
+            return "{\"custody\":\"Aster treasury\",\"networks\":["
+                    + "{\"network\":\"BEP20\",\"label\":\"USDT · BEP20\",\"name\":\"BNB Smart Chain\",\"address\":\"0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5\"},"
+                    + "{\"network\":\"TRC20\",\"label\":\"USDT · TRC20\",\"name\":\"Tron\",\"address\":\"TMrK4d1r2cGye2TwX3JfjCaUDWwZybaoxD\"}"
+                    + "]}";
+        }
+
+        @JavascriptInterface public void copyText(final String value) {
+            main.post(() -> {
+                ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Aster", value == null ? "" : value));
+            });
+        }
+
+        @JavascriptInterface public void shareText(final String value) {
+            main.post(() -> {
+                try {
+                    Intent send = new Intent(Intent.ACTION_SEND);
+                    send.setType("text/plain");
+                    send.putExtra(Intent.EXTRA_TEXT, value == null ? "" : value);
+                    startActivity(Intent.createChooser(send, "Share Aster address"));
+                } catch (Exception ignored) { }
             });
         }
 
