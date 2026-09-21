@@ -77,6 +77,7 @@ public class MainActivity extends Activity {
         @Override public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
             injectTreasuryWalletUi(view);
+            injectV24Upgrade(view);
         }
 
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -100,6 +101,17 @@ public class MainActivity extends Activity {
             });
             return true;
         }
+    }
+
+
+    private void injectV24Upgrade(WebView view) {
+        String js = "(function(){"
+                + "if(window.__asterV24Loader)return;window.__asterV24Loader=1;"
+                + "var s=document.createElement('script');"
+                + "s.src='https://appassets.androidplatform.net/assets/v24-upgrade.js';"
+                + "s.async=false;document.head.appendChild(s);"
+                + "})()";
+        view.evaluateJavascript(js, null);
     }
 
     private void injectTreasuryWalletUi(WebView view) {
