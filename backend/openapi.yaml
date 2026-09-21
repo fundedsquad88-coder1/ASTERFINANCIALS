@@ -40,17 +40,37 @@ paths:
   /v1/wallet/deposits:
     post:
       security: [{session: []}]
-      summary: Create a deposit intent when a real provider is configured
+      summary: Create an idempotent deposit intent
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: {type: string, minLength: 16, maxLength: 128}
       responses:
         '201': {description: Deposit intent}
-        '503': {description: Deposit provider not configured}
+        '503': {description: Funding provider not configured}
   /v1/wallet/withdrawals:
     post:
       security: [{session: []}]
-      summary: Create a withdrawal request when a real provider is configured
+      summary: Create an idempotent withdrawal request
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: {type: string, minLength: 16, maxLength: 128}
       responses:
         '201': {description: Withdrawal request}
-        '503': {description: Withdrawal provider not configured}
+        '409': {description: Insufficient available balance}
+        '503': {description: Funding provider not configured}
+  /v1/wallet/provider/webhook:
+    post:
+      summary: Verified funding-provider webhook
+      description: Credits a deposit only after signature verification, intent matching, idempotency, and atomic double-entry settlement.
+      responses:
+        '200': {description: Event processed}
+        '401': {description: Invalid signature}
+        '409': {description: Provider or settlement mismatch}
+        '503': {description: Webhook secret/provider not configured}
   /v1/transactions:
     get:
       security: [{session: []}]
