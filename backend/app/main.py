@@ -103,6 +103,20 @@ def post_double_entry(dbs: Session, *, user_id: int, reference: str, amount: Dec
     dbs.add(LedgerPosting(transaction_id=tx.id, user_id=user_id, account=debit_account, debit=amount, credit=Decimal("0"), currency=currency))
     dbs.add(LedgerPosting(transaction_id=tx.id, user_id=user_id, account=credit_account, debit=Decimal("0"), credit=amount, currency=currency))
 
+def transfer_wallet_balance(dbs: Session, *, user_id: int, amount: Decimal, source: str, destination: str, reference: str) -> None:
+    if amount <= 0:
+        raise HTTPException(400, "Amount must be positive")
+    w = dbs.scalar(select(Wallet).where(Wallet.user_id == user_id))
+    if not w:
+        raise HTTPException(404, "Wallet not found")
+    balances = ledger_account_balances(dbs, user_id)
+    available = balances.get(source, Decimal("0"))
+    if available < amount:
+        raise HTTPException(409, "Insufficient ledger balance")
+    post_double_entry(dbs, user_id=user_id, reference=reference, amount=amount,
+                      debit_account=destination, credit_account=source)
+
+
 class AutoInvest(Base):
     __tablename__ = "autoinvest"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
