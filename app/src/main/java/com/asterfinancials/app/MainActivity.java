@@ -133,8 +133,6 @@ public class MainActivity extends Activity {
                 + "function withdraw(){"
                 + " sheet('Withdraw USDT','<div class=\\\"tabs\\\"><button class=\\\"on\\\">BEP20</button><button>TRC20</button></div><label class=\\\"eyebrow\\\">Destination address</label><input class=\\\"input\\\" id=\\\"wdAddress\\\" placeholder=\\\"Paste your wallet address\\\"><label class=\\\"eyebrow\\\">Amount (USDT)</label><input class=\\\"input\\\" id=\\\"wdAmount\\\" inputmode=\\\"decimal\\\" placeholder=\\\"0.00\\\"><div class=\\\"notice\\\">Withdrawals are submitted from Aster treasury after authentication, balance, compliance and transaction checks. This screen never fabricates a withdrawal.</div>');"
                 + "}"
-                + " document.getElementById('deposit')?.addEventListener('click',deposit,true);"
-                + " document.getElementById('withdraw')?.addEventListener('click',withdraw,true);"
                 + " document.getElementById('deposit').onclick=deposit;document.getElementById('withdraw').onclick=withdraw;"
                 + "})()";
         view.evaluateJavascript(js, null);
