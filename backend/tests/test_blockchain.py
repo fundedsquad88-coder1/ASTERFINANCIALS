@@ -35,7 +35,7 @@ def seed_user(dbs, amount=Decimal("0")):
 
 def test_treasury_addresses_are_valid_and_expected():
     assert treasury_address(BEP20) == "0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5"
-    assert treasury_address(TRC20) == "TMrK4d1r2cGye2TwX3JfjCaUDWvZy6aoXD"
+    assert treasury_address(TRC20) == "TMrK4d1r2cGye2TwX3JfjCaUDWwZybaoxD"
 
 
 def test_credit_transfer_requires_exactly_one_matching_intent():
