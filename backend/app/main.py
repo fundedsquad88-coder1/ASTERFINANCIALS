@@ -48,3 +48,21 @@ def admin_process_withdrawals(
     except RuntimeError as exc:
         dbs.rollback()
         raise HTTPException(502, str(exc))
+
+
+@app.post("/v1/admin/autoinvest/sync")
+def admin_autoinvest_sync(
+    limit: int = 100,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    if limit < 1 or limit > 500:
+        raise HTTPException(422, "limit must be between 1 and 500")
+    from app.autoinvest_engine import sync_status
+    result = sync_status(dbs, limit=limit)
+    if not result["ok"]:
+        raise HTTPException(503, result["error"])
+    return result
