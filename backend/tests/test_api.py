@@ -216,3 +216,15 @@ def test_withdrawal_webhook_fails_closed_without_secret():
 def test_admin_withdrawal_processor_requires_admin_key():
     response = client.post("/v1/admin/withdrawals/process")
     assert response.status_code == 403
+
+
+def test_admin_withdrawal_processor_uses_dry_run_provider_by_default(monkeypatch):
+    monkeypatch.delenv("ASTER_WITHDRAWAL_PROVIDER", raising=False)
+    monkeypatch.setenv("ASTER_ADMIN_API_KEY", "A" * 32)
+    response = client.post(
+        "/v1/admin/withdrawals/process?limit=10",
+        headers={"X-Aster-Admin-Key": "A" * 32},
+    )
+    assert response.status_code == 200
+    assert response.json()["mode"] == "dry-run"
+    assert response.json()["items"] == []
