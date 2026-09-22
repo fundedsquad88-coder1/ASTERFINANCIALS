@@ -85,3 +85,16 @@ def provider_status(dbs: Session) -> list[dict[str, object]]:
         }
         for row in rows
     ]
+
+
+def sync_status(dbs: Session, *, limit: int = 100) -> dict[str, object]:
+    """Run one fail-closed valuation cycle and expose an operational summary."""
+    try:
+        items = sync_active_valuations(dbs, limit=limit)
+        return {"ok": True, "status": "synced", "count": len(items), "items": items}
+    except RuntimeError as exc:
+        dbs.rollback()
+        return {"ok": False, "status": "provider_unavailable", "count": 0, "items": [], "error": str(exc)}
+    except ValueError:
+        dbs.rollback()
+        raise
