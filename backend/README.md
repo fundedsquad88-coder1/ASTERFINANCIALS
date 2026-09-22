@@ -1,6 +1,6 @@
 # Aster Financials Backend
 
-Production-oriented service foundation for Aster V23. This repository now contains a runnable FastAPI service with server-side sessions, password hashing, wallet/account records, ledger entries, Auto-Invest state, notifications and referral/account endpoints.
+Production-oriented service foundation for Aster. This repository contains a runnable FastAPI service with server-side sessions, password hashing, basic user profiles, email verification state, wallet/account records, ledger entries, Auto-Invest state, notifications and referral/account endpoints.
 
 ## Run locally
 
@@ -22,12 +22,12 @@ Docker:
 - Wallet balances are ledger-backed records; the Android client must never fabricate balances or returns.
 - Auto-Invest activation checks authenticated identity and available balance before creating server state.
 - Deposits/withdrawals remain provider-gated. No blockchain address or private key is hard-coded.
-- KYC/AML, custody/provider adapters, push delivery, admin authorization and audit controls must be connected before handling real customer funds.
+- Identity/KYC verification is intentionally not enabled at the current account stage. Custody/provider adapters, push delivery, admin authorization and audit controls must be connected before handling real customer funds.
 
 ## Service boundaries
 
 1. Auth/session
-2. User/KYC state
+2. User profile + email verification state
 3. Wallet + ledger
 4. Deposit/withdrawal provider adapters
 5. Auto-Invest
