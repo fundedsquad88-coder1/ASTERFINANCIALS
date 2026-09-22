@@ -32,6 +32,12 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    username: Mapped[Optional[str]] = mapped_column(String(32), unique=True, index=True, nullable=True)
+    first_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(512))
     status: Mapped[str] = mapped_column(String(32), default="active")
     kyc_status: Mapped[str] = mapped_column(String(32), default="unverified")
@@ -216,7 +222,17 @@ if allowed_hosts:
 class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=12, max_length=128)
+    username: Optional[str] = Field(default=None, min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_]+$")
+    first_name: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    phone: Optional[str] = Field(default=None, max_length=32)
+    country: Optional[str] = Field(default=None, max_length=80)
     referral_code: Optional[str] = None
+
+class ProfileUpdateIn(BaseModel):
+    username: Optional[str] = Field(default=None, min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_]+$")
+    first_name: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    phone: Optional[str] = Field(default=None, max_length=32)
+    country: Optional[str] = Field(default=None, max_length=80)
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -313,7 +329,7 @@ def email_verification_confirm(body: EmailVerifyIn, user: User = Depends(current
     row = dbs.scalar(select(EmailVerification).where(EmailVerification.token_hash == digest(body.token), EmailVerification.user_id == user.id))
     if not row or row.verified_at or utc_datetime(row.expires_at) < datetime.now(timezone.utc): raise HTTPException(400, "Invalid or expired verification token")
     row.verified_at = datetime.now(timezone.utc)
-    user.kyc_status = user.kyc_status if user.kyc_status != "unverified" else "email_verified"
+    user.email_verified = True
     dbs.add(AuditEvent(user_id=user.id, event_type="email_verified")); dbs.commit()
     return {"ok": True, "email_verified": True}
 
@@ -327,7 +343,6 @@ def production_status():
         "auto_invest_execution_provider": bool(os.getenv("ASTER_AUTOINVEST_PROVIDER")),
         "valuation_provider": bool(os.getenv("ASTER_VALUATION_PROVIDER")),
         "push_provider": bool(os.getenv("ASTER_PUSH_PROVIDER")),
-        "kyc_aml_provider": bool(os.getenv("ASTER_KYC_PROVIDER")),
         "note": "Features without a configured provider remain fail-closed; the API never fabricates settlement or performance."
     }
 
@@ -346,7 +361,13 @@ def register(body: RegisterIn, response: Response, dbs: Session = Depends(db)):
     email = body.email.lower()
     if dbs.scalar(select(User).where(User.email==email)):
         raise HTTPException(409, "Account already exists")
-    user = User(email=email, password_hash=password_hash.hash(body.password),
+    if body.username and dbs.scalar(select(User).where(User.username == body.username.lower())):
+        raise HTTPException(409, "Username already exists")
+    user = User(email=email, username=body.username.lower() if body.username else None,
+                first_name=body.first_name.strip() if body.first_name else None,
+                phone=body.phone.strip() if body.phone else None,
+                country=body.country.strip() if body.country else None,
+                email_verified=False, password_hash=password_hash.hash(body.password),
                 referral_code="ASTER-"+secrets.token_hex(4).upper())
     dbs.add(user); dbs.flush()
     if body.referral_code:
@@ -355,7 +376,7 @@ def register(body: RegisterIn, response: Response, dbs: Session = Depends(db)):
     dbs.add(Wallet(user_id=user.id))
     dbs.commit()
     csrf = issue_session(response, dbs, user.id)
-    return {"id": user.id, "email": user.email, "kyc_status": user.kyc_status, "csrf_token": csrf}
+    return {"id": user.id, "email": user.email, "email_verified": user.email_verified, "csrf_token": csrf}
 
 @app.post("/v1/auth/login")
 def login(body: LoginIn, response: Response, dbs: Session = Depends(db)):
@@ -377,7 +398,26 @@ def logout(response: Response, session_cookie: Optional[str] = Cookie(default=No
 
 @app.get("/v1/me")
 def me(user: User = Depends(current_user)):
-    return {"id": user.id, "email": user.email, "status": user.status, "kyc_status": user.kyc_status, "referral_code": user.referral_code}
+    return {"id": user.id, "email": user.email, "username": user.username, "first_name": user.first_name,
+            "phone": user.phone, "country": user.country, "status": user.status,
+            "email_verified": user.email_verified, "referral_code": user.referral_code,
+            "created_at": user.created_at, "last_login_at": user.last_login_at}
+
+@app.patch("/v1/profile")
+def update_profile(body: ProfileUpdateIn, user: User = Depends(current_user), dbs: Session = Depends(db),
+                   _: None = Depends(require_csrf)):
+    if body.username and body.username.lower() != (user.username or ""):
+        if dbs.scalar(select(User).where(User.username == body.username.lower(), User.id != user.id)):
+            raise HTTPException(409, "Username already exists")
+        user.username = body.username.lower()
+    if body.first_name is not None: user.first_name = body.first_name.strip()
+    if body.phone is not None: user.phone = body.phone.strip() or None
+    if body.country is not None: user.country = body.country.strip() or None
+    dbs.add(AuditEvent(user_id=user.id, event_type="profile_updated"))
+    dbs.commit()
+    return {"ok": True, "profile": {"username": user.username, "first_name": user.first_name,
+                                    "phone": user.phone, "country": user.country, "email": user.email,
+                                    "email_verified": user.email_verified}}
 
 
 class DepositIn(BaseModel):
@@ -461,7 +501,7 @@ def mark_notification_read(notification_id:int,user:User=Depends(current_user),d
 
 @app.get("/v1/kyc/status")
 def kyc_status(user: User = Depends(current_user)):
-    return {"status": user.kyc_status, "next_action": None if user.kyc_status == "verified" else "verification_required"}
+    return {"status": "not_required", "next_action": None, "note": "Identity verification is not enabled in this Aster account stage."}
 
 @app.get("/v1/wallet")
 def wallet(user: User = Depends(current_user), dbs: Session = Depends(db)):
