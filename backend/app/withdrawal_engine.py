@@ -156,3 +156,68 @@ def reconcile_withdrawal_confirmation(
     )
     dbs.commit()
     return {"id": row.id, "status": row.status, "tx_hash": tx_hash, "duplicate": False}
+
+
+def reconcile_withdrawal_failure(
+    dbs: Session,
+    *,
+    provider_reference: str,
+    reason: str = "provider_failed",
+) -> dict[str, object]:
+    """Return reserved funds to available balance after provider failure."""
+    row = dbs.scalar(
+        select(WithdrawalRequest)
+        .where(WithdrawalRequest.provider_reference == provider_reference)
+        .with_for_update()
+    )
+    if not row:
+        raise ValueError("Withdrawal not found")
+    if row.status in {"failed", "reversed"}:
+        return {"id": row.id, "status": row.status, "duplicate": True}
+    if row.status not in {"submitted", "pending"}:
+        raise ValueError(f"Withdrawal is not releasable from {row.status}")
+
+    wallet = dbs.scalar(
+        select(Wallet).where(Wallet.user_id == row.user_id).with_for_update()
+    )
+    if not wallet:
+        raise ValueError("Wallet not found")
+    if wallet.pending < row.amount:
+        raise ValueError("Pending wallet balance is below withdrawal amount")
+
+    release_ref = f"WD-{provider_reference}-RELEASE"
+    post_double_entry(
+        dbs,
+        user_id=row.user_id,
+        reference=release_ref,
+        amount=row.amount,
+        debit_account="user.available",
+        credit_account="user.pending",
+    )
+    wallet.pending -= row.amount
+    wallet.available += row.amount
+    row.status = "failed"
+
+    original_ref = f"WD-{provider_reference}"
+    entry = dbs.scalar(select(LedgerEntry).where(LedgerEntry.reference == original_ref))
+    if entry:
+        entry.status = "reversed"
+    dbs.add(
+        LedgerEntry(
+            user_id=row.user_id,
+            kind="withdrawal_reversal",
+            amount=row.amount,
+            reference=release_ref,
+            currency=row.currency,
+            status="posted",
+        )
+    )
+    _audit(
+        dbs,
+        row,
+        "withdrawal_released",
+        withdrawal_id=row.id,
+        reason=reason,
+    )
+    dbs.commit()
+    return {"id": row.id, "status": row.status, "duplicate": False}
