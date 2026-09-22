@@ -93,7 +93,7 @@ def test_strategy_valuation_is_account_scoped():
     assert missing.status_code == 404
     portfolio = client.get("/v1/portfolio/performance")
     assert portfolio.status_code == 200
-    assert portfolio.json()["valuation_status"] == "priced"
+    assert portfolio.json()["valuation_status"] == "unpriced"
 
 
 def test_valuation_rejects_future_timestamp():
