@@ -3,6 +3,8 @@ name: Build Aster APK
 on:
   workflow_dispatch:
   push:
+    branches: [ main, claude-ui-v1, v24-premium-upgrade ]
+  pull_request:
     branches: [ main ]
 
 jobs:
@@ -28,30 +30,57 @@ jobs:
         run: |
           set -e
           echo "ANDROID_HOME=$ANDROID_HOME"
-
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -1 || true)
-
           if [ -z "$SDKMANAGER" ]; then
             echo "ERROR: sdkmanager was not found"
             find "$ANDROID_HOME" -maxdepth 4 -type f -name sdkmanager -print || true
             exit 1
           fi
-
           SDK_BIN=$(dirname "$SDKMANAGER")
           echo "$SDK_BIN" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-
-          "$SDKMANAGER" \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
+      - name: Verify backend Python syntax
+        shell: bash
+        run: |
+          set -e
+          python -m compileall -q backend/app
+          python - <<'PY'
+          import pathlib
+          required = ['backend/requirements.txt','backend/Dockerfile','backend/docker-compose.yml','backend/app/main.py']
+          missing=[p for p in required if not pathlib.Path(p).is_file()]
+          if missing: raise SystemExit('Missing backend files: '+', '.join(missing))
+          print('Backend foundation checks passed')
+          PY
+
+      - name: Static source checks
+        shell: bash
+        run: |
+          set -e
+          test -s app/src/main/assets/index.html
+          test -s app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q 'WebViewAssetLoader' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.VIBRATE' app/src/main/AndroidManifest.xml
+          grep -q 'Live market feed' app/src/main/assets/index.html
+          grep -q 'Illustrative' app/src/main/assets/index.html
+          test -s app/src/main/assets/v24-upgrade.js
+          test -s app/src/main/assets/v24-upgrade.css
+          test -s app/src/main/assets/v25-max.js
+          test -s app/src/main/assets/v25-max.css
+          test -s app/src/main/assets/v26-production.js
+          test -s app/src/main/assets/v26-production.css
+          test -s backend/alembic/versions/0003_production_core.py
+          grep -q 'withdrawals/webhook' backend/app/funding_routes.py
+          grep -q 'password-reset' backend/app/main.py
+          grep -q 'autoinvest/{autoinvest_id}/pause' backend/app/main.py
 
       - name: Build Android APK
         run: gradle assembleDebug --stacktrace
