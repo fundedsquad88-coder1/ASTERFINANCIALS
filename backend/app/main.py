@@ -24,6 +24,11 @@ def admin_treasury_summary(x_aster_admin_key: Optional[str] = Header(default=Non
     if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key): raise HTTPException(403, "Admin authorization required")
     deposits = dbs.execute(select(DepositIntent.status, func.count(DepositIntent.id)).group_by(DepositIntent.status)).all()
     withdrawals = dbs.execute(select(WithdrawalRequest.status, func.count(WithdrawalRequest.id)).group_by(WithdrawalRequest.status)).all()
+    return {
+        "ok": True,
+        "deposits": {status: count for status, count in deposits},
+        "withdrawals": {status: count for status, count in withdrawals},
+    }
 
 @app.post("/v1/admin/withdrawals/process")
 def admin_process_withdrawals(
