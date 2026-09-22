@@ -203,7 +203,7 @@ class AuditEvent(Base):
     metadata_json: Mapped[str] = mapped_column(String(4000), default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-from app.funding import DepositIntent, WithdrawalRequest, ProviderEvent
+from app.funding import DepositIntent, WithdrawalRequest, ProviderEvent, BlockchainCursor, BlockchainTransfer
 
 if os.getenv("ASTER_SKIP_CREATE_ALL", "false").lower() != "true":
     Base.metadata.create_all(engine)
@@ -333,12 +333,38 @@ def email_verification_confirm(body: EmailVerifyIn, user: User = Depends(current
     dbs.add(AuditEvent(user_id=user.id, event_type="email_verified")); dbs.commit()
     return {"ok": True, "email_verified": True}
 
+@app.get("/v1/admin/blockchain/status")
+def admin_blockchain_status(x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"), dbs: Session = Depends(db)):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    cursors = dbs.scalars(select(BlockchainCursor).order_by(BlockchainCursor.network.asc())).all()
+    recent = dbs.scalars(select(BlockchainTransfer).order_by(BlockchainTransfer.id.desc()).limit(50)).all()
+    return {"networks":[{"network":c.network,"cursor":c.cursor,"updated_at":c.updated_at} for c in cursors],
+            "recent_transfers":[{"id":t.id,"network":t.network,"tx_hash":t.tx_hash,"block_number":t.block_number,
+                                 "amount":str(t.amount),"status":t.status,"deposit_intent_id":t.deposit_intent_id,
+                                 "observed_at":t.observed_at,"credited_at":t.credited_at} for t in recent]}
+
+@app.post("/v1/admin/blockchain/scan")
+def admin_blockchain_scan(x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"), dbs: Session = Depends(db)):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    from app.blockchain import scan_once
+    try:
+        return scan_once(dbs)
+    except Exception as exc:
+        dbs.rollback()
+        raise HTTPException(502, f"Blockchain scan failed: {type(exc).__name__}")
+
 @app.get("/v1/production/status")
 def production_status():
     return {
         "api": "ready",
         "database": "configured" if os.getenv("DATABASE_URL") else "local-development-fallback",
         "funding_provider": bool(os.getenv("ASTER_FUNDING_PROVIDER") or os.getenv("ASTER_FUNDING_WEBHOOK_SECRET")),
+        "blockchain_bep20_rpc": bool(os.getenv("ASTER_BSC_RPC_URL")),
+        "blockchain_trc20_api": bool(os.getenv("ASTER_TRON_API_KEY") or os.getenv("ASTER_TRON_API_URL")),
         "email_provider": bool(os.getenv("ASTER_EMAIL_PROVIDER")),
         "auto_invest_execution_provider": bool(os.getenv("ASTER_AUTOINVEST_PROVIDER")),
         "valuation_provider": bool(os.getenv("ASTER_VALUATION_PROVIDER")),
