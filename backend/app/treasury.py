@@ -6,36 +6,17 @@ TRC20 = "TRC20"
 
 TREASURY_ADDRESSES = {
     BEP20: os.getenv("ASTER_TREASURY_BEP20_ADDRESS", "0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5").strip(),
-    TRC20: os.getenv("ASTER_TREASURY_TRC20_ADDRESS", "TMrK4d1r2cGye2TwX3JfjCaUDWwZybaoxD").strip(),
+    TRC20: os.getenv("ASTER_TREASURY_TRC20_ADDRESS", "TMrK4d1r2cGye2TwX3JfjCaUDWvZy6aoXD").strip(),
 }
 
 NETWORKS = {
-    BEP20: {
-        "name": "BNB Smart Chain",
-        "label": "USDT · BEP20",
-        "chain_id": 56,
-        "decimals": 18,
-        "address": TREASURY_ADDRESSES[BEP20],
-    },
-    TRC20: {
-        "name": "Tron",
-        "label": "USDT · TRC20",
-        "chain_id": None,
-        "decimals": 6,
-        "address": TREASURY_ADDRESSES[TRC20],
-    },
+    BEP20: {"name": "BNB Smart Chain", "label": "USDT · BEP20", "chain_id": 56, "decimals": 18, "address": TREASURY_ADDRESSES[BEP20]},
+    TRC20: {"name": "Tron", "label": "USDT · TRC20", "chain_id": None, "decimals": 6, "address": TREASURY_ADDRESSES[TRC20]},
 }
 
 def normalize_network(value: str) -> str:
     raw = (value or "").strip().upper().replace("-", "").replace("_", "").replace(" ", "")
-    aliases = {
-        "BEP20": BEP20,
-        "BSC": BEP20,
-        "BNBSMARTCHAIN": BEP20,
-        "TRC20": TRC20,
-        "TRON": TRC20,
-    }
-    return aliases.get(raw, "")
+    return {"BEP20": BEP20, "BSC": BEP20, "BNBSMARTCHAIN": BEP20, "TRC20": TRC20, "TRON": TRC20}.get(raw, "")
 
 def treasury_address(network: str) -> str:
     normalized = normalize_network(network)
