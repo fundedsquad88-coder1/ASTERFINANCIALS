@@ -386,6 +386,17 @@ async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
         select(ProviderEvent).where(ProviderEvent.event_id == body.event_id)
     )
     if existing:
+        row = dbs.scalar(
+            select(WithdrawalRequest).where(
+                WithdrawalRequest.provider_reference == body.provider_reference
+            )
+        )
+        if row and row.status in {"confirmed", "failed", "reversed"}:
+            if existing.status != "processed":
+                existing.status = "processed"
+                existing.processed_at = datetime.now(timezone.utc)
+                dbs.commit()
+            return {"ok": True, "status": row.status, "duplicate": True}
         return {"ok": True, "status": existing.status, "duplicate": True}
 
     row = dbs.scalar(
