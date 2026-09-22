@@ -34,6 +34,7 @@ router = APIRouter()
 class DepositCreateIn(BaseModel):
     currency: str = Field(default="USDT", pattern="^USDT$")
     network: str = Field(min_length=2, max_length=32)
+    expected_amount: Optional[Decimal] = Field(default=None, gt=0, max_digits=28, decimal_places=8)
 
 class WithdrawalCreateIn(BaseModel):
     currency: str = Field(default="USDT", pattern="^USDT$")
@@ -125,6 +126,7 @@ def create_deposit(
         network=network,
         status="pending",
         deposit_address=address,
+        amount=body.expected_amount,
     )
     dbs.add(intent)
     dbs.flush()
@@ -139,6 +141,7 @@ def create_deposit(
         "network_name": NETWORKS[network]["name"],
         "deposit_address": intent.deposit_address,
         "provider_reference": intent.provider_reference,
+        "expected_amount": str(intent.amount) if intent.amount is not None else None,
         "credit_rule": "Credit only after the blockchain transfer is independently verified.",
     }
     dbs.add(
@@ -175,6 +178,7 @@ def get_deposit(
         "deposit_address": intent.deposit_address,
         "provider_reference": intent.provider_reference,
         "amount": str(intent.amount) if intent.amount is not None else None,
+        "expected_amount": str(intent.amount) if intent.amount is not None else None,
         "created_at": intent.created_at.isoformat(),
         "updated_at": intent.updated_at.isoformat(),
     }
