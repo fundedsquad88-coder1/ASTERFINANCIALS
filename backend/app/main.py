@@ -383,8 +383,10 @@ def login(body: LoginIn, response: Response, dbs: Session = Depends(db)):
     user = dbs.scalar(select(User).where(User.email==body.email.lower()))
     if not user or not password_hash.verify(body.password, user.password_hash):
         raise HTTPException(401, "Invalid credentials")
+    user.last_login_at = datetime.now(timezone.utc)
+    dbs.commit()
     csrf = issue_session(response, dbs, user.id)
-    return {"id": user.id, "email": user.email, "kyc_status": user.kyc_status, "csrf_token": csrf}
+    return {"id": user.id, "email": user.email, "username": user.username, "first_name": user.first_name, "email_verified": user.email_verified, "csrf_token": csrf}
 
 @app.post("/v1/auth/logout")
 def logout(response: Response, session_cookie: Optional[str] = Cookie(default=None, alias="__Host-AsterSession"),
