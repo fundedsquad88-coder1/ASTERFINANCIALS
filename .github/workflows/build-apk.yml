@@ -3,7 +3,7 @@ name: Build Aster APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, claude-ui-v1, v24-premium-upgrade ]
+    branches: [ main, claude-ui-v1, v24-premium-upgrade, v27-account-foundation ]
   pull_request:
     branches: [ main ]
 
@@ -79,6 +79,9 @@ jobs:
           test -s app/src/main/assets/v26-production.css
           test -s backend/alembic/versions/0003_production_core.py
           test -s backend/alembic/versions/0004_email_verification.py
+          test -s backend/alembic/versions/0005_account_profile.py
+          grep -q '/v1/profile' backend/app/main.py
+          grep -q 'email_verified' backend/app/main.py
           grep -q 'withdrawals/webhook' backend/app/funding_routes.py
           grep -q 'password-reset' backend/app/main.py
           grep -q 'autoinvest/{autoinvest_id}/pause' backend/app/main.py
