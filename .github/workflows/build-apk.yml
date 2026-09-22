@@ -80,6 +80,11 @@ jobs:
           test -s backend/alembic/versions/0003_production_core.py
           test -s backend/alembic/versions/0004_email_verification.py
           test -s backend/alembic/versions/0005_account_profile.py
+          test -s backend/alembic/versions/0006_blockchain_monitoring.py
+          test -s backend/app/blockchain.py
+          test -s backend/app/blockchain_worker.py
+          grep -q 'BlockchainTransfer' backend/app/funding.py
+          grep -q '/v1/admin/blockchain/scan' backend/app/main.py
           grep -q '/v1/profile' backend/app/main.py
           grep -q 'email_verified' backend/app/main.py
           grep -q 'withdrawals/webhook' backend/app/funding_routes.py
