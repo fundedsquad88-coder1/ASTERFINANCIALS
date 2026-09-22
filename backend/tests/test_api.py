@@ -211,3 +211,8 @@ def test_withdrawal_webhook_fails_closed_without_secret():
     }
     response = client.post("/v1/wallet/withdrawals/webhook", json=payload)
     assert response.status_code in {401, 503}
+
+
+def test_admin_withdrawal_processor_requires_admin_key():
+    response = client.post("/v1/admin/withdrawals/process")
+    assert response.status_code == 403
