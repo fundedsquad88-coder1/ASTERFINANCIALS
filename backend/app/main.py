@@ -168,6 +168,16 @@ class AuthToken(Base):
     used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
 class Referral(Base):
     __tablename__ = "referrals"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -283,6 +293,53 @@ def require_csrf(session_cookie: Optional[str] = Cookie(default=None, alias="__H
 
 @app.get("/health")
 def health(): return {"ok": True, "service": "aster-api"}
+
+class EmailVerifyIn(BaseModel):
+    token: str = Field(min_length=20, max_length=256)
+
+@app.post("/v1/auth/email-verification/request")
+def email_verification_request(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    if user.status != "active": raise HTTPException(403, "Account unavailable")
+    raw = make_token()
+    dbs.add(EmailVerification(user_id=user.id, token_hash=digest(raw), expires_at=datetime.now(timezone.utc)+timedelta(hours=24)))
+    dbs.add(AuditEvent(user_id=user.id, event_type="email_verification_requested"))
+    dbs.commit()
+    result = {"ok": True, "message": "Verification instructions are queued for delivery."}
+    if os.getenv("ASTER_EXPOSE_DEV_VERIFY_TOKEN", "false").lower() == "true": result["dev_token"] = raw
+    return result
+
+@app.post("/v1/auth/email-verification/confirm")
+def email_verification_confirm(body: EmailVerifyIn, user: User = Depends(current_user), dbs: Session = Depends(db)):
+    row = dbs.scalar(select(EmailVerification).where(EmailVerification.token_hash == digest(body.token), EmailVerification.user_id == user.id))
+    if not row or row.verified_at or utc_datetime(row.expires_at) < datetime.now(timezone.utc): raise HTTPException(400, "Invalid or expired verification token")
+    row.verified_at = datetime.now(timezone.utc)
+    user.kyc_status = user.kyc_status if user.kyc_status != "unverified" else "email_verified"
+    dbs.add(AuditEvent(user_id=user.id, event_type="email_verified")); dbs.commit()
+    return {"ok": True, "email_verified": True}
+
+@app.get("/v1/production/status")
+def production_status():
+    return {
+        "api": "ready",
+        "database": "configured" if os.getenv("DATABASE_URL") else "local-development-fallback",
+        "funding_provider": bool(os.getenv("ASTER_FUNDING_PROVIDER") or os.getenv("ASTER_FUNDING_WEBHOOK_SECRET")),
+        "email_provider": bool(os.getenv("ASTER_EMAIL_PROVIDER")),
+        "auto_invest_execution_provider": bool(os.getenv("ASTER_AUTOINVEST_PROVIDER")),
+        "valuation_provider": bool(os.getenv("ASTER_VALUATION_PROVIDER")),
+        "push_provider": bool(os.getenv("ASTER_PUSH_PROVIDER")),
+        "kyc_aml_provider": bool(os.getenv("ASTER_KYC_PROVIDER")),
+        "note": "Features without a configured provider remain fail-closed; the API never fabricates settlement or performance."
+    }
+
+@app.get("/v1/admin/treasury/summary")
+def admin_treasury_summary(x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"), dbs: Session = Depends(db)):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key): raise HTTPException(403, "Admin authorization required")
+    deposits = dbs.execute(select(DepositIntent.status, func.count(DepositIntent.id)).group_by(DepositIntent.status)).all()
+    withdrawals = dbs.execute(select(WithdrawalRequest.status, func.count(WithdrawalRequest.id)).group_by(WithdrawalRequest.status)).all()
+    events = dbs.execute(select(ProviderEvent.status, func.count(ProviderEvent.id)).group_by(ProviderEvent.status)).all()
+    return {"deposits": {s:int(n) for s,n in deposits}, "withdrawals": {s:int(n) for s,n in withdrawals}, "provider_events": {s:int(n) for s,n in events}, "treasury_networks": ["BEP20","TRC20"]}
+
 
 @app.post("/v1/auth/register", status_code=201)
 def register(body: RegisterIn, response: Response, dbs: Session = Depends(db)):
@@ -573,9 +630,9 @@ def portfolio_performance(user: User = Depends(current_user), dbs: Session = Dep
         "total":str(current_total),
         "net_contributed":str(net_contributed),
         "realized_unpriced_change":str(realized),
-        "valuation_status":"priced",
+        "valuation_status":"unpriced",
         "ledger_autoinvest_debits":str(invested_debits),
-        "note":"Performance is unpriced until a real strategy valuation feed is connected."
+        "note":"Performance is unpriced until a real strategy valuation feed is connected. No return is inferred from wallet balances."
     }
 
 
