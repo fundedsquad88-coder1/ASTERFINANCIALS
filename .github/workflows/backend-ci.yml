@@ -2,7 +2,7 @@ name: Aster Backend CI
 
 on:
   push:
-    branches: [ main, claude-ui-v1 ]
+    branches: [ main, v27-account-foundation, claude-ui-v1 ]
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
@@ -20,8 +20,8 @@ jobs:
     env:
       PYTHONPATH: .
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt
