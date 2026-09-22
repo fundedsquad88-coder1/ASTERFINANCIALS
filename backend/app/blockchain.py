@@ -12,8 +12,8 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent, LedgerEntry
-from app.main import AuditEvent, Wallet, post_double_entry
+from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent
+from app.main import AuditEvent, LedgerEntry, Wallet, post_double_entry
 from app.treasury import BEP20, TRC20, treasury_address
 
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a6e0c22e2c"
