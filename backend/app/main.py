@@ -733,9 +733,36 @@ def admin_autoinvest_execute_v31(limit: int = 25, x_aster_admin_key: Optional[st
     try:
         from app.autoinvest_execution import execution_provider
         provider, mode = execution_provider()
+        if mode == "disabled":
+            raise RuntimeError("Auto-Invest execution provider is not configured")
         positions = dbs.scalars(select(AutoInvest).where(AutoInvest.status == "active").order_by(AutoInvest.id.asc()).limit(limit)).all()
         results = [{"autoinvest_id": p.id, "provider_reference": provider.execute(p).provider_reference} for p in positions]
         return {"ok": True, "mode": mode, "count": len(results), "items": results}
     except RuntimeError as exc:
         dbs.rollback()
         raise HTTPException(503, str(exc))
+
+
+@app.post("/v1/admin/withdrawals/process")
+def admin_process_withdrawals_v32(
+    limit: int = 25,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    if limit < 1 or limit > 100:
+        raise HTTPException(422, "limit must be between 1 and 100")
+    try:
+        from app.provider_adapters import ProviderConfigurationError, withdrawal_provider
+        from app.withdrawal_engine import process_pending_withdrawals
+        provider, mode = withdrawal_provider()
+        result = process_pending_withdrawals(dbs, provider, limit=limit)
+        return {"ok": True, "mode": mode, "items": result}
+    except ProviderConfigurationError as exc:
+        dbs.rollback()
+        raise HTTPException(503, str(exc))
+    except RuntimeError as exc:
+        dbs.rollback()
+        raise HTTPException(502, str(exc))
