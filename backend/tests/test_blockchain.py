@@ -127,7 +127,7 @@ def test_bsc_scan_deduplicates_transfer_and_advances_cursor(monkeypatch):
 
     sender = "1" * 40
     recipient = treasury_address(BEP20)[2:].lower()
-    amount_hex = hex(12_50000000 * 10**10)
+    amount_hex = hex(12_500000000000000000)
     log = {
         "transactionHash": "0xdeposit",
         "logIndex": "0x0",
