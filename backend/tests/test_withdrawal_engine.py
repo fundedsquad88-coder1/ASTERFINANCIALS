@@ -69,3 +69,58 @@ def test_withdrawal_engine_submits_then_reconciles_idempotently():
     assert row.status == "confirmed"
     assert wallet.pending == Decimal("0.00000000")
     db.close()
+
+
+def test_withdrawal_engine_failure_releases_pending_once():
+    db = SessionLocal()
+    email = "fail-" + __import__("secrets").token_hex(5) + "@example.com"
+    user = User(
+        email=email,
+        password_hash="test",
+        status="active",
+        referral_code="FAIL-" + __import__("secrets").token_hex(4).upper(),
+    )
+    db.add(user)
+    db.flush()
+    wallet = Wallet(user_id=user.id, available=Decimal("0"), invested=Decimal("0"), pending=Decimal("3"))
+    db.add(wallet)
+    row = WithdrawalRequest(
+        user_id=user.id,
+        provider="aster-treasury",
+        provider_reference="AST-WD-FAIL-" + __import__("secrets").token_hex(4).upper(),
+        currency="USDT",
+        network="BEP20",
+        address="0x" + "1" * 40,
+        amount=Decimal("3"),
+        status="submitted",
+    )
+    db.add(row)
+    db.flush()
+    db.add(
+        LedgerEntry(
+            user_id=user.id,
+            kind="withdrawal",
+            amount=Decimal("-3"),
+            reference="WD-" + row.provider_reference,
+            currency="USDT",
+            status="pending",
+        )
+    )
+    db.commit()
+
+    from app.withdrawal_engine import reconcile_withdrawal_failure
+
+    first = reconcile_withdrawal_failure(
+        db, provider_reference=row.provider_reference, reason="broadcast_rejected"
+    )
+    assert first["status"] == "failed"
+
+    second = reconcile_withdrawal_failure(
+        db, provider_reference=row.provider_reference, reason="broadcast_rejected"
+    )
+    assert second["duplicate"] is True
+
+    db.refresh(wallet)
+    assert wallet.pending == Decimal("0.00000000")
+    assert wallet.available == Decimal("3.00000000")
+    db.close()
