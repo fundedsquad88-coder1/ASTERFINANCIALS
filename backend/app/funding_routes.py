@@ -28,6 +28,7 @@ from app.main import (
     AuditEvent,
 )
 from app.treasury import NETWORKS, normalize_network, treasury_address, valid_address
+from app.withdrawal_engine import reconcile_withdrawal_confirmation, reconcile_withdrawal_failure
 
 router = APIRouter()
 
@@ -373,33 +374,60 @@ def get_withdrawal(withdrawal_id:int,user:User=Depends(current_user),dbs:Session
 
 @router.post("/v1/wallet/withdrawals/webhook")
 async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
-    raw=await request.body(); verify_signature(raw, request.headers.get("X-Aster-Provider-Signature"))
-    try: body=WithdrawalWebhookIn.model_validate_json(raw)
-    except Exception: raise HTTPException(400,"Invalid withdrawal provider payload")
-    provider=provider_name()
-    existing=dbs.scalar(select(ProviderEvent).where(ProviderEvent.event_id==body.event_id))
-    if existing: return {"ok":True,"status":existing.status,"duplicate":True}
-    row=dbs.scalar(select(WithdrawalRequest).where(WithdrawalRequest.provider_reference==body.provider_reference))
-    if not row or row.provider != provider: raise HTTPException(404,"Withdrawal request not found")
-    event=ProviderEvent(provider=provider,event_id=body.event_id,event_type=body.event_type,payload_hash=hashlib.sha256(raw).hexdigest()); dbs.add(event)
-    if row.status == "confirmed":
-        event.status="processed"; event.processed_at=datetime.now(timezone.utc); dbs.commit(); return {"ok":True,"status":"confirmed","duplicate":True}
-    w=dbs.scalar(select(Wallet).where(Wallet.user_id==row.user_id).with_for_update())
-    if not w: raise HTTPException(404,"Wallet not found")
-    ref = "WD-" + (row.provider_reference or str(row.id))
-    if body.status == "confirmed":
-        post_double_entry(dbs,user_id=row.user_id,reference=ref+"-SETTLED",amount=row.amount,debit_account="platform.withdrawals",credit_account="user.pending")
-        w.pending -= row.amount
-        row.status="confirmed"
-        entry=dbs.scalar(select(LedgerEntry).where(LedgerEntry.reference==ref))
-        if entry: entry.status="posted"
-        dbs.add(AuditEvent(user_id=row.user_id,event_type="withdrawal_confirmed",metadata_json=json.dumps({"withdrawal_id":row.id,"tx_hash":body.tx_hash})))
-    else:
-        post_double_entry(dbs,user_id=row.user_id,reference=ref+"-RELEASE",amount=row.amount,debit_account="user.available",credit_account="user.pending")
-        w.pending -= row.amount; w.available += row.amount; row.status=body.status
-        entry=dbs.scalar(select(LedgerEntry).where(LedgerEntry.reference==ref))
-        if entry: entry.status="reversed"
-        dbs.add(LedgerEntry(user_id=row.user_id,kind="withdrawal_reversal",amount=row.amount,reference=ref+"-RELEASE",currency=row.currency,status="posted"))
-        dbs.add(AuditEvent(user_id=row.user_id,event_type="withdrawal_released",metadata_json=json.dumps({"withdrawal_id":row.id,"reason":body.status})))
-    event.status="processed"; event.processed_at=datetime.now(timezone.utc); dbs.commit()
-    return {"ok":True,"status":row.status,"withdrawal_id":row.id,"tx_hash":body.tx_hash}
+    raw = await request.body()
+    verify_signature(raw, request.headers.get("X-Aster-Provider-Signature"))
+    try:
+        body = WithdrawalWebhookIn.model_validate_json(raw)
+    except Exception:
+        raise HTTPException(400, "Invalid withdrawal provider payload")
+
+    provider = provider_name()
+    existing = dbs.scalar(
+        select(ProviderEvent).where(ProviderEvent.event_id == body.event_id)
+    )
+    if existing:
+        return {"ok": True, "status": existing.status, "duplicate": True}
+
+    row = dbs.scalar(
+        select(WithdrawalRequest).where(
+            WithdrawalRequest.provider_reference == body.provider_reference
+        )
+    )
+    if not row or row.provider != provider:
+        raise HTTPException(404, "Withdrawal request not found")
+
+    event = ProviderEvent(
+        provider=provider,
+        event_id=body.event_id,
+        event_type=body.event_type,
+        payload_hash=hashlib.sha256(raw).hexdigest(),
+    )
+    dbs.add(event)
+
+    try:
+        if body.status == "confirmed":
+            result = reconcile_withdrawal_confirmation(
+                dbs,
+                provider_reference=body.provider_reference,
+                tx_hash=body.tx_hash,
+            )
+        else:
+            result = reconcile_withdrawal_failure(
+                dbs,
+                provider_reference=body.provider_reference,
+                reason=body.status,
+            )
+    except ValueError as exc:
+        dbs.rollback()
+        raise HTTPException(409, str(exc))
+
+    event.status = "processed"
+    event.processed_at = datetime.now(timezone.utc)
+    dbs.commit()
+    return {
+        "ok": True,
+        "status": result["status"],
+        "withdrawal_id": row.id,
+        "tx_hash": body.tx_hash,
+        "duplicate": bool(result.get("duplicate", False)),
+    }
