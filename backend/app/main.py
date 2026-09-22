@@ -24,3 +24,27 @@ def admin_treasury_summary(x_aster_admin_key: Optional[str] = Header(default=Non
     if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key): raise HTTPException(403, "Admin authorization required")
     deposits = dbs.execute(select(DepositIntent.status, func.count(DepositIntent.id)).group_by(DepositIntent.status)).all()
     withdrawals = dbs.execute(select(WithdrawalRequest.status, func.count(WithdrawalRequest.id)).group_by(WithdrawalRequest.status)).all()
+
+@app.post("/v1/admin/withdrawals/process")
+def admin_process_withdrawals(
+    limit: int = 25,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    if limit < 1 or limit > 100:
+        raise HTTPException(422, "limit must be between 1 and 100")
+    try:
+        from app.provider_adapters import ProviderConfigurationError, withdrawal_provider
+        from app.withdrawal_engine import process_pending_withdrawals
+        provider, mode = withdrawal_provider()
+        result = process_pending_withdrawals(dbs, provider, limit=limit)
+        return {"ok": True, "mode": mode, "items": result}
+    except ProviderConfigurationError as exc:
+        dbs.rollback()
+        raise HTTPException(503, str(exc))
+    except RuntimeError as exc:
+        dbs.rollback()
+        raise HTTPException(502, str(exc))
