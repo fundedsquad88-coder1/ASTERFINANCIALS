@@ -242,3 +242,14 @@ def test_admin_autoinvest_sync_fails_closed_without_provider(monkeypatch):
     assert body["ok"] is True
     assert body["status"] == "synced"
     assert body["count"] == 0
+
+
+def test_admin_autoinvest_execute_is_fail_closed_by_default(monkeypatch):
+    monkeypatch.setenv("ASTER_ADMIN_API_KEY", "C" * 32)
+    monkeypatch.delenv("ASTER_AUTOINVEST_EXECUTION_PROVIDER", raising=False)
+    response = client.post(
+        "/v1/admin/autoinvest/execute?limit=10",
+        headers={"X-Aster-Admin-Key": "C" * 32},
+    )
+    assert response.status_code == 503
+    assert "execution provider is not configured" in response.json()["detail"]
