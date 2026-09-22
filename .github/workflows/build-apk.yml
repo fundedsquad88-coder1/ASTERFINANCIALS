@@ -78,9 +78,13 @@ jobs:
           test -s app/src/main/assets/v26-production.js
           test -s app/src/main/assets/v26-production.css
           test -s backend/alembic/versions/0003_production_core.py
+          test -s backend/alembic/versions/0004_email_verification.py
           grep -q 'withdrawals/webhook' backend/app/funding_routes.py
           grep -q 'password-reset' backend/app/main.py
           grep -q 'autoinvest/{autoinvest_id}/pause' backend/app/main.py
+          grep -q '/v1/production/status' backend/app/main.py
+          grep -q '/v1/admin/treasury/summary' backend/app/main.py
+          grep -q 'provider_reference=provider_reference' backend/app/funding_routes.py
 
       - name: Build Android APK
         run: gradle assembleDebug --stacktrace
