@@ -71,3 +71,36 @@ def admin_autoinvest_sync(
     if not result["ok"]:
         raise HTTPException(503, result["error"])
     return result
+
+
+@app.post("/v1/admin/autoinvest/execute")
+def admin_autoinvest_execute(
+    limit: int = 25,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    if limit < 1 or limit > 100:
+        raise HTTPException(422, "limit must be between 1 and 100")
+    try:
+        from app.autoinvest_execution import execution_provider
+        provider, mode = execution_provider()
+        positions = dbs.scalars(
+            select(AutoInvest)
+            .where(AutoInvest.status == "active")
+            .order_by(AutoInvest.id.asc())
+            .limit(limit)
+        ).all()
+        results = []
+        for position in positions:
+            result = provider.execute(position)
+            results.append({
+                "autoinvest_id": position.id,
+                "provider_reference": result.provider_reference,
+            })
+        return {"ok": True, "mode": mode, "count": len(results), "items": results}
+    except RuntimeError as exc:
+        dbs.rollback()
+        raise HTTPException(503, str(exc))
