@@ -294,7 +294,8 @@ def create_withdrawal(
     if existing:
         return json.loads(existing.response_body)
 
-    ref = "WD-" + secrets.token_hex(6).upper()
+    provider_reference = "AST-WD-" + secrets.token_hex(10).upper()
+    ref = "WD-" + provider_reference
     transfer_wallet_balance(
         dbs,
         user_id=user.id,
@@ -312,7 +313,7 @@ def create_withdrawal(
     request = WithdrawalRequest(
         user_id=user.id,
         provider=provider,
-        provider_reference="AST-WD-" + secrets.token_hex(10).upper(),
+        provider_reference=provider_reference,
         currency=body.currency,
         network=network,
         address=body.address,
