@@ -312,6 +312,7 @@ def create_withdrawal(
     request = WithdrawalRequest(
         user_id=user.id,
         provider=provider,
+        provider_reference="AST-WD-" + secrets.token_hex(10).upper(),
         currency=body.currency,
         network=network,
         address=body.address,
@@ -380,7 +381,7 @@ async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
         event.status="processed"; event.processed_at=datetime.now(timezone.utc); dbs.commit(); return {"ok":True,"status":"confirmed","duplicate":True}
     w=dbs.scalar(select(Wallet).where(Wallet.user_id==row.user_id).with_for_update())
     if not w: raise HTTPException(404,"Wallet not found")
-    ref="WD-"+str(row.id)
+    ref = "WD-" + (row.provider_reference or str(row.id))
     if body.status == "confirmed":
         post_double_entry(dbs,user_id=row.user_id,reference=ref+"-SETTLED",amount=row.amount,debit_account="platform.withdrawals",credit_account="user.pending")
         w.pending -= row.amount
