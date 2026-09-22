@@ -175,3 +175,39 @@ def test_provider_webhook_requires_signature_secret():
         "provider_reference":"dep-test-12345678","status":"confirmed",
         "amount":"10","currency":"USDT","network":"TRC20"})
     assert response.status_code in {401, 503}
+
+
+def test_withdrawal_rejects_invalid_network_address_and_is_idempotent():
+    email = "wd-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+
+    invalid = client.post(
+        "/v1/wallet/withdrawals",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "wd-invalid-" + __import__("secrets").token_hex(8)},
+        json={"currency":"USDT","network":"TRC20","address":"0x" + "1"*40,"amount":"1"},
+    )
+    assert invalid.status_code == 422
+
+    missing = client.post(
+        "/v1/wallet/withdrawals",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "wd-empty-" + __import__("secrets").token_hex(8)},
+        json={"currency":"USDT","network":"TRC20","address":"T" + "1"*33,"amount":"1"},
+    )
+    assert missing.status_code == 409
+    assert missing.json()["detail"] == "Insufficient available balance"
+
+
+def test_withdrawal_webhook_fails_closed_without_secret():
+    email = "wdhook-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    payload = {
+        "event_id":"wd-event-12345678",
+        "event_type":"withdrawal.confirmed",
+        "provider_reference":"AST-WD-TEST",
+        "status":"confirmed",
+    }
+    response = client.post("/v1/wallet/withdrawals/webhook", json=payload)
+    assert response.status_code in {401, 503}
