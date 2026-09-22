@@ -228,3 +228,17 @@ def test_admin_withdrawal_processor_uses_dry_run_provider_by_default(monkeypatch
     assert response.status_code == 200
     assert response.json()["mode"] == "dry-run"
     assert response.json()["items"] == []
+
+
+def test_admin_autoinvest_sync_fails_closed_without_provider(monkeypatch):
+    monkeypatch.setenv("ASTER_ADMIN_API_KEY", "B" * 32)
+    monkeypatch.delenv("ASTER_AUTOINVEST_PROVIDER", raising=False)
+    response = client.post(
+        "/v1/admin/autoinvest/sync?limit=10",
+        headers={"X-Aster-Admin-Key": "B" * 32},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["status"] == "synced"
+    assert body["count"] == 0
