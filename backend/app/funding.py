@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.main import Base
@@ -39,7 +39,7 @@ class BlockchainCursor(Base):
     __tablename__ = "blockchain_cursors"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     network: Mapped[str] = mapped_column(String(32), unique=True, index=True)
-    cursor: Mapped[int] = mapped_column(Integer, default=0)
+    cursor: Mapped[int] = mapped_column(BigInteger, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class BlockchainTransfer(Base):
@@ -48,7 +48,7 @@ class BlockchainTransfer(Base):
     network: Mapped[str] = mapped_column(String(32), index=True)
     tx_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     log_index: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    block_number: Mapped[int] = mapped_column(Integer, index=True)
+    block_number: Mapped[int] = mapped_column(BigInteger, index=True)
     token_contract: Mapped[str] = mapped_column(String(128))
     from_address: Mapped[str] = mapped_column(String(256))
     to_address: Mapped[str] = mapped_column(String(256))
