@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Aster Financials API
-  version: 0.3.0
+  version: 0.4.0
   description: Production API contract for the V23 Auto-Invest platform.
 servers:
   - url: https://api.example.invalid
@@ -138,6 +138,53 @@ paths:
       summary: Active sessions
       responses:
         '200': {description: Sessions}
+  /v1/profile:
+    patch:
+      security: [{session: []}]
+      summary: Update account profile
+      responses:
+        '200': {description: Profile updated}
+  /v1/wallet:
+    get:
+      security: [{session: []}]
+      summary: Current wallet balances
+      responses:
+        '200': {description: Wallet balances}
+  /v1/wallet/withdrawals:
+    get:
+      security: [{session: []}]
+      summary: List withdrawal requests
+      responses:
+        '200': {description: Withdrawal history}
+  /v1/wallet/withdrawals/{id}:
+    get:
+      security: [{session: []}]
+      summary: Get a withdrawal request
+      responses:
+        '200': {description: Withdrawal}
+        '404': {description: Withdrawal not found}
+  /v1/wallet/withdrawals/webhook:
+    post:
+      summary: Verified withdrawal-provider webhook
+      responses:
+        '200': {description: Event processed}
+        '401': {description: Invalid signature}
+        '404': {description: Withdrawal not found}
+  /v1/auth/password-reset/request:
+    post:
+      summary: Request password reset
+      responses:
+        '200': {description: Reset request accepted}
+  /v1/auth/password-reset/confirm:
+    post:
+      summary: Confirm password reset
+      responses:
+        '200': {description: Password reset}
+  /v1/production/status:
+    get:
+      summary: Production readiness status
+      responses:
+        '200': {description: Readiness summary}
 components:
   securitySchemes:
     session:
