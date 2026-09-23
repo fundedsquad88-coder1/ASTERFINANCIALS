@@ -111,6 +111,7 @@ jobs:
           node --check app/src/main/assets/v24-upgrade.js
           node --check app/src/main/assets/v25-max.js
           node --check app/src/main/assets/v26-production.js
+          node --check app/src/main/assets/v39-auto-invest.js
           grep -q "versionCode 2" app/build.gradle
           grep -q "versionName '1.1'" app/build.gradle
           if grep -RniE 'Binary Terminal|Higher or Lower|data-go="trade"|id="trade"' app/src/main/assets/index.html; then echo "ERROR: trading terminal remnants detected"; exit 1; fi
