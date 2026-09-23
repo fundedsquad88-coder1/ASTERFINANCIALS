@@ -101,8 +101,8 @@ jobs:
           python - <<'PY'
           import re, pathlib
           html=pathlib.Path('app/src/main/assets/index.html').read_text()
-          scripts=re.findall(r'<script(?![^>]*\\bsrc=)[^>]*>(.*?)</script>', html, re.S|re.I)
-          pathlib.Path('/tmp/aster-inline.js').write_text('\\n'.join(scripts))
+          scripts=re.findall(r'<script(?![^>]*src=)[^>]*>(.*?)</script>', html, re.S|re.I)
+          pathlib.Path('/tmp/aster-inline.js').write_text('\n'.join(scripts))
           print(f'Extracted {len(scripts)} inline script block(s)')
           PY
           node --check /tmp/aster-inline.js
