@@ -2,7 +2,7 @@ name: Aster Backend CI
 
 on:
   push:
-    branches: [ main, v27-account-foundation, claude-ui-v1 ]
+    branches: [ main, v27-account-foundation, v39-auto-invest-wealth, claude-ui-v1 ]
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
