@@ -17,10 +17,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
       - name: Set up Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -43,7 +43,7 @@ jobs:
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
 
@@ -93,6 +93,24 @@ jobs:
           grep -q '/v1/production/status' backend/app/main.py
           grep -q '/v1/admin/treasury/summary' backend/app/main.py
           grep -q 'provider_reference=provider_reference' backend/app/funding_routes.py
+
+      - name: Validate frontend JavaScript
+        shell: bash
+        run: |
+          set -e
+          python - <<'PY'
+          import re, pathlib
+          html=pathlib.Path('app/src/main/assets/index.html').read_text()
+          scripts=re.findall(r'<script(?![^>]*\\bsrc=)[^>]*>(.*?)</script>', html, re.S|re.I)
+          pathlib.Path('/tmp/aster-inline.js').write_text('\\n'.join(scripts))
+          print(f'Extracted {len(scripts)} inline script block(s)')
+          PY
+          node --check /tmp/aster-inline.js
+          node --check app/src/main/assets/v24-upgrade.js
+          node --check app/src/main/assets/v25-max.js
+          node --check app/src/main/assets/v26-production.js
+          grep -q "versionCode 2" app/build.gradle
+          grep -q "versionName '1.1'" app/build.gradle
 
       - name: Build Android APK
         run: gradle assembleDebug --stacktrace
