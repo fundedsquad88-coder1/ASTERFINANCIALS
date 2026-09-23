@@ -382,18 +382,6 @@ def me(user: User = Depends(current_user)):
     return {"id": user.id, "email": user.email, "status": user.status, "kyc_status": user.kyc_status, "referral_code": user.referral_code}
 
 
-class DepositIn(BaseModel):
-    currency: str = Field(default="USDT", pattern="^USDT$")
-    network: str = Field(min_length=2, max_length=24)
-
-class WithdrawalIn(BaseModel):
-    currency: str = Field(default="USDT", pattern="^USDT$")
-    network: str = Field(min_length=2, max_length=24)
-    address: str = Field(min_length=10, max_length=256)
-    amount: Decimal = Field(gt=0)
-
-
-
 class PasswordResetIn(BaseModel):
     email: EmailStr
 
