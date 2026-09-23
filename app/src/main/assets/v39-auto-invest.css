@@ -15,3 +15,17 @@
 .v39-bars{display:grid;gap:9px;margin-top:14px}.v39-bar{height:9px;border-radius:99px;background:rgba(120,120,140,.11);overflow:hidden}.v39-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#e8b84c,#9b84ff,#55e0dc)}
 .v39-security{display:flex;align-items:center;gap:12px}.v39-security-icon{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:rgba(22,168,120,.11);color:var(--green);font-weight:950}
 @media(max-width:370px){.v39-plan-grid,.v39-control{grid-template-columns:1fr}}
+
+
+/* V39 read-only discovery layer */
+[data-aster-discovery="readonly"] .market-row,
+[data-aster-discovery="readonly"] .ticker-item {
+  cursor: default;
+}
+[data-aster-discovery="readonly"] .market-row button,
+[data-aster-discovery="readonly"] [data-go="trade"],
+[data-aster-discovery="readonly"] .trade-action,
+[data-aster-discovery="readonly"] .buy-action,
+[data-aster-discovery="readonly"] .sell-action {
+  display: none !important;
+}
