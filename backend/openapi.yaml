@@ -1,0 +1,193 @@
+openapi: 3.0.3
+info:
+  title: Aster Financials API
+  version: 0.4.0
+  description: Production API contract for the V23 Auto-Invest platform.
+servers:
+  - url: https://api.example.invalid
+    description: Placeholder only — replace after deployment.
+paths:
+  /health:
+    get:
+      summary: Service health
+      responses:
+        '200':
+          description: Healthy
+  /v1/auth/register:
+    post:
+      summary: Register a user
+      responses:
+        '201': {description: Account created}
+        '400': {description: Invalid request}
+  /v1/auth/login:
+    post:
+      summary: Start authenticated session
+      responses:
+        '200': {description: Session established}
+        '401': {description: Authentication failed}
+  /v1/me:
+    get:
+      security: [{session: []}]
+      summary: Current account
+      responses:
+        '200': {description: Account}
+  /v1/kyc/status:
+    get:
+      security: [{session: []}]
+      summary: Current KYC verification state
+      responses:
+        '200': {description: KYC state}
+  /v1/wallet/deposit-addresses:
+    get:
+      summary: Public Aster USDT treasury receiving addresses
+      responses:
+        '200': {description: BEP20 and TRC20 treasury addresses}
+  /v1/wallet/deposits:
+    post:
+      security: [{session: []}]
+      summary: Create an idempotent USDT deposit intent using an Aster treasury address
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: {type: string, minLength: 16, maxLength: 128}
+      responses:
+        '201': {description: Deposit intent with treasury address}
+        '422': {description: Unsupported network}
+  /v1/wallet/deposits/{id}:
+    get:
+      security: [{session: []}]
+      summary: Get a user's deposit intent status
+      responses:
+        '200': {description: Deposit status}
+        '404': {description: Deposit not found}
+  /v1/wallet/withdrawals:
+    post:
+      security: [{session: []}]
+      summary: Create an idempotent withdrawal request
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: {type: string, minLength: 16, maxLength: 128}
+      responses:
+        '201': {description: Withdrawal request}
+        '409': {description: Insufficient available balance}
+        '422': {description: Invalid destination address or unsupported network}
+  /v1/wallet/provider/webhook:
+    post:
+      summary: Verified funding-provider webhook
+      description: Credits a deposit only after signature verification, intent matching, idempotency, and atomic double-entry settlement.
+      responses:
+        '200': {description: Event processed}
+        '401': {description: Invalid signature}
+        '409': {description: Provider or settlement mismatch}
+        '503': {description: Webhook secret/provider not configured}
+  /v1/transactions:
+    get:
+      security: [{session: []}]
+      summary: Ledger transaction history
+      responses:
+        '200': {description: Transactions}
+  /v1/autoinvest/strategies:
+    get:
+      summary: Available strategies
+      responses:
+        '200': {description: Strategy catalogue}
+  /v1/autoinvest:
+    get:
+      security: [{session: []}]
+      summary: Active Auto-Invest strategies
+      responses:
+        '200': {description: Active strategies}
+    post:
+      security: [{session: []}]
+      summary: Activate an Auto-Invest strategy
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+      responses:
+        '201': {description: Strategy activated}
+        '409': {description: Insufficient/locked balance or compliance hold}
+  /v1/autoinvest/{id}/pause:
+    post:
+      security: [{session: []}]
+      summary: Pause an active strategy
+      responses:
+        '200': {description: Strategy paused}
+  /v1/referrals:
+    get:
+      security: [{session: []}]
+      summary: Referral ledger summary
+      responses:
+        '200': {description: Referral data}
+  /v1/notifications:
+    get:
+      security: [{session: []}]
+      summary: Account notifications
+      responses:
+        '200': {description: Notifications}
+  /v1/security/sessions:
+    get:
+      security: [{session: []}]
+      summary: Active sessions
+      responses:
+        '200': {description: Sessions}
+  /v1/profile:
+    patch:
+      security: [{session: []}]
+      summary: Update account profile
+      responses:
+        '200': {description: Profile updated}
+  /v1/wallet:
+    get:
+      security: [{session: []}]
+      summary: Current wallet balances
+      responses:
+        '200': {description: Wallet balances}
+  /v1/wallet/withdrawals:
+    get:
+      security: [{session: []}]
+      summary: List withdrawal requests
+      responses:
+        '200': {description: Withdrawal history}
+  /v1/wallet/withdrawals/{id}:
+    get:
+      security: [{session: []}]
+      summary: Get a withdrawal request
+      responses:
+        '200': {description: Withdrawal}
+        '404': {description: Withdrawal not found}
+  /v1/wallet/withdrawals/webhook:
+    post:
+      summary: Verified withdrawal-provider webhook
+      responses:
+        '200': {description: Event processed}
+        '401': {description: Invalid signature}
+        '404': {description: Withdrawal not found}
+  /v1/auth/password-reset/request:
+    post:
+      summary: Request password reset
+      responses:
+        '200': {description: Reset request accepted}
+  /v1/auth/password-reset/confirm:
+    post:
+      summary: Confirm password reset
+      responses:
+        '200': {description: Password reset}
+  /v1/production/status:
+    get:
+      summary: Production readiness status
+      responses:
+        '200': {description: Readiness summary}
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-AsterSession
