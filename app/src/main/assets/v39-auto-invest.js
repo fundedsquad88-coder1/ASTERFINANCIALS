@@ -5,12 +5,13 @@ function ready(fn){if(document.readyState==='loading')document.addEventListener(
 ready(function(){
   const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
   const hide=s=>{$$(s).forEach(x=>x.classList.add('v39-hide'))};
-  /* Hard product boundary: no trading terminal, market browser, or ROI casino-style screen. */
+  /* Hard product boundary: Auto-Invest / Wealth only. */
   hide('#markets,#roiCalc,#homeTicker,#homeMarkets,#news,#news2');
   hide('[data-go="markets"],[data-go="roiCalc"]');
   $$('a').filter(a=>/market|trade|binary/i.test(a.textContent||'')).forEach(a=>a.classList.add('v39-hide'));
   /* Remove legacy copy that makes the product sound like a trading app. */
-  $$('body *').forEach(el=>{
+  /* Keep the product language focused on wealth allocation, not market speculation. */
+  $('body *').forEach(el=>{
     if(el.children.length===0 && /Live markets\.|Live market data|Market pulse|Latest market news/i.test(el.textContent||'')){
       el.classList.add('v39-hide');
     }
