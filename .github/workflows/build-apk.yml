@@ -69,8 +69,10 @@ jobs:
           grep -q 'WebViewAssetLoader' app/src/main/java/com/asterfinancials/app/MainActivity.java
           grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
           grep -q 'android.permission.VIBRATE' app/src/main/AndroidManifest.xml
-          grep -q 'Live market feed' app/src/main/assets/index.html
+          ! grep -qiE 'api\.binance\.com|data-api\.binance|api[1-4]\.binance' app/src/main/java/com/asterfinancials/app/MainActivity.java
           grep -q 'Illustrative' app/src/main/assets/index.html
+          test -s app/src/main/assets/v39-auto-invest.js
+          test -s app/src/main/assets/v39-auto-invest.css
           test -s app/src/main/assets/v24-upgrade.js
           test -s app/src/main/assets/v24-upgrade.css
           test -s app/src/main/assets/v25-max.js
