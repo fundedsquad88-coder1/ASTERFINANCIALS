@@ -100,6 +100,14 @@ body.theme-sunset .b1{background:#ffc36e}.theme-sunset .b2{background:#f18ab7}.t
 
 .live-ticker{display:flex;gap:9px;overflow:hidden;margin:13px 0 2px;padding:2px 0;scrollbar-width:none}.live-ticker::-webkit-scrollbar{display:none}.ticker-item{min-width:128px;padding:11px 12px;border:1px solid var(--line);border-radius:17px;background:var(--card);box-shadow:0 10px 28px rgba(27,22,56,.07);backdrop-filter:blur(18px)}.ticker-top{display:flex;align-items:center;justify-content:space-between;gap:7px}.ticker-symbol{font-size:12px;font-weight:950}.ticker-price{font-size:15px;font-weight:950;margin-top:4px;letter-spacing:-.02em}.ticker-change{font-size:10px;font-weight:900;margin-top:2px}.ticker-live{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(22,168,120,.08)}
 .news-card{display:grid;grid-template-columns:82px 1fr;gap:12px;align-items:center;padding:11px 0}.news-thumb{width:82px;height:64px;border-radius:16px;object-fit:cover;display:block;box-shadow:0 8px 20px rgba(0,0,0,.10)}.news-copy{min-width:0}.news-copy b{font-size:13px;line-height:1.32;display:block}.news-copy span{font-size:10px;color:var(--muted);display:block;margin-top:5px}.news+.news{border-top:1px solid var(--line)}
+
+/* V35 premium interaction layer */
+:root{--glass-blur:24px;--spring:cubic-bezier(.16,1,.3,1)}
+.card,.invest-card,.wallet-card,.hero,.icon,.bottom,.art-banner{will-change:transform}
+.card:active,.invest-card:active,.wallet-card:active,.hero:active{transform:scale(.992)}
+button,.action,.chip,.market-row,.invest-card,.icon{transition:transform .18s var(--spring),box-shadow .22s ease,filter .22s ease}
+button:hover,.action:hover,.chip:hover{filter:brightness(1.025)}
+.bottom button.on{box-shadow:0 8px 24px rgba(123,97,255,.18)}
 </style>
 <link rel="stylesheet" href="v26-production.css"></head>
 <body>
