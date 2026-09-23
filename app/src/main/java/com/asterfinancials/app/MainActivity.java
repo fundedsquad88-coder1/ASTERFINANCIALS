@@ -81,6 +81,7 @@ public class MainActivity extends Activity {
             injectTreasuryWalletUi(view);
             injectV24Upgrade(view);
             injectInteractionFeedback(view);
+            injectV39AutoInvest(view);
         }
 
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -106,6 +107,19 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    private void injectV39AutoInvest(WebView view) {
+        String js = "(function(){"
+                + "if(window.__asterV39Loader)return;window.__asterV39Loader=1;"
+                + "var l=document.createElement('link');l.rel='stylesheet';"
+                + "l.href='https://appassets.androidplatform.net/assets/v39-auto-invest.css';"
+                + "document.head.appendChild(l);"
+                + "var s=document.createElement('script');"
+                + "s.src='https://appassets.androidplatform.net/assets/v39-auto-invest.js';"
+                + "s.async=false;document.body.appendChild(s);"
+                + "})()";
+        view.evaluateJavascript(js, null);
+    }
 
     private void injectInteractionFeedback(WebView view) {
         String js = "(function(){"
