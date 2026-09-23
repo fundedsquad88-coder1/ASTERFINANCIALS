@@ -199,33 +199,33 @@ let quotes={};let marketFilter='all';
 function miniSpark(seed){let vals=[1],x=seed||1;for(let i=0;i<8;i++){x=(x*9301+49297)%233280;vals.push(vals.at(-1)*(1+((x/233280)-.46)*.035))}return line(vals,'#7b61ff')}function renderTicker(){const el=$('#homeTicker');if(!el)return;const keys=Object.keys(quotes).slice(0,5);el.innerHTML=keys.map(k=>{const q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="ticker-item"><div class="ticker-top"><span class="ticker-symbol">'+q.symbol.replace('/USDT','')+'</span><span class="ticker-live"></span></div><div class="ticker-price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'</div><div class="ticker-change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'% 24h</div></div>'}).join('')||'<div class="small muted">Live markets loading…</div>'}
 function renderMarkets(){let keys=Object.keys(quotes).filter(k=>marketFilter==='all'||quotes[k].type===marketFilter);$('#marketList').innerHTML=keys.length?keys.map(k=>{let q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(Math.abs(q.price)%97+1)+'</div></div>'}).join(''):'<div class="small muted">No live quotes available right now.</div>';let top=keys.slice(0,5);$('#homeMarkets').innerHTML=top.length?'<div class="market-card-head"><span class="small muted">Live data</span><span class="live-dot"></span></div>'+top.map(k=>{let q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(Math.abs(q.price)%97+1)+'</div></div>'}).join(''):'<div class="small muted">Waiting for live market data…</div>'}
 async function loadMarkets(){
-  const syms=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
-  const encoded=encodeURIComponent(JSON.stringify(syms));
-  const endpoints=[
-    'https://data-api.binance.vision/api/v3/ticker/24hr?symbols='+encoded,
-    'https://api.binance.com/api/v3/ticker/24hr?symbols='+encoded,
-    'https://api1.binance.com/api/v3/ticker/24hr?symbols='+encoded,
-    'https://api2.binance.com/api/v3/ticker/24hr?symbols='+encoded
-  ];
-  let lastError=null;
-  for(const endpoint of endpoints){
-    try{
-      const raw=await nativeFetch(endpoint);
-      const data=JSON.parse(raw);
-      if(!Array.isArray(data)||!data.length)throw new Error('Empty market response');
-      quotes={};
-      data.forEach(x=>{
-        if(!x.symbol||x.lastPrice==null||x.openPrice==null)return;
-        const symbol=x.symbol.replace('USDT','/USDT');
-        quotes[symbol]={symbol,type:'crypto',price:+x.lastPrice,open:+x.openPrice};
-      });
-      if(Object.keys(quotes).length){renderMarkets();renderTicker();return}
-      throw new Error('No supported symbols returned');
-    }catch(e){lastError=e}
+  const cryptoSymbols=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
+  const cryptoEndpoint='https://data-api.binance.vision/api/v3/ticker/24hr?symbols='+encodeURIComponent(JSON.stringify(cryptoSymbols));
+  const forexEndpoint='https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,GBP,JPY,CHF,AUD';
+  try{
+    const [cryptoRaw,forexRaw]=await Promise.all([nativeFetch(cryptoEndpoint),nativeFetch(forexEndpoint)]);
+    const crypto=JSON.parse(cryptoRaw), forex=JSON.parse(forexRaw);
+    quotes={};
+    if(Array.isArray(crypto)) crypto.forEach(x=>{
+      if(!x.symbol||x.lastPrice==null||x.openPrice==null)return;
+      const symbol=x.symbol.replace('USDT','/USDT');
+      quotes[symbol]={symbol,type:'crypto',price:+x.lastPrice,open:+x.openPrice};
+    });
+    const usdRates=forex&&forex.rates?forex.rates:{};
+    const pairs=[['EUR','EUR/USD'],['GBP','GBP/USD'],['JPY','USD/JPY'],['CHF','USD/CHF'],['AUD','AUD/USD']];
+    pairs.forEach(([ccy,label])=>{
+      const r=Number(usdRates[ccy]);
+      if(!Number.isFinite(r)||r<=0)return;
+      const price=label==='EUR/USD'||label==='GBP/USD'||label==='AUD/USD'?r:1/r;
+      quotes[label]={symbol:label,type:'forex',price,open:price};
+    });
+    renderMarkets(); renderTicker();
+    $('#homeMarkets').setAttribute('data-aster-discovery','readonly');
+  }catch(e){
+    console.warn('Aster read-only market discovery unavailable',e);
+    $('#marketList').innerHTML='<div class="small muted">Market pulse temporarily unavailable. Retrying automatically…</div>';
+    $('#homeMarkets').innerHTML='<div class="small muted">Market pulse temporarily unavailable.</div>';
   }
-  console.warn('Aster live market feed failed',lastError);
-  $('#marketList').innerHTML='<div class="small muted">Live market feed temporarily unavailable. Retrying automatically…</div>';
-  $('#homeMarkets').innerHTML='<div class="small muted">Live market feed temporarily unavailable.</div>';
 }
 async function loadNews(target){try{let raw=await nativeFetch('https://news.google.com/rss/search?q=crypto%20markets%20bitcoin%20ethereum&hl=en-US&gl=US&ceid=US:en');let xml=new DOMParser().parseFromString(raw,'text/xml');let items=[...xml.querySelectorAll('item')].slice(0,6);const imgs=['https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=500&q=78','https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=500&q=78','https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=500&q=78','https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=500&q=78'];$(target).innerHTML=items.length?items.map((i,n)=>'<a class="news" href="'+(i.querySelector('link')?.textContent||'#')+'" target="_blank"><div class="news-card"><img class="news-thumb" src="'+imgs[n%imgs.length]+'" alt="" loading="lazy"><div class="news-copy"><b>'+((i.querySelector('title')?.textContent||'').replace(/</g,'&lt;'))+'</b><span>'+((i.querySelector('pubDate')?.textContent||'').replace(/</g,'&lt;'))+'</span></div></div></a>').join(''):'<div class="small muted">No headlines returned.</div>'}catch(e){$(target).innerHTML='<div class="small muted">News feed unavailable right now.</div>'}}
 async function loadWealth(){try{const base=window.ASTER_API_BASE||localStorage.getItem('aster_api_base')||'';if(!base)return;const r=await fetch(base.replace(/\/$/,'')+'/v1/portfolio',{credentials:'include'});if(!r.ok)return;const d=await r.json();const total=Number(d.total||0),available=Number(d.available||0),invested=Math.max(0,total-available);$('#insightTotal').innerHTML=fmt(total,2)+' <span class="small">USDT</span>';$('#insightAvailable').textContent=fmt(available,2)+' USDT';$('#insightInvested').innerHTML=fmt(invested,2)+' <span class="small">USDT</span>';$('#insightInvestedRow').textContent=fmt(invested,2)+' USDT';$('#insightBar').style.width=(total?Math.min(100,invested/total*100):0)+'%';const rr=await fetch(base.replace(/\/$/,'')+'/v1/autoinvest/active',{credentials:'include'});if(rr.ok){const rows=await rr.json();$('#insightStrategies').innerHTML=rows.length?rows.map(x=>'<div class="trade-history-row"><div><b>'+esc(x.strategy||'Auto-Invest')+'</b><div class="trade-meta">'+esc(x.amount)+' USDT · '+esc(x.duration_weeks)+' weeks</div></div><span class="sim-badge">'+esc(x.status)+'</span></div>').join(''):'<div class="small muted">No active strategies.</div>'}}catch(e){}}function projection(){let amount=+$('#amt').value,weeks=+$('#weeks').value;$('#amtLabel').textContent='$'+fmt(amount,0);$('#weeksLabel').textContent=weeks+' weeks';$$('#amtChips .chip').forEach(x=>x.classList.toggle('on',+x.dataset.a===amount));let weekly=$('#investTabs button.on').dataset.type==='crypto'?.012:.004;let vals=[amount];for(let i=1;i<=weeks;i++)vals.push(vals[i-1]*(1+weekly));let end=vals.at(-1);$('#projValue').textContent='$'+fmt(end,0);$('#projChart').innerHTML=line(vals,'#8d72ff');$('#projNote').textContent='Illustrative '+(weekly*100).toFixed(1)+'% weekly assumption for visualization only. Actual returns can be negative and are not guaranteed.'}
