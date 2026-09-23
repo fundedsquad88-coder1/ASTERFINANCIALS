@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.graphics.Color;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -78,6 +80,7 @@ public class MainActivity extends Activity {
             super.onPageFinished(view, url);
             injectTreasuryWalletUi(view);
             injectV24Upgrade(view);
+            injectInteractionFeedback(view);
         }
 
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -101,6 +104,20 @@ public class MainActivity extends Activity {
             });
             return true;
         }
+    }
+
+
+    private void injectInteractionFeedback(WebView view) {
+        String js = "(function(){"
+                + "if(window.__asterFeedback)return;window.__asterFeedback=1;"
+                + "document.addEventListener('click',function(e){"
+                + "var b=e.target.closest('button,[role=button],.action,.chip,.market-row,.invest-card,.icon,.bottom button');"
+                + "if(!b)return;"
+                + "var kind=b.classList.contains('primary')?'strong':'light';"
+                + "if(window.AsterNative&&AsterNative.feedback)AsterNative.feedback(kind);"
+                + "},{passive:true});"
+                + "})()";
+        view.evaluateJavascript(js, null);
     }
 
 
@@ -167,6 +184,30 @@ public class MainActivity extends Activity {
                         v.vibrate(pattern, -1);
                     }
                 } catch (SecurityException ignored) { }
+            });
+        }
+
+        @JavascriptInterface public void feedback(final String kind) {
+            main.post(() -> {
+                android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+                try {
+                    if (v != null && v.hasVibrator()) {
+                        long[] pattern = "strong".equals(kind)
+                                ? new long[]{0, 18, 24, 28}
+                                : new long[]{0, 8};
+                        if (android.os.Build.VERSION.SDK_INT >= 26) {
+                            v.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1));
+                        } else {
+                            v.vibrate(pattern, -1);
+                        }
+                    }
+                    ToneGenerator tone = new ToneGenerator(AudioManager.STREAM_SYSTEM,
+                            "strong".equals(kind) ? 42 : 28);
+                    tone.startTone("strong".equals(kind)
+                            ? ToneGenerator.TONE_PROP_ACK
+                            : ToneGenerator.TONE_PROP_BEEP, 45);
+                    main.postDelayed(tone::release, 90);
+                } catch (Exception ignored) { }
             });
         }
 
