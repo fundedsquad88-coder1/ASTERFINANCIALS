@@ -1,0 +1,1 @@
+import fs from "fs"; import pg from "pg"; const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}}); await pool.query(fs.readFileSync("./schema.sql","utf8")); await pool.end(); console.log("migration complete");
