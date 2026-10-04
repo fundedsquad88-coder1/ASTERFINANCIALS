@@ -1,0 +1,12 @@
+import express from "express";
+import pg from "pg";
+import { isAddress } from "ethers";
+const app=express(); app.use(express.json());
+const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_URL?.includes("railway")?{rejectUnauthorized:false}:undefined});
+const payoutAddress=process.env.PAYOUT_ADDRESS;
+app.get("/health",(_,res)=>res.json({ok:true,service:"ai-money-agent",mode:"production-safe"}));
+app.get("/status",async(_,res)=>{const q=await pool.query("select coalesce(sum(amount_usdt) filter(where status='verified'),0) verified, coalesce(sum(amount_usdt) filter(where status='pending'),0) pending from revenue_events");res.json({payoutAddress,verifiedRevenue:q.rows[0].verified,pendingRevenue:q.rows[0].pending});});
+app.post("/opportunities",async(req,res)=>{const {title,source,estimated_usdt=0}=req.body;if(!title)return res.status(400).json({error:"title required"});const q=await pool.query("insert into opportunities(title,source,estimated_usdt,status) values($1,$2,$3,'queued') returning *",[title,source||"manual",estimated_usdt]);res.status(201).json(q.rows[0]);});
+app.post("/revenue",async(req,res)=>{const {amount_usdt,source,external_id}=req.body;if(!(Number(amount_usdt)>0))return res.status(400).json({error:"positive amount required"});const q=await pool.query("insert into revenue_events(amount_usdt,source,external_id,status) values($1,$2,$3,'pending') returning *",[amount_usdt,source||"unknown",external_id||null]);res.status(201).json(q.rows[0]);});
+app.post("/payouts",async(req,res)=>{const {amount_usdt,address=payoutAddress}=req.body;if(!isAddress(address))return res.status(400).json({error:"invalid EVM address"});if(address.toLowerCase()!==payoutAddress?.toLowerCase())return res.status(403).json({error:"address not allowlisted"});if(!(Number(amount_usdt)>0))return res.status(400).json({error:"positive amount required"});const q=await pool.query("insert into payout_requests(amount_usdt,address,status) values($1,$2,'awaiting_approval') returning *",[amount_usdt,address]);res.status(201).json(q.rows[0]);});
+app.listen(process.env.PORT||3000,"0.0.0.0");
