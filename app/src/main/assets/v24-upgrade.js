@@ -22,20 +22,6 @@ function homePulse(){
  const target=home.querySelector('.v24-trust')||home.querySelector('.grid2')||home.lastElementChild;
  target?.after(card);
 }
-function investCommand(){
- const inv=$('#invest'); if(!inv||inv.querySelector('.v25-command'))return;
- const c=document.createElement('div'); c.className='card v25-command';
- c.innerHTML='<div class="v25-command-top"><div><span class="eyebrow">Auto-Invest command center</span><h3>Build the plan before you activate</h3><p>Choose an asset class, amount and duration. Projections are illustrative and returns are not guaranteed.</p></div><div class="v25-orb">AI</div></div>'+
- '<div class="v25-steps"><span class="on"><i>1</i>Strategy</span><span><i>2</i>Amount</span><span><i>3</i>Review</span></div>'+
- '<div class="v25-allocation"><div><span>Risk view</span><b>Transparent</b><small>Assumptions shown before confirmation</small></div><div><span>Execution</span><b>Account-first</b><small>Activation requires a connected backend</small></div></div>';
- const visual=inv.querySelector('.v24-section-visual'); (visual||inv.firstElementChild)?.after(c);
-}
-function activeStrip(){
- const inv=$('#invest'); if(!inv||inv.querySelector('.v25-active'))return;
- const a=document.createElement('div');a.className='card v25-active';
- a.innerHTML='<div class="row"><div><span class="eyebrow">Strategy status</span><b class="v25-status-title">Ready to review</b></div><span class="badge">NOT ACTIVE</span></div><div class="v25-status-track"><span></span></div><div class="v25-status-meta"><span>1&nbsp; Choose</span><span>2&nbsp; Review</span><span>3&nbsp; Activate</span></div>';
- inv.querySelector('.v25-command')?.after(a);
-}
 function walletStatus(){
  const w=$('#wallet'); if(!w||w.querySelector('.v25-wallet-status'))return;
  const a=document.createElement('div');a.className='card v25-wallet-status';
