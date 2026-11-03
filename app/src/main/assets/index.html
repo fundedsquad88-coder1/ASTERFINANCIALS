@@ -284,10 +284,11 @@ body.theme-dark .sheet{background:#191820;color:#f5f2fa}
  <div class="row"><div><div class="eyebrow">Your Aster referral code</div><div class="stat" id="teamReferralCode">Connect account</div></div><button class="secondary" id="copyTeamCode" style="width:auto;padding:11px 13px" disabled>Copy</button></div>
  <div class="small muted" id="teamCodeHint" style="margin-top:7px">Sign in to load your unique referral code.</div>
 </div>
-<div class="grid2" style="margin-top:10px">
- <div class="card"><div class="eyebrow">Total team members</div><div class="stat" id="teamTotal">—</div></div>
- <div class="card"><div class="eyebrow">Active levels</div><div class="stat" id="teamLevels">—</div></div>
+<div class="grid2 team-metrics" style="margin-top:10px">
+ <div class="card team-metric"><div class="metric-icon">✦</div><div class="eyebrow">Total team members</div><div class="stat" id="teamTotal">—</div><div class="metric-foot">Across your network</div></div>
+ <div class="card team-metric"><div class="metric-icon">⌁</div><div class="eyebrow">Active levels</div><div class="stat" id="teamLevels">—</div><div class="metric-foot">Up to nine levels</div></div>
 </div>
+<div class="team-nudge"><span class="nudge-spark">✧</span><div><b>Your network, at a glance</b><small>Explore a level below to see connected members and referral depth.</small></div><span class="nudge-arrow">↓</span></div>
 <div class="pyr" id="teamPolicy" aria-label="Referral levels"><div class="pyr-in">
  <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
  <span class="spk" style="left:14%;top:30%">✦</span><span class="spk" style="right:12%;top:20%;animation-delay:-.8s">✦</span><span class="spk" style="left:8%;bottom:22%;animation-delay:-1.4s">✧</span><span class="spk" style="right:9%;bottom:16%;animation-delay:-.4s">✦</span>
@@ -305,17 +306,21 @@ body.theme-dark .sheet{background:#191820;color:#f5f2fa}
 <section id="wallet" class="screen">
 <div class="art-banner mint"><div class="art-copy"><b>Aster Treasury</b><span>USDT rails across BEP20 and TRC20. Secure deposits and withdrawals.</span></div><svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><rect x="150" y="38" width="116" height="86" rx="18" fill="#172424" stroke="#56e0c1" stroke-width="2"/><rect x="177" y="65" width="112" height="62" rx="16" fill="#0d1416" stroke="#56e0c1"/><circle cx="216" cy="95" r="19" fill="#56e0c1" opacity=".2"/><text x="216" y="102" text-anchor="middle" font-size="23" font-weight="800" fill="#56e0c1">₮</text><path d="M115 77 Q145 42 170 55" fill="none" stroke="#56e0c1" stroke-width="3"/><path d="M111 94 Q143 60 168 73" fill="none" stroke="#f5c95a" stroke-width="3"/></svg></div>
   <div class="eyebrow">Wallet</div><div class="title">Your money, clearly.</div><p class="sub">Balances, deposits, withdrawals and transaction history will come from your authenticated Aster account.</p>
-  <div class="wallet-card"><div class="eyebrow" style="color:#aaa">Available balance</div><div class="balance" style="margin-top:5px">$0.00</div><div class="muted small">No account connected</div><div class="wallet-actions"><button id="deposit">Deposit</button><button id="withdraw">Withdraw</button></div></div>
-  <div class="card"><div class="row"><b>Transaction history</b><span class="lock">0 transactions</span></div><div class="divider"></div><div class="small muted">Your verified account activity will appear here.</div></div>
-  <div class="card"><div class="list-row"><div class="list-icon">🔐</div><div><b>Secure account connection</b><div class="small muted">Authentication and ledger integration required.</div></div></div><div class="list-row"><div class="list-icon">◎</div><div><b>USDT support</b><div class="small muted">Wallet rails can be connected to the production backend.</div></div></div></div>
+  <div class="wallet-card wallet-hero"><div class="wallet-glow"></div><div class="wallet-head"><div class="eyebrow" style="color:#c8c4d7">AVAILABLE BALANCE</div><span class="wallet-status"><i></i> Account not connected</span></div><div class="balance" style="margin-top:8px">$0.00</div><div class="wallet-currency">USDT · Tether USD</div><div class="wallet-actions"><button id="deposit"><span>＋</span> Deposit</button><button id="withdraw"><span>↗</span> Withdraw</button></div><div class="wallet-foot"><span>◈ BEP20</span><span>◈ TRC20</span><span>Protected account rails</span></div></div>
+  <div class="wallet-shortcuts"><div class="wallet-shortcut"><span class="shortcut-icon">⇩</span><b>Deposit USDT</b><small>Choose a network</small></div><div class="wallet-shortcut"><span class="shortcut-icon">⇧</span><b>Withdraw</b><small>Request a transfer</small></div><div class="wallet-shortcut"><span class="shortcut-icon">◷</span><b>Activity</b><small>Verified history</small></div></div>
+  <div class="card wallet-history"><div class="row"><div><div class="eyebrow">Your activity</div><b>Transaction history</b></div><span class="lock">0 transactions</span></div><div class="empty-activity"><div class="empty-orbit">◷</div><b>Your money story starts here</b><p>Deposits, withdrawals and verified account activity will appear here once your account is connected.</p></div></div>
+  <div class="wallet-security"><span class="security-mark">⌑</span><div><b>Built around account security</b><small>Balances and transactions are shown only from authenticated, verified Aster records.</small></div><span class="security-check">✓</span></div>
 </section>
 
 <section id="profile" class="screen">
 <div class="art-banner"><div class="art-copy"><b>Welcome to Aster</b><span>Your account, preferences and security in one place.</span></div><svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><circle cx="225" cy="83" r="60" fill="#8b5cf6" opacity=".16"/><circle cx="225" cy="68" r="24" fill="#f1c65c"/><path d="M181 137 Q225 92 269 137" fill="#f1c65c" opacity=".85"/><path d="M145 136 Q177 106 194 109" fill="none" stroke="#f1c65c" stroke-width="3" opacity=".7"/><path d="M255 109 Q276 104 300 136" fill="none" stroke="#8b5cf6" stroke-width="3" opacity=".7"/><circle cx="225" cy="83" r="70" fill="none" stroke="#f1c65c" stroke-opacity=".3"/></svg></div>
   <div class="eyebrow">Profile</div><div class="title">Your Aster.</div>
-  <div class="card profile"><div class="avatar">A</div><div><b id="profileName">Aster member</b><div class="small muted">Account not connected</div></div></div>
-  <div class="card"><div class="list-row" id="connect"><div class="list-icon">↗</div><div><b>Connect account</b><div class="small muted">Sign in to unlock real balance and Auto-Invest.</div></div></div><div class="list-row" id="prefs"><div class="list-icon">⚙</div><div><b>Preferences</b><div class="small muted">Theme and app experience.</div></div></div></div>
-  <div class="card"><div class="list-row" id="terms"><div class="list-icon">▤</div><div><b>Terms & Conditions</b></div></div><div class="list-row" id="risk"><div class="list-icon">!</div><div><b>Risk Disclosure</b></div></div><div class="list-row" id="privacy"><div class="list-icon">⌁</div><div><b>Privacy Policy</b></div></div></div>
+  <div class="profile-identity"><div class="profile-avatar-wrap"><div class="avatar">A</div><span class="online-dot"></span></div><div class="profile-identity-copy"><b id="profileName">Aster member</b><div class="small muted">Account not connected</div><span class="member-pill">✦ ASTER MEMBER</span></div><span class="profile-chevron">›</span></div>
+  <div class="profile-section-label">YOUR ACCOUNT</div>
+  <div class="card profile-menu"><div class="list-row" id="connect"><div class="list-icon">↗</div><div><b>Connect account</b><div class="small muted">Sign in to unlock your real balance and Auto-Invest.</div></div><span class="row-chevron">›</span></div><div class="list-row" id="prefs"><div class="list-icon">✧</div><div><b>Preferences & appearance</b><div class="small muted">Choose the look and feel of Aster.</div></div><span class="row-chevron">›</span></div></div>
+  <div class="profile-section-label">TRUST & TRANSPARENCY</div>
+  <div class="card profile-menu"><div class="list-row" id="terms"><div class="list-icon">▤</div><div><b>Terms & Conditions</b><div class="small muted">How Aster works.</div></div><span class="row-chevron">›</span></div><div class="list-row" id="risk"><div class="list-icon">!</div><div><b>Risk Disclosure</b><div class="small muted">Understand investment risks.</div></div><span class="row-chevron">›</span></div><div class="list-row" id="privacy"><div class="list-icon">⌁</div><div><b>Privacy Policy</b><div class="small muted">How your information is handled.</div></div><span class="row-chevron">›</span></div></div>
+  <div class="profile-footer"><span>ASTER FINANCIALS</span><span>Designed for a smarter wealth journey ✦</span></div>
 </section>
 </main>
 <nav class="bottom" id="nav"><button class="on" data-go="home"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button><button data-go="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 2.5-5.5 6-5.5s6 2 6 5.5M15 15c3.5-.2 6 1.4 6 4.5"/></svg>Team</button><button data-go="invest"><svg viewBox="0 0 24 24"><path d="M12 3l2.5 6 6.5 3-6.5 3L12 21l-2.5-6L3 12l6.5-3z"/></svg>Auto-Invest</button><button data-go="wallet"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M16 12h5M17 12a1 1 0 1 0 0 .01"/></svg>Wallet</button><button data-go="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>You</button></nav>
@@ -505,12 +510,55 @@ body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card{
 .qs-cta{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding:14px 15px;border-radius:15px;background:linear-gradient(110deg,#f3d47b,#e8a9e8 52%,#8b78ff);color:#20182e;font-size:12px;font-weight:950;box-shadow:0 9px 22px rgba(123,97,255,.25);transition:transform .2s ease,filter .2s ease}.qs-cta span{font-size:18px;line-height:10px}.qs-cta:active{transform:scale(.975);filter:brightness(1.08)}
 .qs-foot{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;color:rgba(236,231,249,.55);font-size:8px;font-weight:800;letter-spacing:.04em}.qs-foot i{width:14px;height:1px;background:rgba(236,231,249,.25)}
 body.theme-dark .quickstart{box-shadow:0 22px 52px rgba(0,0,0,.4)}@media(max-width:370px){.quickstart{padding:15px}.qs-orbit{flex-basis:82px;width:82px;height:82px}.qs-top h2{font-size:22px}.qs-amounts{gap:4px}.qs-amount{font-size:10px}}@media(prefers-reduced-motion:reduce){.qs-orbit-core,.qs-orbit i,.qs-orbit b,.qs-orbit em{animation:none!important}}
+
+/* V39 all-screen interaction and visual polish */
+.screen.active{animation:asterScreenIn .36s cubic-bezier(.2,.75,.25,1) both}
+@keyframes asterScreenIn{from{opacity:.45;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card,.art-banner,.wallet-card,.team-nudge,.wallet-security{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.card:focus-within{border-color:rgba(139,112,255,.38)}
+button,.list-row,.wallet-shortcut{ -webkit-tap-highlight-color:transparent}
+button:active,.wallet-shortcut:active{transform:scale(.975)}
+.team-metric{position:relative;overflow:hidden;min-height:112px;padding-top:17px}
+.team-metric:after{content:"";position:absolute;width:90px;height:90px;border-radius:50%;right:-35px;bottom:-45px;background:radial-gradient(circle,rgba(153,119,255,.2),transparent 70%)}
+.metric-icon{width:29px;height:29px;display:grid;place-items:center;border-radius:10px;background:rgba(139,112,255,.12);color:#9577ff;font-size:16px;margin-bottom:10px}
+.metric-foot{font-size:9px;color:var(--muted,#8c8998);margin-top:3px}
+.team-nudge{display:flex;align-items:center;gap:11px;padding:12px 14px;margin:10px 0 15px;border-radius:16px;background:linear-gradient(110deg,rgba(139,112,255,.12),rgba(220,115,195,.08));border:1px solid rgba(139,112,255,.14)}
+.nudge-spark{font-size:22px;color:#a78bfa}.team-nudge b,.team-nudge small{display:block}.team-nudge b{font-size:11px}.team-nudge small{font-size:9px;color:var(--muted,#888);margin-top:3px;line-height:1.4}.nudge-arrow{margin-left:auto;color:#a78bfa;font-size:17px}
+.wallet-hero{position:relative;isolation:isolate;overflow:hidden;padding:22px;border-radius:25px;background:linear-gradient(135deg,#171d29,#24243b 58%,#183b3b);color:#fff;box-shadow:0 18px 38px rgba(23,32,48,.22)}
+.wallet-glow{position:absolute;z-index:-1;width:210px;height:210px;right:-90px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(93,231,199,.28),rgba(93,231,199,0) 70%)}
+.wallet-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.wallet-status{font-size:8px;color:#d1d2dd;white-space:nowrap}.wallet-status i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e9bd66;margin-right:4px}
+.wallet-hero .balance{font-size:36px;font-weight:900;letter-spacing:-.06em}.wallet-currency{font-size:10px;color:#a8b4c2;margin-top:2px}
+.wallet-actions{display:flex;gap:9px;margin-top:19px}.wallet-actions button{flex:1;min-height:43px;border-radius:13px;font-size:11px;font-weight:900;background:linear-gradient(110deg,#f3d47b,#d9b7ff);color:#1d2030}.wallet-actions button+button{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.wallet-actions button span{font-size:15px;margin-right:5px}
+.wallet-foot{display:flex;gap:12px;flex-wrap:wrap;margin-top:15px;color:#a9b8c2;font-size:8px;font-weight:800;letter-spacing:.04em}
+.wallet-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.wallet-shortcut{min-width:0;padding:12px 9px;border:1px solid var(--line,rgba(120,120,140,.15));border-radius:15px;background:var(--card,#fff);cursor:pointer}
+.shortcut-icon{width:28px;height:28px;border-radius:9px;background:rgba(139,112,255,.12);color:#9274f6;display:grid;place-items:center;font-size:16px;margin-bottom:8px}
+.wallet-shortcut b,.wallet-shortcut small{display:block}.wallet-shortcut b{font-size:9px}.wallet-shortcut small{font-size:8px;color:var(--muted,#888);margin-top:3px;line-height:1.35}
+.empty-activity{display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 12px 10px}.empty-orbit{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:#9b82f7;background:radial-gradient(circle,rgba(139,112,255,.2),rgba(139,112,255,.04));border:1px solid rgba(139,112,255,.15);margin-bottom:11px;animation:qsPulse 3.2s ease-in-out infinite}.empty-activity b{font-size:11px}.empty-activity p{max-width:230px;font-size:9px;line-height:1.55;color:var(--muted,#888);margin:6px 0 0}
+.wallet-security{display:flex;align-items:center;gap:10px;padding:13px;border-radius:16px;background:rgba(83,190,158,.08);border:1px solid rgba(83,190,158,.15)}.security-mark{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;background:rgba(83,190,158,.14);color:#36a989;font-size:17px}.wallet-security b,.wallet-security small{display:block}.wallet-security b{font-size:10px}.wallet-security small{font-size:8px;line-height:1.4;color:var(--muted,#888);margin-top:3px}.security-check{margin-left:auto;color:#37b18c;font-weight:900}
+.profile-identity{display:flex;align-items:center;gap:13px;padding:17px;margin:14px 0 20px;border:1px solid var(--line,rgba(120,120,140,.15));border-radius:21px;background:var(--card,#fff);box-shadow:0 10px 25px rgba(50,40,90,.06)}
+.profile-avatar-wrap{position:relative}.profile-identity .avatar{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,#29233f,#7255a8);color:#f5d77d;display:grid;place-items:center;font-size:24px;font-weight:950;box-shadow:0 8px 20px rgba(80,56,140,.2)}
+.online-dot{position:absolute;width:11px;height:11px;border:2px solid var(--card,#fff);border-radius:50%;right:-2px;bottom:0;background:#e4b95c}
+.profile-identity-copy{min-width:0;flex:1}.profile-identity-copy>b{font-size:14px}.member-pill{display:inline-block;margin-top:6px;padding:4px 7px;border-radius:6px;background:rgba(139,112,255,.10);color:#9477e9;font-size:7px;font-weight:950;letter-spacing:.1em}.profile-chevron,.row-chevron{color:#a39ab8;font-size:20px}
+.profile-section-label{margin:17px 3px 8px;font-size:9px;font-weight:950;letter-spacing:.14em;color:var(--muted,#8d8999)}
+.profile-menu{padding:2px 14px}.profile-menu .list-row{min-height:60px;cursor:pointer}.profile-menu .list-row+.list-row{border-top:1px solid var(--line,rgba(120,120,140,.12))}.profile-menu .list-row>div:nth-child(2){flex:1}.profile-menu .list-row b{font-size:11px}.profile-menu .list-icon{width:34px;height:34px;border-radius:11px;background:rgba(139,112,255,.10);color:#9477e9;display:grid;place-items:center}.profile-footer{display:flex;flex-direction:column;align-items:center;gap:5px;padding:22px 0 10px;color:var(--muted,#999);font-size:8px}.profile-footer span:first-child{font-weight:950;letter-spacing:.2em;color:#b39a60}
+body.theme-dark .profile-identity,body.theme-dark .wallet-shortcut{background:#191821;border-color:rgba(255,255,255,.08)}
+body.theme-dark .profile-menu{background:#191821}body.theme-dark .team-nudge{background:linear-gradient(110deg,rgba(139,112,255,.17),rgba(220,115,195,.10))}
+@media(max-width:360px){.wallet-head{align-items:flex-start;flex-direction:column}.wallet-hero{padding:18px}.wallet-shortcut{padding:10px 7px}.profile-identity{padding:14px}}
+@media(prefers-reduced-motion:reduce){.screen.active,.empty-orbit{animation:none!important}}
 </style>
 <script id="genz-js">
 (function(){
 const E=['✨','💜','🔥','💎','🚀','🎉','⚡'];
 function burst(x,y){for(let i=0;i<10;i++){const e=document.createElement('span');e.className='gz-b';e.textContent=E[i%E.length];const a=Math.PI*2*i/10+Math.random()*.5,d=60+Math.random()*60;e.style.cssText='left:'+x+'px;top:'+y+'px;--dx:'+Math.cos(a)*d+'px;--dy:'+(Math.sin(a)*d-30)+'px;--r:'+(Math.random()*160-80)+'deg';document.body.appendChild(e);setTimeout(()=>e.remove(),950)}}
 document.addEventListener('pointerdown',e=>{const t=e.target.closest('button,.action,.chip');if(!t||t.classList.contains('lv'))return;const cs=getComputedStyle(t);if(cs.position==='static')t.style.position='relative';t.style.overflow='hidden';const r=t.getBoundingClientRect(),d=Math.max(r.width,r.height),p=document.createElement('span');p.className='gz-rip';p.style.cssText='width:'+d+'px;height:'+d+'px;left:'+(e.clientX-r.left-d/2)+'px;top:'+(e.clientY-r.top-d/2)+'px';t.appendChild(p);setTimeout(()=>p.remove(),650)});
+// Lightweight screen shortcuts; financial actions still use the existing authenticated flows.
+document.querySelectorAll('.wallet-shortcut').forEach((item,index)=>item.addEventListener('click',()=>{
+ if(index===0)document.getElementById('deposit')?.click();
+ else if(index===1)document.getElementById('withdraw')?.click();
+ else document.querySelector('.wallet-history')?.scrollIntoView({behavior:'smooth',block:'center'});
+ if(typeof haptic==='function')haptic('light');
+}));
 let qsAmount=50,qsStrategy='Core Crypto';
 const qsRoot=document.getElementById('asterQuickStart');
 if(qsRoot){
