@@ -48,6 +48,6 @@ function bindMotion(){
    el.addEventListener('pointerup',()=>el.classList.remove('pressed'),{passive:true});
  });
 }
-function boot25(){homePulse();investCommand();activeStrip();walletStatus();bindMotion()}
+function boot25(){homePulse();walletStatus();bindMotion()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot25,120));else setTimeout(boot25,120);
 })();
