@@ -438,6 +438,47 @@ def referrals(user: User = Depends(current_user), dbs: Session = Depends(db)):
     rows = dbs.scalars(select(Referral).where(Referral.referrer_user_id == user.id).order_by(Referral.id.desc())).all()
     return {"code":user.referral_code,"rate":"15%","count":len(rows),"pending_bonus":str(sum((r.pending_bonus for r in rows),Decimal("0"))),"paid_bonus":str(sum((r.paid_bonus for r in rows),Decimal("0"))),"referrals":[{"id":r.id,"referred_user_id":r.referred_user_id,"status":r.status,"pending_bonus":str(r.pending_bonus),"paid_bonus":str(r.paid_bonus)} for r in rows]}
 
+@app.get("/v1/team")
+def team(user: User = Depends(current_user), dbs: Session = Depends(db)):
+    rates = [10, 3, 2, 1, 1, 1, 1, 1, 1]
+    frontier = {user.id}
+    visited = {user.id}
+    members = []
+    for level, rate in enumerate(rates, start=1):
+        if not frontier:
+            break
+        rows = dbs.execute(
+            select(Referral, User)
+            .join(User, User.id == Referral.referred_user_id)
+            .where(Referral.referrer_user_id.in_(frontier))
+            .order_by(Referral.created_at.asc(), Referral.id.asc())
+        ).all()
+        next_frontier = set()
+        for referral, member in rows:
+            if member.id in visited:
+                continue
+            visited.add(member.id)
+            next_frontier.add(member.id)
+            local, sep, domain = member.email.partition("@")
+            members.append({
+                "member_id": member.id,
+                "email": (local[:1] + "***" + sep + domain) if sep else "Member",
+                "status": member.status,
+                "joined_at": member.created_at.isoformat() if member.created_at else None,
+                "level": level,
+                "level_rate_percent": rate
+            })
+        frontier = next_frontier
+    return {
+        "code": user.referral_code,
+        "policy": [{"level": i + 1, "rate_percent": rate} for i, rate in enumerate(rates)],
+        "policy_total_percent": sum(rates),
+        "member_count": len(members),
+        "active_levels": len({m["level"] for m in members}),
+        "members": members
+    }
+
+
 @app.get("/v1/notifications")
 def notifications(user: User = Depends(current_user), dbs: Session = Depends(db)):
     rows = dbs.scalars(select(Notification).where(Notification.user_id == user.id).order_by(Notification.id.desc()).limit(100)).all()
