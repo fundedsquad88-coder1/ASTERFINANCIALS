@@ -11,7 +11,7 @@ ready(function(){
   $$('a').filter(a=>/market|trade|binary/i.test(a.textContent||'')).forEach(a=>a.classList.add('v39-hide'));
   /* Remove legacy copy that makes the product sound like a trading app. */
   /* Market information is discovery-only; execution remains outside this app. */
-  $('body *').forEach(el=>{
+  $( 'body *' ).forEach(el=>{
     if(el.children.length===0 && /Live markets\.|Live market data|Market pulse|Latest market news/i.test(el.textContent||'')){
       el.classList.add('v39-hide');
     }
