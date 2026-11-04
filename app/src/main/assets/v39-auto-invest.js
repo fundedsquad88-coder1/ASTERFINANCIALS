@@ -21,6 +21,9 @@ ready(function(){
   $('#v39Plan')?.remove();
   if(home){
     home.querySelector('#homeMarkets')?.remove();
+    home.querySelector('#homeTicker')?.remove();
+    home.querySelector('#news')?.closest('.card')?.remove();
+    home.querySelectorAll('.live-ticker,.market-card-head,.v25-strategy,.v25-section-title').forEach(el=>el.remove());
     home.querySelectorAll('.section-head').forEach(head=>{
       if(/market pulse|aster pulse/i.test(head.textContent||'')) head.remove();
     });
