@@ -26,7 +26,7 @@ function wallet(){
  const v=document.createElement('div');v.className='v25-wallet-visual';v.innerHTML='<div class="v25-wallet-copy"><small>ASTER TREASURY</small><strong>USDT Wallet</strong><span>Network-specific deposit rails · BEP20 / TRC20</span></div>';s.prepend(v);
 }
 function profile(){const s=$('#profile');if(!s||s.dataset.v25)return;s.dataset.v25=1;const c=s.querySelector('.card');if(c){const x=document.createElement('div');x.className='v25-chart-card';x.style.marginTop='12px';x.innerHTML='<div class="v25-chart-head"><b>Account security</b><span>READY FOR BACKEND</span></div><div class="small muted" style="margin-top:8px">Authentication, KYC/AML, sessions and withdrawal controls belong to the secure production backend.</div>';s.insertBefore(x,c)}}
-function wire(){ $$('[data-v25-go]').forEach(b=>b.onclick=()=>window.go?.(b.dataset.v25Go)); $$('.v25-strategy-card').forEach(c=>c.onclick=()=>{toast('Open Auto-Invest to configure this strategy');window.go?.('invest')});}
+function wire(){ $$( '[data-v25-go]' ).forEach(b=>b.onclick=()=>window.go?.(b.dataset.v25Go)); $$( '.v25-strategy-card' ).forEach(c=>c.onclick=()=>{toast('Open Auto-Invest to configure this strategy');window.go?.('invest')});}
 function boot(){home();invest();wallet();profile();wire();toast('Aster V25 loaded');}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
