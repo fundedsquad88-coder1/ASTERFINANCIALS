@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f7f7fb">
+<meta name="theme-color" content="#0b0a10">
+<script id="ASTER_FORCE_DARK_STARTUP">try{localStorage.setItem("aster-theme","dark")}catch(e){}</script>
 <title>Aster Financials</title>
 <style>
 :root{--bg:#f7f7fb;--card:rgba(255,255,255,.78);--card2:#fff;--text:#11111a;--muted:#727382;--line:rgba(17,17,26,.09);--gold:#d6a52f;--gold2:#f4d47a;--violet:#7b61ff;--cyan:#39c6c9;--green:#16a878;--red:#e45c73;--shadow:0 18px 55px rgba(27,22,56,.10);--r:24px}
@@ -218,9 +219,14 @@ body.theme-dark input,body.theme-dark select,body.theme-dark textarea,body.theme
 body.theme-dark .secondary,body.theme-dark .btn-secondary,body.theme-dark .v26-btn.secondary{background:#292632;color:#eee9f8}
 body.theme-dark .sheet{background:#191820;color:#f5f2fa}
 
+
+/* ASTER_DARK_TOP_ACTIONS: OLED header controls */
+body.theme-dark .top-actions .icon{background:rgba(18,17,26,.96)!important;border:1px solid rgba(232,184,76,.24)!important;color:#e8b84c!important;box-shadow:0 8px 22px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.045)!important}
+body.theme-dark .top-actions .icon svg{stroke:#e8b84c!important;filter:drop-shadow(0 0 5px rgba(232,184,76,.16))}
+body.theme-dark .top-actions .icon:active{background:#211d2b!important;border-color:rgba(232,184,76,.42)!important}
 </style>
 <link rel="stylesheet" href="v26-production.css"></head>
-<body>
+<body class="theme-dark">
 <div class="bg"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div><div class="splash" id="splash"><div class="splash-orbit"></div><div class="splash-inner"><svg class="splash-logo" viewBox="0 0 100 100"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6d77b"/><stop offset=".5" stop-color="#e8b84c"/><stop offset="1" stop-color="#8d72ff"/></linearGradient></defs><path fill="url(#sg)" d="M50 5C54 33 67 46 95 50C67 54 54 67 50 95C46 67 33 54 5 50C33 46 46 33 50 5Z"/></svg><div class="splash-name">ASTER</div><div class="splash-sub">FINANCIALS · WEALTH ON AUTOPILOT</div><div class="splash-line"></div></div></div><script>window.setTimeout(function(){var s=document.getElementById("splash");if(s)s.classList.add("hide")},2600);</script><div class="confetti-layer" id="confetti"></div>
 <div class="app">
 <header class="top">
@@ -446,7 +452,7 @@ $('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms 
 $('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
 const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
 function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
-function currentTheme(){return localStorage.getItem('aster-theme')||'light'}function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+function currentTheme(){return localStorage.getItem('aster-theme')||'dark'}function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
 $('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
 $('#bell').onclick=()=>openSheet('Notifications','<p>No account alerts yet. Once the backend is connected, this area can show deposits, strategy events, withdrawals and security alerts.</p>');
 const haptic=(kind='light')=>{try{if(window.AsterNative?.haptic)AsterNative.haptic(kind);else if(navigator.vibrate)navigator.vibrate(kind==='success'?[18,30,28]:kind==='medium'?24:10)}catch(e){}};function confetti(){const box=$('#confetti');if(!box)return;haptic('success');for(let i=0;i<28;i++){let p=document.createElement('i');p.className='confetti-piece';p.style.left=(50+(Math.random()*22-11))+'%';p.style.top='43%';p.style.setProperty('--dx',(Math.random()*320-160)+'px');p.style.setProperty('--dy',(Math.random()*420+180)+'px');p.style.setProperty('--rot',(Math.random()*900-450)+'deg');p.style.background=['#e8b84c','#8d72ff','#55e0dc','#ff7189','#fff'][i%5];box.appendChild(p);setTimeout(()=>p.remove(),1000)}}function setupTouchPolish(){document.addEventListener('pointerdown',e=>{let b=e.target.closest('button,.card,.invest-card,.market-row,.icon,.action');if(b)haptic(b.classList.contains('primary')?'medium':'light')},{passive:true});$$( '.hero,.invest-card' ).forEach(el=>{el.classList.add('tilt');el.addEventListener('pointermove',e=>{let r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.transform='perspective(900px) rotateX('+(-y*5)+'deg) rotateY('+(x*6)+'deg) translateY(-2px)'});el.addEventListener('pointerleave',()=>el.style.transform='')});document.addEventListener('click',e=>{let m=e.target.closest('.market-row');if(m){m.classList.remove('flash');void m.offsetWidth;m.classList.add('flash');confetti()}})}setTimeout(()=>{$('#splash')?.classList.add('hide');haptic('light')},1200);
