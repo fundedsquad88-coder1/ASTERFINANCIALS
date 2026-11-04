@@ -17,12 +17,13 @@ ready(function(){
     }
   });
   const home=$('#home');
-  if(home && !$('#v39Plan')){
-    const grid=home.querySelector('.grid2');
-    const plan=document.createElement('section');
-    plan.id='v39Plan'; plan.className='v39-plan';
-    plan.innerHTML='<div class="v39-kicker">Aster Auto-Invest</div><h3>One plan. Automated wealth building.</h3><p>Choose a strategy, set your capital and let Aster handle the account workflow when a supported execution provider is connected.</p><div class="v39-plan-grid"><div class="v39-plan-step"><b>01 · Choose</b><span>Select a strategy</span></div><div class="v39-plan-step"><b>02 · Allocate</b><span>Set your capital</span></div><div class="v39-plan-step"><b>03 · Automate</b><span>Review & activate</span></div></div><button class="primary" data-go="invest" style="margin-top:14px;background:#fff;color:#17131c">Build my Auto-Invest plan</button>';
-    if(grid) grid.insertAdjacentElement('afterend',plan); else home.appendChild(plan);
+  /* Home-page cleanup: remove the redundant One Plan promo and Aster Pulse market card. */
+  $('#v39Plan')?.remove();
+  if(home){
+    home.querySelector('#homeMarkets')?.remove();
+    home.querySelectorAll('.section-head').forEach(head=>{
+      if(/market pulse|aster pulse/i.test(head.textContent||'')) head.remove();
+    });
   }
   const invest=$('#invest');
   /* Keep the Auto-Invest screen focused: no allocation-mode or automation selectors. */
