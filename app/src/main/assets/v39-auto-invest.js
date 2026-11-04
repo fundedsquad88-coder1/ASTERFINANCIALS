@@ -25,13 +25,8 @@ ready(function(){
     if(grid) grid.insertAdjacentElement('afterend',plan); else home.appendChild(plan);
   }
   const invest=$('#invest');
-  if(invest && !$('#v39Controls')){
-    const controls=document.createElement('div'); controls.id='v39Controls'; controls.className='v39-control';
-    controls.innerHTML='<div class="card"><div class="eyebrow">Allocation mode</div><select id="v39Allocation"><option>Balanced allocation</option><option>Growth allocation</option><option>Capital preservation</option></select></div><div class="card"><div class="eyebrow">Automation</div><select id="v39Cadence"><option>Weekly review</option><option>Monthly review</option><option>Manual review</option></select></div>';
-    const notice=invest.querySelector('.notice'); if(notice) notice.insertAdjacentElement('beforebegin',controls); else invest.appendChild(controls);
-    const how=document.createElement('div'); how.className='card'; how.innerHTML='<div class="row"><div><div class="eyebrow">Aster execution model</div><b>Review → authorize → execute</b></div><span class="v39-status"><i></i>Fail-closed</span></div><div class="divider"></div><div class="small muted">A strategy is never shown as active or profitable unless the authenticated backend and configured execution/valuation provider confirm it.</div>';
-    if(notice) notice.insertAdjacentElement('afterend',how);
-  }
+  /* Keep the Auto-Invest screen focused: no allocation-mode or automation selectors. */
+  $('#v39Controls')?.remove();
   const wealth=$('#insights');
   if(wealth && !$('#v39WealthHero')){
     const hero=document.createElement('div'); hero.id='v39WealthHero'; hero.className='v39-wealth-hero';
