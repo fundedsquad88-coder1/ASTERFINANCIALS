@@ -303,7 +303,7 @@ body.theme-dark .top-actions .icon:active{background:#211d2b!important;border-co
 <section id="wallet" class="screen">
 <div class="art-banner mint"><div class="art-copy"><b>Aster Treasury</b><span>USDT rails across BEP20 and TRC20. Secure deposits and withdrawals.</span></div><svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><rect x="150" y="38" width="116" height="86" rx="18" fill="#172424" stroke="#56e0c1" stroke-width="2"/><rect x="177" y="65" width="112" height="62" rx="16" fill="#0d1416" stroke="#56e0c1"/><circle cx="216" cy="95" r="19" fill="#56e0c1" opacity=".2"/><text x="216" y="102" text-anchor="middle" font-size="23" font-weight="800" fill="#56e0c1">₮</text><path d="M115 77 Q145 42 170 55" fill="none" stroke="#56e0c1" stroke-width="3"/><path d="M111 94 Q143 60 168 73" fill="none" stroke="#f5c95a" stroke-width="3"/></svg></div>
   <div class="eyebrow">Wallet</div><div class="title">Your money, clearly.</div><p class="sub">Balances, deposits, withdrawals and transaction history will come from your authenticated Aster account.</p>
-  <div class="wallet-card wallet-hero"><div class="wallet-glow"></div><div class="wallet-head"><div class="eyebrow" style="color:#c8c4d7">AVAILABLE BALANCE</div><span class="wallet-status"><i></i> Account not connected</span></div><div class="balance" style="margin-top:8px">$0.00</div><div class="wallet-currency">USDT · Tether USD</div><div class="wallet-actions"><button id="deposit"><span>＋</span> Deposit</button><button id="withdraw"><span>↗</span> Withdraw</button></div><div class="wallet-foot"><span>◈ BEP20</span><span>◈ TRC20</span><span>Protected account rails</span></div></div>
+  <div class="wallet-card wallet-hero"><div class="wallet-glow"></div><div class="wallet-head"><div class="eyebrow" style="color:#c8c4d7">AVAILABLE BALANCE</div><span class="wallet-status"><i></i> Account not connected</span></div><div class="balance" style="margin-top:8px">$0.00</div><div class="wallet-currency">USDT · Tether USD</div><div class="wallet-actions"><button id="deposit"><span>＋</span> Deposit</button><button id="withdraw"><span>↗</span> Withdraw</button></div></div>
   <div class="wallet-shortcuts"><div class="wallet-shortcut"><span class="shortcut-icon">⇩</span><b>Deposit USDT</b><small>Choose a network</small></div><div class="wallet-shortcut"><span class="shortcut-icon">⇧</span><b>Withdraw</b><small>Request a transfer</small></div><div class="wallet-shortcut"><span class="shortcut-icon">◷</span><b>Activity</b><small>Verified history</small></div></div>
   <div class="card wallet-history"><div class="row"><div><div class="eyebrow">Your activity</div><b>Transaction history</b></div><span class="lock">0 transactions</span></div><div class="empty-activity"><div class="empty-orbit">◷</div><b>Your money story starts here</b><p>Deposits, withdrawals and verified account activity will appear here once your account is connected.</p></div></div>
   <div class="wallet-security"><span class="security-mark">⌑</span><div><b>Built around account security</b><small>Balances and transactions are shown only from authenticated, verified Aster records.</small></div><span class="security-check">✓</span></div>
@@ -591,6 +591,43 @@ if(qsRoot){
 document.addEventListener('click',e=>{const b=e.target.closest('.mcopy,#copyTeamCode');if(!b)return;const r=b.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2);if(b.classList.contains('mcopy')){const c=b.dataset.code;if(window.AsterNative&&AsterNative.copyText)AsterNative.copyText(c);else if(navigator.clipboard)navigator.clipboard.writeText(c);if(typeof showToast==='function')showToast('Member code copied')}});
 })();
 </script>
+
+<style id="aster-modern-polish">
+/* Aster modern minimal visual system */
+:root{--aster-accent:#d9b65c;--aster-violet:#9278ef;--aster-glass:rgba(255,255,255,.055)}
+body{scroll-behavior:smooth}
+.screen.on{animation:asterScreenIn .38s cubic-bezier(.2,.75,.25,1) both}
+@keyframes asterScreenIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.screen .title{letter-spacing:-.045em;line-height:1.06}
+.screen .eyebrow{letter-spacing:.15em}
+.card,.wallet-card,.profile-identity,.profile-menu,.v25-chart-card,.v25-stat,.v25-hero,.market-context{border-radius:22px;transition:transform .24s ease,border-color .24s ease,box-shadow .24s ease}
+.card{border:1px solid var(--line,rgba(140,130,160,.15));box-shadow:0 9px 26px rgba(20,16,36,.045)}
+button,.wallet-shortcut,.invest-card,.invest-package,.market-row,.list-row{ -webkit-tap-highlight-color:transparent;transition:transform .18s ease,filter .18s ease,background-color .2s ease,border-color .2s ease}
+button:active,.wallet-shortcut:active,.invest-card:active,.invest-package:active{transform:scale(.975)}
+.wallet-hero{position:relative;overflow:hidden;border:1px solid rgba(224,190,111,.24);box-shadow:0 18px 42px rgba(13,10,25,.18)}
+.wallet-glow{pointer-events:none;filter:blur(3px);opacity:.75;animation:asterGlow 8s ease-in-out infinite alternate}
+@keyframes asterGlow{from{transform:translate3d(-5px,0,0) scale(.94);opacity:.48}to{transform:translate3d(12px,8px,0) scale(1.08);opacity:.9}}
+.art-banner{border-radius:23px;overflow:hidden}
+.wallet-shortcuts{gap:9px}
+.wallet-shortcut{border:1px solid var(--line,rgba(140,130,160,.14));border-radius:18px;box-shadow:0 7px 20px rgba(20,16,36,.035)}
+.wallet-shortcut:active{border-color:rgba(217,182,92,.55)}
+.wallet-history{margin-top:15px}
+.empty-orbit{animation:asterOrbit 12s linear infinite}
+@keyframes asterOrbit{to{transform:rotate(360deg)}}
+#nav{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+#nav button{transition:color .2s ease,background .2s ease,transform .2s ease}
+#nav button:active{transform:translateY(-2px) scale(.96)}
+.v25-hero{box-shadow:0 18px 42px rgba(14,12,28,.14)}
+.v25-strategy-card{transition:transform .25s ease,filter .25s ease}
+.v25-strategy-card:active{transform:scale(.985)}
+.market-row{border-radius:15px}
+.market-row:active{background:var(--card2,rgba(140,130,160,.08))}
+.profile-menu .list-row:active{background:rgba(145,120,239,.07)}
+@media(hover:hover){.card:hover,.wallet-shortcut:hover,.profile-identity:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(20,16,36,.075)}}
+body.theme-dark .card,body.theme-dark .wallet-shortcut,body.theme-dark .profile-identity,body.theme-dark .profile-menu{border-color:rgba(255,255,255,.075);box-shadow:0 12px 30px rgba(0,0,0,.16)}
+body.theme-dark .wallet-shortcut{background:linear-gradient(145deg,#1b1923,#15141c)}
+@media(prefers-reduced-motion:reduce){.screen.on,.wallet-glow,.empty-orbit{animation:none!important}*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+</style>
 </body>
 </html>
 
