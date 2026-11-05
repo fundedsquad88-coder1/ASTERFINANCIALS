@@ -225,7 +225,8 @@ body.theme-dark .top-actions .icon{background:rgba(18,17,26,.96)!important;borde
 body.theme-dark .top-actions .icon svg{stroke:#e8b84c!important;filter:drop-shadow(0 0 5px rgba(232,184,76,.16))}
 body.theme-dark .top-actions .icon:active{background:#211d2b!important;border-color:rgba(232,184,76,.42)!important}
 </style>
-<link rel="stylesheet" href="v26-production.css"></head>
+<link rel="stylesheet" href="v26-production.css"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+</head>
 <body class="theme-dark">
 <div class="bg"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div><div class="splash" id="splash"><div class="splash-orbit"></div><div class="splash-inner"><svg class="splash-logo" viewBox="0 0 100 100"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6d77b"/><stop offset=".5" stop-color="#e8b84c"/><stop offset="1" stop-color="#8d72ff"/></linearGradient></defs><path fill="url(#sg)" d="M50 5C54 33 67 46 95 50C67 54 54 67 50 95C46 67 33 54 5 50C33 46 46 33 50 5Z"/></svg><div class="splash-name">ASTER</div><div class="splash-sub">FINANCIALS · WEALTH ON AUTOPILOT</div><div class="splash-line"></div></div></div><script>window.setTimeout(function(){var s=document.getElementById("splash");if(s)s.classList.add("hide")},2600);</script><div class="confetti-layer" id="confetti"></div>
 <div class="app">
@@ -627,6 +628,41 @@ button:active,.wallet-shortcut:active,.invest-card:active,.invest-package:active
 body.theme-dark .card,body.theme-dark .wallet-shortcut,body.theme-dark .profile-identity,body.theme-dark .profile-menu{border-color:rgba(255,255,255,.075);box-shadow:0 12px 30px rgba(0,0,0,.16)}
 body.theme-dark .wallet-shortcut{background:linear-gradient(145deg,#1b1923,#15141c)}
 @media(prefers-reduced-motion:reduce){.screen.on,.wallet-glow,.empty-orbit{animation:none!important}*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+</style>
+<style id="aster-site-match">
+/* Website parity: Manrope body + Unbounded display, Aster's dark neon-gold palette */
+body,button,input,select,textarea{font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3,.title,.disp,.section-title,.v25-title{font-family:Unbounded,Manrope,system-ui,sans-serif;letter-spacing:-.035em}
+body.theme-dark{
+ --bg:#070711;--card:rgba(255,255,255,.055);--card2:#10101b;
+ --text:#f4f4f6;--muted:#b7bbd0;--line:rgba(255,255,255,.13);
+ --gold:#ffe66d;--gold2:#fff2a6;--violet:#b18cff;--cyan:#63f5ff;
+ --green:#75ffd0;--red:#ff72cf;--shadow:0 18px 48px rgba(0,0,0,.38);
+ --g:#ffe66d;--g2:#fff2a6;--v:#b18cff;--c:#63f5ff;--p:#ff72cf;
+ background:radial-gradient(ellipse at 12% 8%,rgba(177,140,255,.13),transparent 31rem),
+ radial-gradient(ellipse at 91% 22%,rgba(99,245,255,.086),transparent 27rem),
+ radial-gradient(ellipse at 74% 65%,rgba(255,114,207,.07),transparent 34rem),#070711;
+ color:var(--text)
+}
+body.theme-dark .top{background:linear-gradient(#070711 55%,transparent)}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card,
+body.theme-dark .profile-identity,body.theme-dark .profile-menu,body.theme-dark .wallet-shortcut{
+ background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.13)
+}
+body.theme-dark .primary,body.theme-dark .wallet-actions button:first-child{
+ background:linear-gradient(120deg,#fff2a6,#ffe66d 55%,#e0b64f);
+ color:#101018;box-shadow:0 10px 28px rgba(224,182,79,.22);animation:none
+}
+body.theme-dark .primary::after{display:none}
+body.theme-dark .tabs button.on{background:linear-gradient(120deg,#ffe66d,#e0b64f)!important;color:#101018!important;box-shadow:0 6px 18px rgba(224,182,79,.2)}
+body.theme-dark .bottom{background:rgba(7,7,17,.88);border-color:rgba(255,255,255,.13);box-shadow:0 18px 50px rgba(0,0,0,.42)}
+body.theme-dark .bottom button.on{background:rgba(255,230,109,.13)}
+body.theme-dark .title{background:linear-gradient(105deg,#fff 4%,#ffe66d 26%,#ff72cf 54%,#b18cff 76%,#63f5ff 98%);background-clip:text;-webkit-background-clip:text;color:transparent}
+body.theme-dark .hero{box-shadow:0 18px 42px rgba(0,0,0,.32),0 0 0 1px rgba(255,255,255,.07) inset}
+body.theme-dark .wallet-hero{background:linear-gradient(135deg,#11111e,#191629 58%,#10242b);border-color:rgba(255,230,109,.22)}
+body.theme-dark .wallet-actions button:first-child{color:#101018}
+body.theme-dark .chip.on,body.theme-dark .invest-card.on{border-color:rgba(255,230,109,.72)}
+@media(prefers-reduced-motion:reduce){body.theme-dark .title{animation:none}}
 </style>
 </body>
 </html>
