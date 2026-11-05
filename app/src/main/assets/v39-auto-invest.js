@@ -17,11 +17,33 @@ ready(function(){
     }
   });
   const home=$('#home');
-  /* The requested Home cleanup is intentional: keep the Home tab itself,
-     but remove every content panel inside it (ROI card, globe banner,
-     Aster Pulse/news feed, quick-start and other promotional panels).
-     Account features remain available in their dedicated tabs. */
-  if(home) home.replaceChildren();
+  /* Remove ONLY the three Home footer panels shown in the user's screenshot.
+     Keep the Home heading, quick-start planner, balance hero, active strategies,
+     navigation and all other Home content intact. */
+  if(home){
+    home.querySelectorAll('.card,.art-banner,.v25-hero,.market-context,[id]').forEach(el=>{
+      if(el===home || el.id==='home') return;
+      const label=(el.innerText||el.textContent||'').replace(/\\s+/g,' ').trim().toLowerCase();
+      if(label.includes('roi calculator') ||
+         label.includes('global markets, beautifully simple') ||
+         label.includes('aster pulse') ||
+         label.includes('markets are moving')){
+        /* Remove the panel itself, not its parent Home screen. */
+        if(el.matches('.card,.art-banner,.v25-hero,.market-context')) el.remove();
+        else {
+          const panel=el.closest('.card,.art-banner,.v25-hero,.market-context');
+          if(panel && home.contains(panel)) panel.remove();
+        }
+      }
+    });
+    /* Remove the old market-pulse panel and its heading only. */
+    home.querySelector('#homeMarkets')?.remove();
+    home.querySelector('#homeTicker')?.remove();
+    home.querySelector('#news')?.closest('.card')?.remove();
+    home.querySelectorAll('.section-head').forEach(head=>{
+      if(/market pulse|aster pulse/i.test(head.textContent||'')) head.remove();
+    });
+  }
   const invest=$('#invest');
   /* Keep the Auto-Invest screen focused: no allocation-mode or automation selectors. */
   $('#v39Controls')?.remove();
