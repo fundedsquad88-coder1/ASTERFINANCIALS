@@ -363,7 +363,699 @@ async function loadMarkets(){
   }
 }
 async function loadNews(target){try{const q=encodeURIComponent('(crypto OR bitcoin OR ethereum OR forex OR currency markets)');let raw=await nativeFetch('https://news.google.com/rss/search?q='+q+'&hl=en-US&gl=US&ceid=US:en');let xml=new DOMParser().parseFromString(raw,'text/xml');let items=[...xml.querySelectorAll('item')].slice(0,16);const escNews=v=>String(v||'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));const classify=t=>/forex|currency|dollar|euro|yen|pound|sterling|central bank|rate decision|fx /i.test(t)?'FOREX':'CRYPTO';$(target).innerHTML=items.length?items.map((i,n)=>{const title=i.querySelector('title')?.textContent||'Market headline';const link=i.querySelector('link')?.textContent||'#';const date=i.querySelector('pubDate')?.textContent||'';return '<a class="news news-scroll-item" href="'+escNews(link)+'" target="_blank" rel="noopener noreferrer"><span class="news-scroll-index">'+String(n+1).padStart(2,'0')+'</span><div class="news-scroll-copy"><span class="news-scroll-tag '+classify(title).toLowerCase()+'">'+classify(title)+'</span><b>'+escNews(title)+'</b><span class="news-scroll-time">'+escNews(date)+'</span></div><span class="news-scroll-arrow">↗</span></a>'}).join(''):'<div class="small muted">No headlines returned.</div>'}catch(e){$(target).innerHTML='<div class="small muted">News feed unavailable right now.</div>'}}
-async function loadWealth(){try{const base=window.ASTER_API_BASE||localStorage.getItem('aster_api_base')||'';if(!base)return;const r=await fetch(base.replace(/\/$/,'')+'/v1/portfolio',{credentials:'include'});if(!r.ok)return;const d=await r.json();const total=Number(d.total||0),available=Number(d.available||0),invested=Math.max(0,total-available);$('#insightTotal').innerHTML=fmt(total,2)+' <span class="small">USDT</span>';$('#insightAvailable').textContent=fmt(available,2)+' USDT';$('#insightInvested').innerHTML=fmt(invested,2)+' <span class="small">USDT</span>';$('#insightInvestedRow').textContent=fmt(invested,2)+' USDT';$('#insightBar').style.width=(total?Math.min(100,invested/total*100):0)+'%';const rr=await fetch(base.replace(/\/$/,'')+'/v1/autoinvest/active',{credentials:'include'});if(rr.ok){const rows=await rr.json();$('#insightStrategies').innerHTML=rows.length?rows.map(x=>'<div class="trade-history-row"><div><b>'+esc(x.strategy||'Auto-Invest')+'</b><div class="trade-meta">'+esc(x.amount)+' USDT · '+esc(x.duration_weeks)+' weeks</div></div><span class="sim-badge">'+esc(x.status)+'</span></div>').join(''):'<div class="small muted">No active strategies.</div>'}}catch(e){}}function projection(){const selected=$('#amtChips .chip.on');const amount=selected?Number(selected.dataset.a):10;const projected=amount*2;$('#amtLabel').textContent='$'+fmt(amount,0);$('#projValue').textContent='$'+fmt(projected,0);$('#projChart').innerHTML=line([amount,projected],'#8d72ff');$('#projNote').textContent='Illustrative 2× example: '+fmt(amount,0)+' USDT to '+fmt(projected,0)+' USDT. This is not a promised return or forecast; actual returns can be negative.'}
+async function loadWealth(){try{const base=window.ASTER_API_BASE||localStorage.getItem('aster_api_base')||'';if(!base)return;const r=await fetch(base.replace(/\/$/,'')+'/v1/portfolio',{credentials:'include'});if(!r.ok)return;const d=await r.json();const total=Number(d.total||0),available=Number(d.available||0),invested=Math.max(0,total-available);$('#insightTotal').innerHTML=fmt(total,2)+' <span class="small">USDT</span>';$('#insightAvailable').textContent=fmt(available,2)+' USDT';$('#insightInvested').innerHTML=fmt(invested,2)+' <span class="small">USDT</span>';$('#insightInvestedRow').textContent=fmt(invested,2)+' USDT';$('#insightBar').style.width=(total?Math.min(100,invested/total*100):0)+'%';const rr=await fetch(base.replace(/\/$/,'')+'/v1/autoinvest/active',{credentials:'include'});if(rr.ok){const rows=await rr.json();$('#insightStrategies').innerHTML=rows.length?rows.map(x=>'<div class="trade-history-row"><div><b>'+esc(x.strategy||'Auto-Invest')+'</b><div class="trade-meta">'+esc(x.amount)+' USDT · '+esc(x.duration_weeks)+' weeks</div></div><span class="sim-badge">'+esc(x.status)+'</span></div>').join(''):'<div class="small muted">No active strategies.</div>'}}catch(e){}}function projection(){const selected=$('#amtChips .chip.on');const amount=selected?Number(selected.dataset.a):10;const weeklyGain=amount*0.0285;const projected=amount+weeklyGain;$('#amtLabel').textContent='
+function roiCalc(){const a=+$('#roiAmt').value,r=+$('#roiRate').value/100,w=+$('#roiWeeks').value;$('#roiAmtLabel').textContent='$'+fmt(a,0);$('#roiRateLabel').textContent=(r*100)+'%';$('#roiWeeksLabel').textContent=w+' weeks';$$( '#roiAmtChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===a));$$( '#roiRateChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===r*100));$$( '#roiWeekChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===w));let vals=[a];for(let i=1;i<=w;i++)vals.push(vals[i-1]*(1+r));const end=vals[vals.length-1];$('#roiOut').textContent='$'+fmt(end,0);$('#roiProfit').textContent='$'+fmt(end-a,0);$('#roiMultiple').textContent=(end/a).toFixed(2)+'×';$('#roiChart').innerHTML=line(vals,'#8d72ff')}['roiAmt','roiRate','roiWeeks'].forEach(id=>$('#'+id).oninput=roiCalc);$('#roiAmtChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiAmt').value=b.dataset.v;roiCalc()}};$('#roiRateChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiRate').value=b.dataset.v;roiCalc()}};$('#roiWeekChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiWeeks').value=b.dataset.v;roiCalc()}};function go(id){if(!document.getElementById(id)||!document.getElementById(id).classList.contains('screen'))return false;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$( '#nav button' ).forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets'){loadMarkets()}if(id==='team'){setTimeout(loadTeam,80)}return true}window.asterNavigate=go;
+$$( '[data-go]' ).forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+$('#homeDeposit').addEventListener('click',()=>{go('wallet');setTimeout(()=>$('#deposit')?.click(),80)});
+$$( '.invest-package' ).forEach(c=>c.addEventListener('click',()=>{$$( '.invest-package' ).forEach(x=>x.classList.remove('on'));c.classList.add('on');projection()}));
+$('#amtChips').addEventListener('click',e=>{let b=e.target.closest('[data-a]');if(b){$$( '#amtChips .chip' ).forEach(x=>x.classList.toggle('on',x===b));projection()}});
+$('#marketTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');marketFilter=b.dataset.filter;renderMarkets()});
+
+const TEAM_RATES=[10,3,2,1,1,1,1,1,1];
+let teamRows=[],teamLevel='all',teamCode='';
+function teamEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const PYR_ICON=['🔥','⚡','💎','🚀','🌙','✨','🌈','🪩','👑'],PYR_HUE=[330,300,270,235,205,180,150,50,28];
+function renderPolicy(){
+ const cnt={};teamRows.forEach(x=>{cnt[x.level]=(cnt[x.level]||0)+1});
+ const rows=[[0],[1,2],[3,4,5],[6,7,8]];
+ $('#teamPyr').innerHTML=rows.map(r=>'<div class="pyr-row">'+r.map(i=>'<button class="lv'+(i===0?' big':'')+'" data-l="'+(i+1)+'" style="--h:'+PYR_HUE[i]+';--i:'+i+'" aria-label="Level '+(i+1)+', '+TEAM_RATES[i]+' percent"><span class="lvi"><small>'+PYR_ICON[i]+' LEVEL '+(i+1)+'</small><b>'+TEAM_RATES[i]+'%</b></span>'+(cnt[i+1]?'<em>'+cnt[i+1]+'</em>':'')+'</button>').join('')+'</div>').join('');
+ syncPyr();
+}
+function syncPyr(){const p=$('#teamPyr');if(!p)return;$$('.lv',p).forEach(b=>b.classList.toggle('sel',b.dataset.l===String(teamLevel)))}
+function pyrCount(){const el=$('#pyrTotal');if(!el)return;const t=TEAM_RATES.reduce((a,b)=>a+b,0),t0=performance.now();(function f(n){const k=Math.min(1,(n-t0)/1000);el.textContent=Math.round(t*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f)})(t0)}
+renderPolicy();
+$('#teamPyr').addEventListener('click',e=>{const b=e.target.closest('button.lv');if(!b)return;teamLevel=teamLevel===b.dataset.l?'all':b.dataset.l;$$('button',$('#teamLevelTabs')).forEach(x=>x.classList.toggle('on',x.dataset.level===String(teamLevel)));renderTeam();try{navigator.vibrate&&navigator.vibrate(12)}catch(_){}$('#teamMembers').scrollIntoView({behavior:'smooth',block:'center'})});
+if('IntersectionObserver' in window){new IntersectionObserver(es=>es.forEach(e=>{const el=e.target;if(e.isIntersecting){if(!el.classList.contains('live')){el.classList.add('live');pyrCount()}}else el.classList.remove('live')}),{threshold:.3}).observe($('#teamPolicy'))}else{$('#teamPolicy').classList.add('live')}
+function mcode(x){const c=x.referral_code||x.code||'';return '<div class="mcode"><span>🎟️ '+(c?teamEsc(c):'Code pending')+'</span>'+(c?'<button class="mcopy" data-code="'+teamEsc(c)+'">Copy</button>':'')+'</div>'}
+function renderTeam(){syncPyr();
+ const rows=teamLevel==='all'?teamRows:teamRows.filter(x=>Number(x.level)===Number(teamLevel));
+ $('#teamMemberCount').textContent=rows.length+' members';
+ $('#teamMembers').innerHTML=rows.length?rows.map(x=>'<div class="list-row"><div class="avatar" style="width:42px;height:42px;font-size:14px">L'+teamEsc(x.level)+'</div><div style="min-width:0;flex:1"><b>'+teamEsc(x.email||('Member #'+x.member_id))+'</b><div class="small muted">Member #'+teamEsc(x.member_id)+' · Joined '+teamEsc(x.joined_at?new Date(x.joined_at).toLocaleDateString():'date unavailable')+'</div>'+mcode(x)+'</div><span class="badge">'+teamEsc(x.status||'active')+'</span></div>').join(''):'<div class="small muted">No members found for this level yet.</div>';
+}
+async function loadTeam(){
+ const code=$('#teamReferralCode'),members=$('#teamMembers');
+ try{
+  const d=await apiCall('/v1/team');
+  teamCode=d.code||'';teamRows=Array.isArray(d.members)?d.members:[];
+  code.textContent=teamCode||'Not available';
+  $('#copyTeamCode').disabled=!teamCode;
+  $('#teamCodeHint').textContent='Share this code when inviting someone to Aster.';
+  $('#teamTotal').textContent=String(teamRows.length);
+  $('#teamLevels').textContent=String(new Set(teamRows.map(x=>Number(x.level))).size);
+  renderPolicy();
+  renderTeam();
+ }catch(e){
+  code.textContent='Connect account';$('#copyTeamCode').disabled=true;
+  $('#teamCodeHint').textContent=e.message||'Sign in to view your referral code.';
+  $('#teamTotal').textContent='—';$('#teamLevels').textContent='—';
+  renderPolicy();
+  members.innerHTML='<div class="small muted">Sign in to load your team members.</div>';
+ }
+}
+$('#copyTeamCode').onclick=()=>{if(!teamCode)return;if(window.AsterNative?.copyText)AsterNative.copyText(teamCode);else navigator.clipboard?.writeText(teamCode);showToast('Referral code copied')};
+$('#teamLevelTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-level]');if(!b)return;teamLevel=b.dataset.level;$$('button',$('#teamLevelTabs')).forEach(x=>x.classList.toggle('on',x===b));renderTeam()});
+
+function openSheet(title,body){$('#sheet').innerHTML='<div class="grab"></div><h3>'+title+'</h3>'+body+'<button class="primary" id="closeSheet" style="margin-top:14px">Close</button>';$('#sheetBack').classList.add('on');$('#closeSheet').onclick=()=>$('#sheetBack').classList.remove('on')}
+$('#review').onclick=()=>openSheet('Review Auto-Invest','<p>Strategy: <b>'+$('.invest-package.on').textContent.trim()+'</b><br>Amount: <b>'+$('#amtLabel').textContent+'</b><br>Illustrative weekly gain (2.85%): <b>'+$('#projValue').textContent+'</b></p><div class="notice">This is an illustrative example only, not a guaranteed return. This is a review screen only; activation requires a secure authenticated Aster backend.</div>');
+$('#connect').onclick=()=>openSheet('Connect your Aster account','<p>Authentication, KYC/AML checks, account ledger and secure wallet rails belong in the production backend. This UI is ready for that integration but does not invent credentials or balances.</p><button class="secondary" id="request">Continue</button>');
+function apiBase(){return (window.ASTER_API_BASE||localStorage.getItem('aster_api_base')||'').replace(/\/$/,'')}
+function apiCall(path,opt={}){
+ const base=apiBase();if(!base)throw new Error('Connect your Aster account first.');
+ const headers={'Content-Type':'application/json',...(opt.headers||{})};const csrf=sessionStorage.getItem('aster_csrf')||'';if(csrf)headers['X-Aster-CSRF']=csrf;
+ return fetch(base+path,{credentials:'include',...opt,headers}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Request failed');return d})
+}
+function idem(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random())}
+async function treasuryDepositSheet(){
+ let network='BEP20',address='0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5',name='BNB Smart Chain',depositId=null;
+ try{if(apiBase()){const d=await apiCall('/v1/wallet/deposit-addresses');const row=d.networks.find(x=>x.network==='BEP20');if(row){address=row.address;name=row.name}}}catch(e){}
+ openSheet('Deposit USDT','<div class="sim-badge">Aster treasury rail</div><div class="funding-network" id="fundingNetwork"><button class="on" data-net="BEP20"><b>BEP20</b><br><small>BNB Smart Chain</small></button><button data-net="TRC20"><b>TRC20</b><br><small>Tron</small></button></div><div class="card"><div class="eyebrow">Send USDT to</div><div class="funding-address" id="fundingAddress">'+address+'</div><div class="small muted" id="fundingName">'+name+' · USDT only</div><div class="funding-actions" style="margin-top:10px"><button class="secondary" id="copyFunding">Copy address</button><button class="secondary" id="shareFunding">Share</button></div></div><div class="card"><div class="eyebrow">Expected amount · optional</div><input class="input" id="depositAmount" type="number" min="0.00000001" step="0.00000001" placeholder="e.g. 250"><button class="primary" id="createDepositIntent">Create deposit intent</button><div class="small muted" id="depositIntentState" style="margin-top:9px">Create an intent before sending when your account is connected.</div></div><div class="notice"><b>Important:</b> Use only the selected network. A deposit is credited only after independently verified blockchain confirmation.</div>');
+ const nets=$('#fundingNetwork');
+ nets.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;network=b.dataset.net;$$('button',nets).forEach(x=>x.classList.remove('on'));b.classList.add('on');const fallback=network==='BEP20'?'0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5':'TMrK4d1r2cGye2TwX3JfjCaUDWwZybaoxD';address=fallback;name=network==='BEP20'?'BNB Smart Chain':'Tron';try{if(apiBase()){const d=await apiCall('/v1/wallet/deposit-addresses');const row=d.networks.find(x=>x.network===network);if(row){address=row.address;name=row.name}}}catch(e){}$('#fundingAddress').textContent=address;$('#fundingName').textContent=name+' · USDT only'});
+ $('#copyFunding').onclick=()=>{if(window.AsterNative?.copyText)AsterNative.copyText(address);else navigator.clipboard?.writeText(address);showToast('Address copied')};
+ $('#shareFunding').onclick=()=>window.AsterNative?.shareText('Aster Financials USDT '+network+' deposit address: '+address);
+ $('#createDepositIntent').onclick=async()=>{try{const amount=$('#depositAmount').value;const d=await apiCall('/v1/wallet/deposits',{method:'POST',headers:{'Idempotency-Key':'ui-deposit-'+idem()},body:JSON.stringify({currency:'USDT',network,expected_amount:amount?Number(amount):null})});depositId=d.id;$('#depositIntentState').innerHTML='<b>Intent #'+d.id+'</b> · '+d.status+' · '+d.provider_reference+'<br>Send USDT, then wait for blockchain confirmation.';showToast('Deposit intent created')}catch(e){$('#depositIntentState').textContent=e.message;showToast(e.message)}};
+}
+$('#deposit').onclick=treasuryDepositSheet;
+async function withdrawSheet(){
+ let network='BEP20';
+ openSheet('Withdraw USDT','<div class="sim-badge">Server-controlled withdrawal</div><p>Funds are reserved immediately by the backend. Final settlement requires the configured provider and confirmation webhook.</p><div class="withdraw-network" id="withdrawNetwork"><button class="on" data-net="BEP20">BEP20</button><button data-net="TRC20">TRC20</button></div><input class="input" id="withdrawAddress" placeholder="Destination wallet address"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit withdrawal</button><div class="notice">Never submit a withdrawal to an address you have not verified. Aster will not pretend a transaction was broadcast unless a provider confirms it.</div><div class="small muted" id="withdrawState" style="margin-top:9px"></div>');
+ $('#withdrawNetwork').onclick=e=>{const b=e.target.closest('button');if(!b)return;network=b.dataset.net;$$( '#withdrawNetwork button' ).forEach(x=>x.classList.remove('on'));b.classList.add('on')};
+ $('#submitWithdrawal').onclick=async()=>{try{const address=$('#withdrawAddress').value.trim(),amount=Number($('#withdrawAmount').value);if(!address||!amount||amount<=0)throw new Error('Enter a valid destination and amount.');const d=await apiCall('/v1/wallet/withdrawals',{method:'POST',headers:{'Idempotency-Key':'ui-withdraw-'+idem()},body:JSON.stringify({currency:'USDT',network,address,amount})});$('#withdrawState').textContent='Withdrawal #'+d.id+' created · '+d.status+' · '+d.provider_reference;showToast('Withdrawal request created')}catch(e){$('#withdrawState').textContent=e.message;showToast(e.message)}};
+}
+$('#withdraw').onclick=withdrawSheet;
+
+$('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
+$('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
+$('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'dark'}function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
+$('#bell').onclick=()=>openSheet('Notifications','<p>No account alerts yet. Once the backend is connected, this area can show deposits, strategy events, withdrawals and security alerts.</p>');
+const haptic=(kind='light')=>{try{if(window.AsterNative?.haptic)AsterNative.haptic(kind);else if(navigator.vibrate)navigator.vibrate(kind==='success'?[18,30,28]:kind==='medium'?24:10)}catch(e){}};function confetti(){const box=$('#confetti');if(!box)return;haptic('success');for(let i=0;i<28;i++){let p=document.createElement('i');p.className='confetti-piece';p.style.left=(50+(Math.random()*22-11))+'%';p.style.top='43%';p.style.setProperty('--dx',(Math.random()*320-160)+'px');p.style.setProperty('--dy',(Math.random()*420+180)+'px');p.style.setProperty('--rot',(Math.random()*900-450)+'deg');p.style.background=['#e8b84c','#8d72ff','#55e0dc','#ff7189','#fff'][i%5];box.appendChild(p);setTimeout(()=>p.remove(),1000)}}function setupTouchPolish(){document.addEventListener('pointerdown',e=>{let b=e.target.closest('button,.card,.invest-card,.market-row,.icon,.action');if(b)haptic(b.classList.contains('primary')?'medium':'light')},{passive:true});$$( '.hero,.invest-card' ).forEach(el=>{el.classList.add('tilt');el.addEventListener('pointermove',e=>{let r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.transform='perspective(900px) rotateX('+(-y*5)+'deg) rotateY('+(x*6)+'deg) translateY(-2px)'});el.addEventListener('pointerleave',()=>el.style.transform='')});document.addEventListener('click',e=>{let m=e.target.closest('.market-row');if(m){m.classList.remove('flash');void m.offsetWidth;m.classList.add('flash');confetti()}})}setTimeout(()=>{$('#splash')?.classList.add('hide');haptic('light')},1200);
+try{setupTouchPolish()}catch(e){console.error('Aster interaction polish failed safely',e)}
+try{applyTheme(currentTheme())}catch(e){console.error('Aster theme init failed',e)}
+try{roiCalc()}catch(e){console.error('Aster calculator init failed',e)}
+try{projection()}catch(e){console.error('Aster projection init failed',e)}
+try{$('#homeChart').innerHTML=line([1,1.02,1.01,1.05,1.04,1.08,1.07,1.11],'#17131c')}catch(e){console.error('Aster home chart init failed',e)}
+try{loadMarkets();loadNews('#news');loadNews('#news2')}catch(e){console.error('Aster live content init failed',e)}
+setInterval(()=>{try{loadMarkets()}catch(e){console.warn('Aster market refresh skipped',e)}},15000);
+</script>
+
+<link rel="stylesheet" href="v25-max.css">
+<script src="v25-max.js"></script>
+<script src="v26-production.js"></script><style id="genz">
+body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;background:radial-gradient(38% 28% at 18% 14%,rgba(255,92,200,.30),transparent 70%),radial-gradient(38% 28% at 88% 38%,rgba(57,198,201,.28),transparent 70%),radial-gradient(44% 34% at 38% 92%,rgba(123,97,255,.32),transparent 70%);animation:gzAur 16s ease-in-out infinite alternate}
+.screen.on{animation:none}
+.screen.on>*{animation:gzUp .65s cubic-bezier(.16,1,.3,1) backwards}
+.screen.on>*:nth-child(2){animation-delay:.06s}.screen.on>*:nth-child(3){animation-delay:.12s}.screen.on>*:nth-child(4){animation-delay:.18s}.screen.on>*:nth-child(5){animation-delay:.24s}.screen.on>*:nth-child(6){animation-delay:.3s}.screen.on>*:nth-child(n+7){animation-delay:.36s}
+.title{background:linear-gradient(90deg,var(--text) 0%,#7b61ff 45%,#ff5cc8 75%,var(--text) 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gzSh 7s linear infinite}
+.hero{background-size:220% 220%!important;animation:gzSh2 9s ease-in-out infinite;box-shadow:0 22px 60px rgba(123,97,255,.38),0 0 0 1px rgba(255,255,255,.35) inset}
+.card,.invest-card,.wallet-card{border:1px solid rgba(255,255,255,.35);box-shadow:0 14px 40px rgba(123,97,255,.14),inset 0 1px 0 rgba(255,255,255,.4)}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card{border-color:rgba(255,255,255,.1);box-shadow:0 14px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+.primary,body.theme-dark .primary{position:relative;overflow:hidden;color:#fff;background:linear-gradient(120deg,#7b61ff,#ff5cc8,#39c6c9,#7b61ff);background-size:300% 100%;animation:gzSh 6s linear infinite;box-shadow:0 10px 28px rgba(123,97,255,.5)}
+.primary::after{content:"";position:absolute;top:0;bottom:0;width:35%;left:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-130%) skewX(-20deg);animation:gzShine 3.4s ease-in-out infinite}
+.primary:active,.secondary:active,.action:active,.chip:active{transform:scale(.94)}
+.tabs button.on{background:linear-gradient(120deg,#7b61ff,#ff5cc8)!important;color:#fff!important;box-shadow:0 6px 18px rgba(123,97,255,.5)}
+.bottom{border:1px solid rgba(255,255,255,.3);box-shadow:0 18px 50px rgba(60,30,140,.35);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px)}
+.bottom button.on{background:linear-gradient(135deg,rgba(123,97,255,.28),rgba(255,92,200,.22))}
+.bottom button.on svg{animation:gzBounce .6s cubic-bezier(.34,1.56,.64,1);filter:drop-shadow(0 0 8px rgba(123,97,255,.8))}
+.avatar{background-size:200% 200%!important;animation:gzSh2 5s ease-in-out infinite}
+.art-banner{animation:gzFloat 6s ease-in-out infinite}
+#teamMembers .list-row{animation:gzSlide .55s cubic-bezier(.16,1,.3,1) backwards}
+#teamMembers .list-row:nth-child(2){animation-delay:.07s}#teamMembers .list-row:nth-child(3){animation-delay:.14s}#teamMembers .list-row:nth-child(4){animation-delay:.21s}#teamMembers .list-row:nth-child(n+5){animation-delay:.28s}
+.mcode{display:inline-flex;align-items:center;gap:8px;margin-top:6px;padding:3px 4px 3px 10px;border-radius:99px;font-size:12px;font-weight:850;letter-spacing:.03em;color:#7b61ff;background:linear-gradient(120deg,rgba(123,97,255,.14),rgba(255,92,200,.14));border:1px dashed rgba(123,97,255,.5)}
+.mcopy{padding:5px 11px;border-radius:99px;font-size:11px;font-weight:900;color:#fff;background:linear-gradient(120deg,#7b61ff,#ff5cc8)}
+.gz-rip{position:absolute;border-radius:50%;pointer-events:none;background:rgba(255,255,255,.55);transform:scale(0);animation:gzRip .6s ease-out forwards}
+.gz-b{position:fixed;z-index:999;pointer-events:none;font-size:20px;animation:gzBurst .9s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes gzAur{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(4%,3%) rotate(8deg) scale(1.1)}}
+@keyframes gzUp{from{opacity:0;transform:translateY(22px) scale(.97);filter:blur(6px)}}
+@keyframes gzSlide{from{opacity:0;transform:translateX(-24px)}}
+@keyframes gzSh{to{background-position:250% 0}}
+@keyframes gzSh2{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes gzShine{0%{transform:translateX(-130%) skewX(-20deg)}55%,100%{transform:translateX(420%) skewX(-20deg)}}
+@keyframes gzBounce{0%{transform:scale(.6) translateY(6px)}100%{transform:none}}
+@keyframes gzFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes gzRip{to{transform:scale(3.2);opacity:0}}
+@keyframes gzBurst{0%{opacity:1;transform:translate(0,0) scale(.5)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.3) rotate(var(--r))}}
+@media (prefers-reduced-motion:reduce){body::before,.screen.on>*,.title,.hero,.primary,.primary::after,.avatar,.art-banner,#teamMembers .list-row,.bottom button.on svg{animation:none!important}}
+
+/* Aster quick-start experience */
+.quickstart{position:relative;isolation:isolate;overflow:hidden;margin:18px 0 16px;padding:18px;border-radius:27px;color:#f8f6ff;background:linear-gradient(135deg,#171526 0%,#282044 55%,#40265a 100%);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 48px rgba(39,25,77,.22)}
+.quickstart:before{content:"";position:absolute;z-index:-1;width:230px;height:230px;right:-92px;top:-116px;border-radius:50%;background:radial-gradient(circle,rgba(255,92,200,.34),rgba(123,97,255,.08) 52%,transparent 70%)}
+.qs-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:112px}.qs-kicker,.qs-label{font-size:9px;font-weight:950;letter-spacing:.16em;color:#c8baff}.qs-top h2{font-size:25px;line-height:1;margin:8px 0 7px;letter-spacing:-.055em;color:#fff}.qs-top p{font-size:11px;line-height:1.5;color:rgba(245,241,255,.68);max-width:210px;margin:0}
+.qs-orbit{position:relative;flex:0 0 104px;width:104px;height:104px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.24),rgba(123,97,255,.18) 34%,rgba(255,92,200,.08) 65%,transparent 70%);display:grid;place-items:center}
+.qs-orbit:before,.qs-orbit:after{content:"";position:absolute;inset:8px;border:1px solid rgba(210,196,255,.45);border-radius:50%;transform:rotate(-28deg) scaleY(.42)}.qs-orbit:after{inset:1px;transform:rotate(55deg) scaleY(.5);border-color:rgba(255,92,200,.55)}
+.qs-orbit i,.qs-orbit b,.qs-orbit em{position:absolute;width:7px;height:7px;border-radius:50%;background:#ff78d2;box-shadow:0 0 13px #ff78d2;animation:qsOrbit 7s linear infinite}.qs-orbit i{top:10px;left:45px}.qs-orbit b{right:9px;bottom:27px;background:#6ce9e0;box-shadow:0 0 13px #6ce9e0;animation-duration:5s}.qs-orbit em{left:13px;bottom:23px;width:5px;height:5px;background:#f4d47a;animation-duration:9s}.qs-orbit-core{font-size:30px;color:#f5d77d;text-shadow:0 0 24px rgba(245,215,125,.65);animation:qsPulse 2.6s ease-in-out infinite}
+@keyframes qsOrbit{to{transform:rotate(360deg) translateX(3px)}}@keyframes qsPulse{50%{transform:scale(1.18) rotate(12deg);filter:brightness(1.25)}}
+.qs-label{margin:15px 0 8px;color:#aaa0cb}.qs-amounts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.qs-amount{padding:10px 2px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#e9e5f5;font-size:11px;font-weight:900;transition:transform .2s ease,background .2s ease,border-color .2s ease}.qs-amount.active{background:linear-gradient(120deg,#8b70ff,#d45cb8);border-color:transparent;color:white;box-shadow:0 6px 17px rgba(123,97,255,.32);transform:translateY(-2px)}
+.qs-strategies{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qs-strategy{display:flex;align-items:center;gap:9px;text-align:left;padding:10px;border-radius:14px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.10);color:#e8e3f5;min-width:0}.qs-strategy>span:first-child{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:11px;background:rgba(255,255,255,.10);font-size:17px}.qs-strategy b,.qs-strategy small{display:block}.qs-strategy b{font-size:10px}.qs-strategy small{font-size:9px;color:#aaa2bf;margin-top:3px}.qs-strategy.active{border-color:rgba(199,168,255,.72);background:linear-gradient(120deg,rgba(123,97,255,.26),rgba(255,92,200,.13));box-shadow:inset 0 0 0 1px rgba(199,168,255,.12)}
+.qs-cta{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding:14px 15px;border-radius:15px;background:linear-gradient(110deg,#f3d47b,#e8a9e8 52%,#8b78ff);color:#20182e;font-size:12px;font-weight:950;box-shadow:0 9px 22px rgba(123,97,255,.25);transition:transform .2s ease,filter .2s ease}.qs-cta span{font-size:18px;line-height:10px}.qs-cta:active{transform:scale(.975);filter:brightness(1.08)}
+.qs-foot{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;color:rgba(236,231,249,.55);font-size:8px;font-weight:800;letter-spacing:.04em}.qs-foot i{width:14px;height:1px;background:rgba(236,231,249,.25)}
+body.theme-dark .quickstart{box-shadow:0 22px 52px rgba(0,0,0,.4)}@media(max-width:370px){.quickstart{padding:15px}.qs-orbit{flex-basis:82px;width:82px;height:82px}.qs-top h2{font-size:22px}.qs-amounts{gap:4px}.qs-amount{font-size:10px}}@media(prefers-reduced-motion:reduce){.qs-orbit-core,.qs-orbit i,.qs-orbit b,.qs-orbit em{animation:none!important}}
+
+/* V39 all-screen interaction and visual polish */
+.screen.active{animation:asterScreenIn .36s cubic-bezier(.2,.75,.25,1) both}
+@keyframes asterScreenIn{from{opacity:.45;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card,.art-banner,.wallet-card,.team-nudge,.wallet-security{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.card:focus-within{border-color:rgba(139,112,255,.38)}
+button,.list-row,.wallet-shortcut{ -webkit-tap-highlight-color:transparent}
+button:active,.wallet-shortcut:active{transform:scale(.975)}
+.team-metric{position:relative;overflow:hidden;min-height:112px;padding-top:17px}
+.team-metric:after{content:"";position:absolute;width:90px;height:90px;border-radius:50%;right:-35px;bottom:-45px;background:radial-gradient(circle,rgba(153,119,255,.2),transparent 70%)}
+.metric-icon{width:29px;height:29px;display:grid;place-items:center;border-radius:10px;background:rgba(139,112,255,.12);color:#9577ff;font-size:16px;margin-bottom:10px}
+.metric-foot{font-size:9px;color:var(--muted,#8c8998);margin-top:3px}
+.team-nudge{display:flex;align-items:center;gap:11px;padding:12px 14px;margin:10px 0 15px;border-radius:16px;background:linear-gradient(110deg,rgba(139,112,255,.12),rgba(220,115,195,.08));border:1px solid rgba(139,112,255,.14)}
+.nudge-spark{font-size:22px;color:#a78bfa}.team-nudge b,.team-nudge small{display:block}.team-nudge b{font-size:11px}.team-nudge small{font-size:9px;color:var(--muted,#888);margin-top:3px;line-height:1.4}.nudge-arrow{margin-left:auto;color:#a78bfa;font-size:17px}
+.wallet-hero{position:relative;isolation:isolate;overflow:hidden;padding:22px;border-radius:25px;background:linear-gradient(135deg,#171d29,#24243b 58%,#183b3b);color:#fff;box-shadow:0 18px 38px rgba(23,32,48,.22)}
+.wallet-glow{position:absolute;z-index:-1;width:210px;height:210px;right:-90px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(93,231,199,.28),rgba(93,231,199,0) 70%)}
+.wallet-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.wallet-status{font-size:8px;color:#d1d2dd;white-space:nowrap}.wallet-status i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e9bd66;margin-right:4px}
+.wallet-hero .balance{font-size:36px;font-weight:900;letter-spacing:-.06em}.wallet-currency{font-size:10px;color:#a8b4c2;margin-top:2px}
+.wallet-actions{display:flex;gap:9px;margin-top:19px}.wallet-actions button{flex:1;min-height:43px;border-radius:13px;font-size:11px;font-weight:900;background:linear-gradient(110deg,#f3d47b,#d9b7ff);color:#1d2030}.wallet-actions button+button{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.wallet-actions button span{font-size:15px;margin-right:5px}
+.wallet-foot{display:flex;gap:12px;flex-wrap:wrap;margin-top:15px;color:#a9b8c2;font-size:8px;font-weight:800;letter-spacing:.04em}
+.wallet-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.wallet-shortcut{min-width:0;padding:12px 9px;border:1px solid var(--line,rgba(120,120,140,.15));border-radius:15px;background:var(--card,#fff);cursor:pointer}
+.shortcut-icon{width:28px;height:28px;border-radius:9px;background:rgba(139,112,255,.12);color:#9274f6;display:grid;place-items:center;font-size:16px;margin-bottom:8px}
+.wallet-shortcut b,.wallet-shortcut small{display:block}.wallet-shortcut b{font-size:9px}.wallet-shortcut small{font-size:8px;color:var(--muted,#888);margin-top:3px;line-height:1.35}
+.empty-activity{display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 12px 10px}.empty-orbit{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:#9b82f7;background:radial-gradient(circle,rgba(139,112,255,.2),rgba(139,112,255,.04));border:1px solid rgba(139,112,255,.15);margin-bottom:11px;animation:qsPulse 3.2s ease-in-out infinite}.empty-activity b{font-size:11px}.empty-activity p{max-width:230px;font-size:9px;line-height:1.55;color:var(--muted,#888);margin:6px 0 0}
+.wallet-security{display:flex;align-items:center;gap:10px;padding:13px;border-radius:16px;background:rgba(83,190,158,.08);border:1px solid rgba(83,190,158,.15)}.security-mark{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;background:rgba(83,190,158,.14);color:#36a989;font-size:17px}.wallet-security b,.wallet-security small{display:block}.wallet-security b{font-size:10px}.wallet-security small{font-size:8px;line-height:1.4;color:var(--muted,#888);margin-top:3px}.security-check{margin-left:auto;color:#37b18c;font-weight:900}
+.profile-identity{display:flex;align-items:center;gap:13px;padding:17px;margin:14px 0 20px;border:1px solid var(--line,rgba(120,120,140,.15));border-radius:21px;background:var(--card,#fff);box-shadow:0 10px 25px rgba(50,40,90,.06)}
+.profile-avatar-wrap{position:relative}.profile-identity .avatar{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,#29233f,#7255a8);color:#f5d77d;display:grid;place-items:center;font-size:24px;font-weight:950;box-shadow:0 8px 20px rgba(80,56,140,.2)}
+.online-dot{position:absolute;width:11px;height:11px;border:2px solid var(--card,#fff);border-radius:50%;right:-2px;bottom:0;background:#e4b95c}
+.profile-identity-copy{min-width:0;flex:1}.profile-identity-copy>b{font-size:14px}.member-pill{display:inline-block;margin-top:6px;padding:4px 7px;border-radius:6px;background:rgba(139,112,255,.10);color:#9477e9;font-size:7px;font-weight:950;letter-spacing:.1em}.profile-chevron,.row-chevron{color:#a39ab8;font-size:20px}
+.profile-section-label{margin:17px 3px 8px;font-size:9px;font-weight:950;letter-spacing:.14em;color:var(--muted,#8d8999)}
+.profile-menu{padding:2px 14px}.profile-menu .list-row{min-height:60px;cursor:pointer}.profile-menu .list-row+.list-row{border-top:1px solid var(--line,rgba(120,120,140,.12))}.profile-menu .list-row>div:nth-child(2){flex:1}.profile-menu .list-row b{font-size:11px}.profile-menu .list-icon{width:34px;height:34px;border-radius:11px;background:rgba(139,112,255,.10);color:#9477e9;display:grid;place-items:center}.profile-footer{display:flex;flex-direction:column;align-items:center;gap:5px;padding:22px 0 10px;color:var(--muted,#999);font-size:8px}.profile-footer span:first-child{font-weight:950;letter-spacing:.2em;color:#b39a60}
+body.theme-dark .profile-identity,body.theme-dark .wallet-shortcut{background:#191821;border-color:rgba(255,255,255,.08)}
+body.theme-dark .profile-menu{background:#191821}body.theme-dark .team-nudge{background:linear-gradient(110deg,rgba(139,112,255,.17),rgba(220,115,195,.10))}
+@media(max-width:360px){.wallet-head{align-items:flex-start;flex-direction:column}.wallet-hero{padding:18px}.wallet-shortcut{padding:10px 7px}.profile-identity{padding:14px}}
+@media(prefers-reduced-motion:reduce){.screen.active,.empty-orbit{animation:none!important}}
+
+/* Strategy, calculator and market-feed refinements */
+.invest-steps{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 8px;margin:10px 0 12px;border-radius:14px;background:rgba(139,112,255,.075);color:var(--muted,#8b8796);font-size:8px;font-weight:850}
+.invest-steps span{display:flex;align-items:center;gap:5px;white-space:nowrap}.invest-steps i{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;font-style:normal;background:rgba(130,120,150,.14);font-size:8px}.invest-steps .step-active{color:#9678f4}.invest-steps .step-active i{background:#9274f6;color:#fff}.invest-steps>b{width:17px;height:1px;background:rgba(140,130,160,.28)}
+.invest-cards{gap:10px}.invest-card{position:relative;overflow:hidden;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}.invest-card:after{content:"";position:absolute;width:85px;height:85px;right:-38px;top:-42px;border-radius:50%;background:radial-gradient(circle,rgba(173,143,255,.2),transparent 70%);pointer-events:none}.invest-card.on{transform:translateY(-2px);box-shadow:0 12px 25px rgba(111,84,190,.12)}
+#projChart,#roiChart{border-radius:14px;overflow:hidden}
+.market-context{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:10px 0 14px;border-radius:15px;background:linear-gradient(110deg,rgba(76,190,255,.10),rgba(139,112,255,.09));border:1px solid rgba(87,175,230,.15)}
+.market-pulse-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#45c8ae;box-shadow:0 0 0 4px rgba(69,200,174,.13);animation:marketPulse 2s ease-out infinite}
+@keyframes marketPulse{70%{box-shadow:0 0 0 8px rgba(69,200,174,0)}100%{box-shadow:0 0 0 3px rgba(69,200,174,0)}}
+.market-context>div{flex:1}.market-context b,.market-context small{display:block}.market-context b{font-size:10px}.market-context small{font-size:8px;line-height:1.45;color:var(--muted,#888);margin-top:3px}.context-spark{color:#9c82ed;font-size:17px}
+#marketList .market-row{transition:background .2s ease,transform .2s ease;border-radius:12px}#marketList .market-row:active{transform:scale(.99)}
+#news2>*{transition:transform .2s ease}
+body.theme-dark .invest-steps{background:rgba(153,127,255,.10)}body.theme-dark .market-context{background:linear-gradient(110deg,rgba(76,190,255,.08),rgba(139,112,255,.12))}
+</style>
+<script id="genz-js">
+(function(){
+const E=['✨','💜','🔥','💎','🚀','🎉','⚡'];
+function burst(x,y){for(let i=0;i<10;i++){const e=document.createElement('span');e.className='gz-b';e.textContent=E[i%E.length];const a=Math.PI*2*i/10+Math.random()*.5,d=60+Math.random()*60;e.style.cssText='left:'+x+'px;top:'+y+'px;--dx:'+Math.cos(a)*d+'px;--dy:'+(Math.sin(a)*d-30)+'px;--r:'+(Math.random()*160-80)+'deg';document.body.appendChild(e);setTimeout(()=>e.remove(),950)}}
+document.addEventListener('pointerdown',e=>{const t=e.target.closest('button,.action,.chip');if(!t||t.classList.contains('lv'))return;const cs=getComputedStyle(t);if(cs.position==='static')t.style.position='relative';t.style.overflow='hidden';const r=t.getBoundingClientRect(),d=Math.max(r.width,r.height),p=document.createElement('span');p.className='gz-rip';p.style.cssText='width:'+d+'px;height:'+d+'px;left:'+(e.clientX-r.left-d/2)+'px;top:'+(e.clientY-r.top-d/2)+'px';t.appendChild(p);setTimeout(()=>p.remove(),650)});
+// Lightweight screen shortcuts; financial actions still use the existing authenticated flows.
+document.querySelectorAll('.wallet-shortcut').forEach((item,index)=>item.addEventListener('click',()=>{
+ if(index===0)document.getElementById('deposit')?.click();
+ else if(index===1)document.getElementById('withdraw')?.click();
+ else document.querySelector('.wallet-history')?.scrollIntoView({behavior:'smooth',block:'center'});
+ if(typeof haptic==='function')haptic('light');
+}));
+let qsAmount=50,qsStrategy='Core Crypto';
+const qsRoot=document.getElementById('asterQuickStart');
+if(qsRoot){
+ qsRoot.addEventListener('click',e=>{
+  const amount=e.target.closest('[data-qs-amount]'),strategy=e.target.closest('[data-qs-strategy]');
+  if(amount){qsAmount=Number(amount.dataset.qsAmount);qsRoot.querySelectorAll('[data-qs-amount]').forEach(x=>x.classList.toggle('active',x===amount));}
+  if(strategy){qsStrategy=strategy.dataset.qsStrategy;qsRoot.querySelectorAll('[data-qs-strategy]').forEach(x=>x.classList.toggle('active',x===strategy));}
+ });
+ document.getElementById('qsBuild').addEventListener('click',()=>{
+  const strategyButton=document.querySelector('.invest-package[data-strategy="'+qsStrategy+'"]');if(strategyButton)strategyButton.click();
+  const amountChip=document.querySelector('#amtChips [data-a="'+qsAmount+'"]');if(amountChip)amountChip.click();
+  if(typeof go==='function')go('invest');if(typeof haptic==='function')haptic('medium');
+ });
+}
+document.addEventListener('click',e=>{const b=e.target.closest('.mcopy,#copyTeamCode');if(!b)return;const r=b.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2);if(b.classList.contains('mcopy')){const c=b.dataset.code;if(window.AsterNative&&AsterNative.copyText)AsterNative.copyText(c);else if(navigator.clipboard)navigator.clipboard.writeText(c);if(typeof showToast==='function')showToast('Member code copied')}});
+})();
+</script>
+
+<style id="aster-modern-polish">
+/* Aster modern minimal visual system */
+:root{--aster-accent:#d9b65c;--aster-violet:#9278ef;--aster-glass:rgba(255,255,255,.055)}
+body{scroll-behavior:smooth}
+.screen.on{animation:asterScreenIn .38s cubic-bezier(.2,.75,.25,1) both}
+@keyframes asterScreenIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.screen .title{letter-spacing:-.045em;line-height:1.06}
+.screen .eyebrow{letter-spacing:.15em}
+.card,.wallet-card,.profile-identity,.profile-menu,.v25-chart-card,.v25-stat,.v25-hero,.market-context{border-radius:22px;transition:transform .24s ease,border-color .24s ease,box-shadow .24s ease}
+.card{border:1px solid var(--line,rgba(140,130,160,.15));box-shadow:0 9px 26px rgba(20,16,36,.045)}
+button,.wallet-shortcut,.invest-card,.invest-package,.market-row,.list-row{ -webkit-tap-highlight-color:transparent;transition:transform .18s ease,filter .18s ease,background-color .2s ease,border-color .2s ease}
+button:active,.wallet-shortcut:active,.invest-card:active,.invest-package:active{transform:scale(.975)}
+.wallet-hero{position:relative;overflow:hidden;border:1px solid rgba(224,190,111,.24);box-shadow:0 18px 42px rgba(13,10,25,.18)}
+.wallet-glow{pointer-events:none;filter:blur(3px);opacity:.75;animation:asterGlow 8s ease-in-out infinite alternate}
+@keyframes asterGlow{from{transform:translate3d(-5px,0,0) scale(.94);opacity:.48}to{transform:translate3d(12px,8px,0) scale(1.08);opacity:.9}}
+.art-banner{border-radius:23px;overflow:hidden}
+.wallet-shortcuts{gap:9px}
+.wallet-shortcut{border:1px solid var(--line,rgba(140,130,160,.14));border-radius:18px;box-shadow:0 7px 20px rgba(20,16,36,.035)}
+.wallet-shortcut:active{border-color:rgba(217,182,92,.55)}
+.wallet-history{margin-top:15px}
+.empty-orbit{animation:asterOrbit 12s linear infinite}
+@keyframes asterOrbit{to{transform:rotate(360deg)}}
+#nav{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+#nav button{transition:color .2s ease,background .2s ease,transform .2s ease}
+#nav button:active{transform:translateY(-2px) scale(.96)}
+.v25-hero{box-shadow:0 18px 42px rgba(14,12,28,.14)}
+.v25-strategy-card{transition:transform .25s ease,filter .25s ease}
+.v25-strategy-card:active{transform:scale(.985)}
+.market-row{border-radius:15px}
+.market-row:active{background:var(--card2,rgba(140,130,160,.08))}
+.profile-menu .list-row:active{background:rgba(145,120,239,.07)}
+@media(hover:hover){.card:hover,.wallet-shortcut:hover,.profile-identity:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(20,16,36,.075)}}
+body.theme-dark .card,body.theme-dark .wallet-shortcut,body.theme-dark .profile-identity,body.theme-dark .profile-menu{border-color:rgba(255,255,255,.075);box-shadow:0 12px 30px rgba(0,0,0,.16)}
+body.theme-dark .wallet-shortcut{background:linear-gradient(145deg,#1b1923,#15141c)}
+@media(prefers-reduced-motion:reduce){.screen.on,.wallet-glow,.empty-orbit{animation:none!important}*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+</style>
+<style id="aster-site-match">
+/* Website parity: Manrope body + Unbounded display, Aster's dark neon-gold palette */
+body,button,input,select,textarea{font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3,.title,.disp,.section-title,.v25-title{font-family:Unbounded,Manrope,system-ui,sans-serif;letter-spacing:-.035em}
+body.theme-dark{
+ --bg:#070711;--card:rgba(255,255,255,.055);--card2:#10101b;
+ --text:#f4f4f6;--muted:#b7bbd0;--line:rgba(255,255,255,.13);
+ --gold:#ffe66d;--gold2:#fff2a6;--violet:#b18cff;--cyan:#63f5ff;
+ --green:#75ffd0;--red:#ff72cf;--shadow:0 18px 48px rgba(0,0,0,.38);
+ --g:#ffe66d;--g2:#fff2a6;--v:#b18cff;--c:#63f5ff;--p:#ff72cf;
+ background:radial-gradient(ellipse at 12% 8%,rgba(177,140,255,.13),transparent 31rem),
+ radial-gradient(ellipse at 91% 22%,rgba(99,245,255,.086),transparent 27rem),
+ radial-gradient(ellipse at 74% 65%,rgba(255,114,207,.07),transparent 34rem),#070711;
+ color:var(--text)
+}
+body.theme-dark .top{background:linear-gradient(#070711 55%,transparent)}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card,
+body.theme-dark .profile-identity,body.theme-dark .profile-menu,body.theme-dark .wallet-shortcut{
+ background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.13)
+}
+body.theme-dark .primary,body.theme-dark .wallet-actions button:first-child{
+ background:linear-gradient(120deg,#fff2a6,#ffe66d 55%,#e0b64f);
+ color:#101018;box-shadow:0 10px 28px rgba(224,182,79,.22);animation:none
+}
+body.theme-dark .primary::after{display:none}
+body.theme-dark .tabs button.on{background:linear-gradient(120deg,#ffe66d,#e0b64f)!important;color:#101018!important;box-shadow:0 6px 18px rgba(224,182,79,.2)}
+body.theme-dark .bottom{background:rgba(7,7,17,.88);border-color:rgba(255,255,255,.13);box-shadow:0 18px 50px rgba(0,0,0,.42)}
+body.theme-dark .bottom button.on{background:rgba(255,230,109,.13)}
+body.theme-dark .title{background:linear-gradient(105deg,#fff 4%,#ffe66d 26%,#ff72cf 54%,#b18cff 76%,#63f5ff 98%);background-clip:text;-webkit-background-clip:text;color:transparent}
+body.theme-dark .hero{box-shadow:0 18px 42px rgba(0,0,0,.32),0 0 0 1px rgba(255,255,255,.07) inset}
+body.theme-dark .wallet-hero{background:linear-gradient(135deg,#11111e,#191629 58%,#10242b);border-color:rgba(255,230,109,.22)}
+body.theme-dark .wallet-actions button:first-child{color:#101018}
+body.theme-dark .chip.on,body.theme-dark .invest-card.on{border-color:rgba(255,230,109,.72)}
+@media(prefers-reduced-motion:reduce){body.theme-dark .title{animation:none}}
+</style>
+<style id="aster-doomscroll-news">
+#v39NewsPanel{margin:15px 0 18px;padding:0;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.025));border-radius:22px;box-shadow:0 16px 38px rgba(0,0,0,.24)}
+#v39NewsPanel .news-scroll-head{display:flex;align-items:center;justify-content:space-between;padding:15px 16px 12px;border-bottom:1px solid rgba(255,255,255,.09)}
+#v39NewsPanel .news-scroll-title{font:700 13px Unbounded,Manrope,sans-serif;letter-spacing:-.025em}
+#v39NewsPanel .news-scroll-live{font:800 8px Manrope,sans-serif;letter-spacing:.12em;color:#ffe66d}
+#v39NewsPanel .news-scroll-live:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#75ffd0;margin:0 7px 1px 0;box-shadow:0 0 0 4px rgba(117,255,208,.1)}
+#v39NewsFeed{max-height:430px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(255,230,109,.35) transparent}
+#v39NewsFeed .news-scroll-item{display:flex;align-items:center;gap:11px;padding:13px 14px;text-decoration:none;color:inherit;border-bottom:1px solid rgba(255,255,255,.075);transition:background .2s ease}
+#v39NewsFeed .news-scroll-item:last-child{border-bottom:0}
+#v39NewsFeed .news-scroll-item:active{background:rgba(255,230,109,.07)}
+#v39NewsFeed .news-scroll-index{font:700 10px Unbounded,Manrope,sans-serif;color:rgba(255,230,109,.62);width:19px;flex:0 0 19px}
+#v39NewsFeed .news-scroll-copy{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+#v39NewsFeed .news-scroll-copy b{font:700 11px/1.45 Manrope,sans-serif;color:#f4f4f6}
+#v39NewsFeed .news-scroll-tag{font:800 7px Manrope,sans-serif;letter-spacing:.14em;color:#63f5ff}
+#v39NewsFeed .news-scroll-tag.forex{color:#b18cff}
+#v39NewsFeed .news-scroll-time{font:500 8px Manrope,sans-serif;color:#9293a7}
+#v39NewsFeed .news-scroll-arrow{font-size:15px;color:#ffe66d;flex:0 0 auto}
+@media(prefers-reduced-motion:no-preference){#v39NewsFeed .news-scroll-item{animation:newsIn .35s ease both}#v39NewsFeed .news-scroll-item:nth-child(2){animation-delay:.025s}#v39NewsFeed .news-scroll-item:nth-child(3){animation-delay:.05s}#v39NewsFeed .news-scroll-item:nth-child(4){animation-delay:.075s}}
+@keyframes newsIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<style id="aster-site-parity-refinement">
+/* Match the uploaded Aster website's actual design tokens and glass treatment. */
+:root{--aster-g:#ffe66d;--aster-g2:#fff2a6;--aster-v:#b18cff;--aster-c:#63f5ff;--aster-p:#ff72cf;--aster-mint:#75ffd0;--aster-orange:#ffad73;--aster-blue:#7ca8ff}
+body.theme-dark{--gold:var(--aster-g);--gold2:var(--aster-g2);--violet:var(--aster-v);--cyan:var(--aster-c);--green:var(--aster-mint);--red:var(--aster-p);--muted:#b7bbd0;--line:rgba(255,255,255,.13);--card:rgba(255,255,255,.055);--card2:rgba(255,255,255,.075);background:radial-gradient(ellipse at 12% 8%,rgba(177,140,255,.13),transparent 31rem),radial-gradient(ellipse at 91% 22%,rgba(99,245,255,.086),transparent 27rem),radial-gradient(ellipse at 74% 65%,rgba(255,114,207,.07),transparent 34rem),#070711}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card,body.theme-dark .profile-identity,body.theme-dark .profile-menu,body.theme-dark .wallet-shortcut{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.13);box-shadow:0 12px 34px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.045)}
+body.theme-dark .title{background-image:linear-gradient(105deg,#fff 4%,#ffe66d 26%,#ff72cf 54%,#b18cff 76%,#63f5ff 98%);background-size:100% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+body.theme-dark .primary,body.theme-dark .wallet-actions button:first-child{background:linear-gradient(110deg,#ffe66d,#fff2a6);color:#14121f;border:1px solid rgba(255,230,109,.45);box-shadow:0 8px 24px rgba(255,230,109,.16);font-weight:800}
+body.theme-dark .tabs button.on{background:linear-gradient(110deg,#ffe66d,#fff2a6)!important;color:#14121f!important}
+body.theme-dark .invest-package.on,body.theme-dark .chip.on{background:linear-gradient(110deg,rgba(255,230,109,.2),rgba(177,140,255,.16));border-color:rgba(255,230,109,.6);color:#fff}
+body.theme-dark .section-head h2,body.theme-dark .eyebrow{letter-spacing:.13em}
+body.theme-dark .bottom{background:rgba(10,0,30,.76);border-color:rgba(99,245,255,.18);box-shadow:0 18px 50px rgba(0,0,0,.42)}
+body.theme-dark .bottom button.on{background:linear-gradient(120deg,rgba(177,140,255,.18),rgba(255,114,207,.13))}
+body.theme-dark .v25-hero,body.theme-dark .hero{border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 44px rgba(0,0,0,.28)}
+body.theme-dark input,body.theme-dark select,body.theme-dark textarea{font-family:Manrope,system-ui,sans-serif}
+</style>
+</body>
+</html>
+
+<style>
+/* Compact Auto-Invest package selector */
+.invest-package-toggle{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0 18px;padding:5px;border-radius:17px;background:rgba(130,120,150,.09)}
+.invest-package{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:11px 8px;border:1px solid transparent;border-radius:13px;font-size:13px;font-weight:900;color:var(--muted);transition:all .2s ease}
+.invest-package span{font-size:17px}.invest-package.on{color:var(--text);background:var(--card2);border-color:rgba(214,165,47,.55);box-shadow:0 5px 16px rgba(27,22,56,.09)}
+body.theme-dark .invest-package-toggle{background:rgba(255,255,255,.07)}body.theme-dark .invest-package.on{background:#211e2b;color:#fff}
+</style>
++fmt(amount,0);$('#projValue').textContent='
+function roiCalc(){const a=+$('#roiAmt').value,r=+$('#roiRate').value/100,w=+$('#roiWeeks').value;$('#roiAmtLabel').textContent='$'+fmt(a,0);$('#roiRateLabel').textContent=(r*100)+'%';$('#roiWeeksLabel').textContent=w+' weeks';$$( '#roiAmtChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===a));$$( '#roiRateChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===r*100));$$( '#roiWeekChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===w));let vals=[a];for(let i=1;i<=w;i++)vals.push(vals[i-1]*(1+r));const end=vals[vals.length-1];$('#roiOut').textContent='$'+fmt(end,0);$('#roiProfit').textContent='$'+fmt(end-a,0);$('#roiMultiple').textContent=(end/a).toFixed(2)+'×';$('#roiChart').innerHTML=line(vals,'#8d72ff')}['roiAmt','roiRate','roiWeeks'].forEach(id=>$('#'+id).oninput=roiCalc);$('#roiAmtChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiAmt').value=b.dataset.v;roiCalc()}};$('#roiRateChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiRate').value=b.dataset.v;roiCalc()}};$('#roiWeekChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiWeeks').value=b.dataset.v;roiCalc()}};function go(id){if(!document.getElementById(id)||!document.getElementById(id).classList.contains('screen'))return false;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$( '#nav button' ).forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets'){loadMarkets()}if(id==='team'){setTimeout(loadTeam,80)}return true}window.asterNavigate=go;
+$$( '[data-go]' ).forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+$('#homeDeposit').addEventListener('click',()=>{go('wallet');setTimeout(()=>$('#deposit')?.click(),80)});
+$$( '.invest-package' ).forEach(c=>c.addEventListener('click',()=>{$$( '.invest-package' ).forEach(x=>x.classList.remove('on'));c.classList.add('on');projection()}));
+$('#amtChips').addEventListener('click',e=>{let b=e.target.closest('[data-a]');if(b){$$( '#amtChips .chip' ).forEach(x=>x.classList.toggle('on',x===b));projection()}});
+$('#marketTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');marketFilter=b.dataset.filter;renderMarkets()});
+
+const TEAM_RATES=[10,3,2,1,1,1,1,1,1];
+let teamRows=[],teamLevel='all',teamCode='';
+function teamEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const PYR_ICON=['🔥','⚡','💎','🚀','🌙','✨','🌈','🪩','👑'],PYR_HUE=[330,300,270,235,205,180,150,50,28];
+function renderPolicy(){
+ const cnt={};teamRows.forEach(x=>{cnt[x.level]=(cnt[x.level]||0)+1});
+ const rows=[[0],[1,2],[3,4,5],[6,7,8]];
+ $('#teamPyr').innerHTML=rows.map(r=>'<div class="pyr-row">'+r.map(i=>'<button class="lv'+(i===0?' big':'')+'" data-l="'+(i+1)+'" style="--h:'+PYR_HUE[i]+';--i:'+i+'" aria-label="Level '+(i+1)+', '+TEAM_RATES[i]+' percent"><span class="lvi"><small>'+PYR_ICON[i]+' LEVEL '+(i+1)+'</small><b>'+TEAM_RATES[i]+'%</b></span>'+(cnt[i+1]?'<em>'+cnt[i+1]+'</em>':'')+'</button>').join('')+'</div>').join('');
+ syncPyr();
+}
+function syncPyr(){const p=$('#teamPyr');if(!p)return;$$('.lv',p).forEach(b=>b.classList.toggle('sel',b.dataset.l===String(teamLevel)))}
+function pyrCount(){const el=$('#pyrTotal');if(!el)return;const t=TEAM_RATES.reduce((a,b)=>a+b,0),t0=performance.now();(function f(n){const k=Math.min(1,(n-t0)/1000);el.textContent=Math.round(t*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f)})(t0)}
+renderPolicy();
+$('#teamPyr').addEventListener('click',e=>{const b=e.target.closest('button.lv');if(!b)return;teamLevel=teamLevel===b.dataset.l?'all':b.dataset.l;$$('button',$('#teamLevelTabs')).forEach(x=>x.classList.toggle('on',x.dataset.level===String(teamLevel)));renderTeam();try{navigator.vibrate&&navigator.vibrate(12)}catch(_){}$('#teamMembers').scrollIntoView({behavior:'smooth',block:'center'})});
+if('IntersectionObserver' in window){new IntersectionObserver(es=>es.forEach(e=>{const el=e.target;if(e.isIntersecting){if(!el.classList.contains('live')){el.classList.add('live');pyrCount()}}else el.classList.remove('live')}),{threshold:.3}).observe($('#teamPolicy'))}else{$('#teamPolicy').classList.add('live')}
+function mcode(x){const c=x.referral_code||x.code||'';return '<div class="mcode"><span>🎟️ '+(c?teamEsc(c):'Code pending')+'</span>'+(c?'<button class="mcopy" data-code="'+teamEsc(c)+'">Copy</button>':'')+'</div>'}
+function renderTeam(){syncPyr();
+ const rows=teamLevel==='all'?teamRows:teamRows.filter(x=>Number(x.level)===Number(teamLevel));
+ $('#teamMemberCount').textContent=rows.length+' members';
+ $('#teamMembers').innerHTML=rows.length?rows.map(x=>'<div class="list-row"><div class="avatar" style="width:42px;height:42px;font-size:14px">L'+teamEsc(x.level)+'</div><div style="min-width:0;flex:1"><b>'+teamEsc(x.email||('Member #'+x.member_id))+'</b><div class="small muted">Member #'+teamEsc(x.member_id)+' · Joined '+teamEsc(x.joined_at?new Date(x.joined_at).toLocaleDateString():'date unavailable')+'</div>'+mcode(x)+'</div><span class="badge">'+teamEsc(x.status||'active')+'</span></div>').join(''):'<div class="small muted">No members found for this level yet.</div>';
+}
+async function loadTeam(){
+ const code=$('#teamReferralCode'),members=$('#teamMembers');
+ try{
+  const d=await apiCall('/v1/team');
+  teamCode=d.code||'';teamRows=Array.isArray(d.members)?d.members:[];
+  code.textContent=teamCode||'Not available';
+  $('#copyTeamCode').disabled=!teamCode;
+  $('#teamCodeHint').textContent='Share this code when inviting someone to Aster.';
+  $('#teamTotal').textContent=String(teamRows.length);
+  $('#teamLevels').textContent=String(new Set(teamRows.map(x=>Number(x.level))).size);
+  renderPolicy();
+  renderTeam();
+ }catch(e){
+  code.textContent='Connect account';$('#copyTeamCode').disabled=true;
+  $('#teamCodeHint').textContent=e.message||'Sign in to view your referral code.';
+  $('#teamTotal').textContent='—';$('#teamLevels').textContent='—';
+  renderPolicy();
+  members.innerHTML='<div class="small muted">Sign in to load your team members.</div>';
+ }
+}
+$('#copyTeamCode').onclick=()=>{if(!teamCode)return;if(window.AsterNative?.copyText)AsterNative.copyText(teamCode);else navigator.clipboard?.writeText(teamCode);showToast('Referral code copied')};
+$('#teamLevelTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-level]');if(!b)return;teamLevel=b.dataset.level;$$('button',$('#teamLevelTabs')).forEach(x=>x.classList.toggle('on',x===b));renderTeam()});
+
+function openSheet(title,body){$('#sheet').innerHTML='<div class="grab"></div><h3>'+title+'</h3>'+body+'<button class="primary" id="closeSheet" style="margin-top:14px">Close</button>';$('#sheetBack').classList.add('on');$('#closeSheet').onclick=()=>$('#sheetBack').classList.remove('on')}
+$('#review').onclick=()=>openSheet('Review Auto-Invest','<p>Strategy: <b>'+$('.invest-package.on').textContent.trim()+'</b><br>Amount: <b>'+$('#amtLabel').textContent+'</b><br>Illustrative 2× value: <b>'+$('#projValue').textContent+'</b></p><div class="notice">This is an illustrative example only, not a guaranteed return. This is a review screen only; activation requires a secure authenticated Aster backend.</div>');
+$('#connect').onclick=()=>openSheet('Connect your Aster account','<p>Authentication, KYC/AML checks, account ledger and secure wallet rails belong in the production backend. This UI is ready for that integration but does not invent credentials or balances.</p><button class="secondary" id="request">Continue</button>');
+function apiBase(){return (window.ASTER_API_BASE||localStorage.getItem('aster_api_base')||'').replace(/\/$/,'')}
+function apiCall(path,opt={}){
+ const base=apiBase();if(!base)throw new Error('Connect your Aster account first.');
+ const headers={'Content-Type':'application/json',...(opt.headers||{})};const csrf=sessionStorage.getItem('aster_csrf')||'';if(csrf)headers['X-Aster-CSRF']=csrf;
+ return fetch(base+path,{credentials:'include',...opt,headers}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Request failed');return d})
+}
+function idem(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random())}
+async function treasuryDepositSheet(){
+ let network='BEP20',address='0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5',name='BNB Smart Chain',depositId=null;
+ try{if(apiBase()){const d=await apiCall('/v1/wallet/deposit-addresses');const row=d.networks.find(x=>x.network==='BEP20');if(row){address=row.address;name=row.name}}}catch(e){}
+ openSheet('Deposit USDT','<div class="sim-badge">Aster treasury rail</div><div class="funding-network" id="fundingNetwork"><button class="on" data-net="BEP20"><b>BEP20</b><br><small>BNB Smart Chain</small></button><button data-net="TRC20"><b>TRC20</b><br><small>Tron</small></button></div><div class="card"><div class="eyebrow">Send USDT to</div><div class="funding-address" id="fundingAddress">'+address+'</div><div class="small muted" id="fundingName">'+name+' · USDT only</div><div class="funding-actions" style="margin-top:10px"><button class="secondary" id="copyFunding">Copy address</button><button class="secondary" id="shareFunding">Share</button></div></div><div class="card"><div class="eyebrow">Expected amount · optional</div><input class="input" id="depositAmount" type="number" min="0.00000001" step="0.00000001" placeholder="e.g. 250"><button class="primary" id="createDepositIntent">Create deposit intent</button><div class="small muted" id="depositIntentState" style="margin-top:9px">Create an intent before sending when your account is connected.</div></div><div class="notice"><b>Important:</b> Use only the selected network. A deposit is credited only after independently verified blockchain confirmation.</div>');
+ const nets=$('#fundingNetwork');
+ nets.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;network=b.dataset.net;$$('button',nets).forEach(x=>x.classList.remove('on'));b.classList.add('on');const fallback=network==='BEP20'?'0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5':'TMrK4d1r2cGye2TwX3JfjCaUDWwZybaoxD';address=fallback;name=network==='BEP20'?'BNB Smart Chain':'Tron';try{if(apiBase()){const d=await apiCall('/v1/wallet/deposit-addresses');const row=d.networks.find(x=>x.network===network);if(row){address=row.address;name=row.name}}}catch(e){}$('#fundingAddress').textContent=address;$('#fundingName').textContent=name+' · USDT only'});
+ $('#copyFunding').onclick=()=>{if(window.AsterNative?.copyText)AsterNative.copyText(address);else navigator.clipboard?.writeText(address);showToast('Address copied')};
+ $('#shareFunding').onclick=()=>window.AsterNative?.shareText('Aster Financials USDT '+network+' deposit address: '+address);
+ $('#createDepositIntent').onclick=async()=>{try{const amount=$('#depositAmount').value;const d=await apiCall('/v1/wallet/deposits',{method:'POST',headers:{'Idempotency-Key':'ui-deposit-'+idem()},body:JSON.stringify({currency:'USDT',network,expected_amount:amount?Number(amount):null})});depositId=d.id;$('#depositIntentState').innerHTML='<b>Intent #'+d.id+'</b> · '+d.status+' · '+d.provider_reference+'<br>Send USDT, then wait for blockchain confirmation.';showToast('Deposit intent created')}catch(e){$('#depositIntentState').textContent=e.message;showToast(e.message)}};
+}
+$('#deposit').onclick=treasuryDepositSheet;
+async function withdrawSheet(){
+ let network='BEP20';
+ openSheet('Withdraw USDT','<div class="sim-badge">Server-controlled withdrawal</div><p>Funds are reserved immediately by the backend. Final settlement requires the configured provider and confirmation webhook.</p><div class="withdraw-network" id="withdrawNetwork"><button class="on" data-net="BEP20">BEP20</button><button data-net="TRC20">TRC20</button></div><input class="input" id="withdrawAddress" placeholder="Destination wallet address"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit withdrawal</button><div class="notice">Never submit a withdrawal to an address you have not verified. Aster will not pretend a transaction was broadcast unless a provider confirms it.</div><div class="small muted" id="withdrawState" style="margin-top:9px"></div>');
+ $('#withdrawNetwork').onclick=e=>{const b=e.target.closest('button');if(!b)return;network=b.dataset.net;$$( '#withdrawNetwork button' ).forEach(x=>x.classList.remove('on'));b.classList.add('on')};
+ $('#submitWithdrawal').onclick=async()=>{try{const address=$('#withdrawAddress').value.trim(),amount=Number($('#withdrawAmount').value);if(!address||!amount||amount<=0)throw new Error('Enter a valid destination and amount.');const d=await apiCall('/v1/wallet/withdrawals',{method:'POST',headers:{'Idempotency-Key':'ui-withdraw-'+idem()},body:JSON.stringify({currency:'USDT',network,address,amount})});$('#withdrawState').textContent='Withdrawal #'+d.id+' created · '+d.status+' · '+d.provider_reference;showToast('Withdrawal request created')}catch(e){$('#withdrawState').textContent=e.message;showToast(e.message)}};
+}
+$('#withdraw').onclick=withdrawSheet;
+
+$('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
+$('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
+$('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'dark'}function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
+$('#bell').onclick=()=>openSheet('Notifications','<p>No account alerts yet. Once the backend is connected, this area can show deposits, strategy events, withdrawals and security alerts.</p>');
+const haptic=(kind='light')=>{try{if(window.AsterNative?.haptic)AsterNative.haptic(kind);else if(navigator.vibrate)navigator.vibrate(kind==='success'?[18,30,28]:kind==='medium'?24:10)}catch(e){}};function confetti(){const box=$('#confetti');if(!box)return;haptic('success');for(let i=0;i<28;i++){let p=document.createElement('i');p.className='confetti-piece';p.style.left=(50+(Math.random()*22-11))+'%';p.style.top='43%';p.style.setProperty('--dx',(Math.random()*320-160)+'px');p.style.setProperty('--dy',(Math.random()*420+180)+'px');p.style.setProperty('--rot',(Math.random()*900-450)+'deg');p.style.background=['#e8b84c','#8d72ff','#55e0dc','#ff7189','#fff'][i%5];box.appendChild(p);setTimeout(()=>p.remove(),1000)}}function setupTouchPolish(){document.addEventListener('pointerdown',e=>{let b=e.target.closest('button,.card,.invest-card,.market-row,.icon,.action');if(b)haptic(b.classList.contains('primary')?'medium':'light')},{passive:true});$$( '.hero,.invest-card' ).forEach(el=>{el.classList.add('tilt');el.addEventListener('pointermove',e=>{let r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.transform='perspective(900px) rotateX('+(-y*5)+'deg) rotateY('+(x*6)+'deg) translateY(-2px)'});el.addEventListener('pointerleave',()=>el.style.transform='')});document.addEventListener('click',e=>{let m=e.target.closest('.market-row');if(m){m.classList.remove('flash');void m.offsetWidth;m.classList.add('flash');confetti()}})}setTimeout(()=>{$('#splash')?.classList.add('hide');haptic('light')},1200);
+try{setupTouchPolish()}catch(e){console.error('Aster interaction polish failed safely',e)}
+try{applyTheme(currentTheme())}catch(e){console.error('Aster theme init failed',e)}
+try{roiCalc()}catch(e){console.error('Aster calculator init failed',e)}
+try{projection()}catch(e){console.error('Aster projection init failed',e)}
+try{$('#homeChart').innerHTML=line([1,1.02,1.01,1.05,1.04,1.08,1.07,1.11],'#17131c')}catch(e){console.error('Aster home chart init failed',e)}
+try{loadMarkets();loadNews('#news');loadNews('#news2')}catch(e){console.error('Aster live content init failed',e)}
+setInterval(()=>{try{loadMarkets()}catch(e){console.warn('Aster market refresh skipped',e)}},15000);
+</script>
+
+<link rel="stylesheet" href="v25-max.css">
+<script src="v25-max.js"></script>
+<script src="v26-production.js"></script><style id="genz">
+body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;background:radial-gradient(38% 28% at 18% 14%,rgba(255,92,200,.30),transparent 70%),radial-gradient(38% 28% at 88% 38%,rgba(57,198,201,.28),transparent 70%),radial-gradient(44% 34% at 38% 92%,rgba(123,97,255,.32),transparent 70%);animation:gzAur 16s ease-in-out infinite alternate}
+.screen.on{animation:none}
+.screen.on>*{animation:gzUp .65s cubic-bezier(.16,1,.3,1) backwards}
+.screen.on>*:nth-child(2){animation-delay:.06s}.screen.on>*:nth-child(3){animation-delay:.12s}.screen.on>*:nth-child(4){animation-delay:.18s}.screen.on>*:nth-child(5){animation-delay:.24s}.screen.on>*:nth-child(6){animation-delay:.3s}.screen.on>*:nth-child(n+7){animation-delay:.36s}
+.title{background:linear-gradient(90deg,var(--text) 0%,#7b61ff 45%,#ff5cc8 75%,var(--text) 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gzSh 7s linear infinite}
+.hero{background-size:220% 220%!important;animation:gzSh2 9s ease-in-out infinite;box-shadow:0 22px 60px rgba(123,97,255,.38),0 0 0 1px rgba(255,255,255,.35) inset}
+.card,.invest-card,.wallet-card{border:1px solid rgba(255,255,255,.35);box-shadow:0 14px 40px rgba(123,97,255,.14),inset 0 1px 0 rgba(255,255,255,.4)}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card{border-color:rgba(255,255,255,.1);box-shadow:0 14px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+.primary,body.theme-dark .primary{position:relative;overflow:hidden;color:#fff;background:linear-gradient(120deg,#7b61ff,#ff5cc8,#39c6c9,#7b61ff);background-size:300% 100%;animation:gzSh 6s linear infinite;box-shadow:0 10px 28px rgba(123,97,255,.5)}
+.primary::after{content:"";position:absolute;top:0;bottom:0;width:35%;left:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-130%) skewX(-20deg);animation:gzShine 3.4s ease-in-out infinite}
+.primary:active,.secondary:active,.action:active,.chip:active{transform:scale(.94)}
+.tabs button.on{background:linear-gradient(120deg,#7b61ff,#ff5cc8)!important;color:#fff!important;box-shadow:0 6px 18px rgba(123,97,255,.5)}
+.bottom{border:1px solid rgba(255,255,255,.3);box-shadow:0 18px 50px rgba(60,30,140,.35);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px)}
+.bottom button.on{background:linear-gradient(135deg,rgba(123,97,255,.28),rgba(255,92,200,.22))}
+.bottom button.on svg{animation:gzBounce .6s cubic-bezier(.34,1.56,.64,1);filter:drop-shadow(0 0 8px rgba(123,97,255,.8))}
+.avatar{background-size:200% 200%!important;animation:gzSh2 5s ease-in-out infinite}
+.art-banner{animation:gzFloat 6s ease-in-out infinite}
+#teamMembers .list-row{animation:gzSlide .55s cubic-bezier(.16,1,.3,1) backwards}
+#teamMembers .list-row:nth-child(2){animation-delay:.07s}#teamMembers .list-row:nth-child(3){animation-delay:.14s}#teamMembers .list-row:nth-child(4){animation-delay:.21s}#teamMembers .list-row:nth-child(n+5){animation-delay:.28s}
+.mcode{display:inline-flex;align-items:center;gap:8px;margin-top:6px;padding:3px 4px 3px 10px;border-radius:99px;font-size:12px;font-weight:850;letter-spacing:.03em;color:#7b61ff;background:linear-gradient(120deg,rgba(123,97,255,.14),rgba(255,92,200,.14));border:1px dashed rgba(123,97,255,.5)}
+.mcopy{padding:5px 11px;border-radius:99px;font-size:11px;font-weight:900;color:#fff;background:linear-gradient(120deg,#7b61ff,#ff5cc8)}
+.gz-rip{position:absolute;border-radius:50%;pointer-events:none;background:rgba(255,255,255,.55);transform:scale(0);animation:gzRip .6s ease-out forwards}
+.gz-b{position:fixed;z-index:999;pointer-events:none;font-size:20px;animation:gzBurst .9s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes gzAur{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(4%,3%) rotate(8deg) scale(1.1)}}
+@keyframes gzUp{from{opacity:0;transform:translateY(22px) scale(.97);filter:blur(6px)}}
+@keyframes gzSlide{from{opacity:0;transform:translateX(-24px)}}
+@keyframes gzSh{to{background-position:250% 0}}
+@keyframes gzSh2{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes gzShine{0%{transform:translateX(-130%) skewX(-20deg)}55%,100%{transform:translateX(420%) skewX(-20deg)}}
+@keyframes gzBounce{0%{transform:scale(.6) translateY(6px)}100%{transform:none}}
+@keyframes gzFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes gzRip{to{transform:scale(3.2);opacity:0}}
+@keyframes gzBurst{0%{opacity:1;transform:translate(0,0) scale(.5)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.3) rotate(var(--r))}}
+@media (prefers-reduced-motion:reduce){body::before,.screen.on>*,.title,.hero,.primary,.primary::after,.avatar,.art-banner,#teamMembers .list-row,.bottom button.on svg{animation:none!important}}
+
+/* Aster quick-start experience */
+.quickstart{position:relative;isolation:isolate;overflow:hidden;margin:18px 0 16px;padding:18px;border-radius:27px;color:#f8f6ff;background:linear-gradient(135deg,#171526 0%,#282044 55%,#40265a 100%);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 48px rgba(39,25,77,.22)}
+.quickstart:before{content:"";position:absolute;z-index:-1;width:230px;height:230px;right:-92px;top:-116px;border-radius:50%;background:radial-gradient(circle,rgba(255,92,200,.34),rgba(123,97,255,.08) 52%,transparent 70%)}
+.qs-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:112px}.qs-kicker,.qs-label{font-size:9px;font-weight:950;letter-spacing:.16em;color:#c8baff}.qs-top h2{font-size:25px;line-height:1;margin:8px 0 7px;letter-spacing:-.055em;color:#fff}.qs-top p{font-size:11px;line-height:1.5;color:rgba(245,241,255,.68);max-width:210px;margin:0}
+.qs-orbit{position:relative;flex:0 0 104px;width:104px;height:104px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.24),rgba(123,97,255,.18) 34%,rgba(255,92,200,.08) 65%,transparent 70%);display:grid;place-items:center}
+.qs-orbit:before,.qs-orbit:after{content:"";position:absolute;inset:8px;border:1px solid rgba(210,196,255,.45);border-radius:50%;transform:rotate(-28deg) scaleY(.42)}.qs-orbit:after{inset:1px;transform:rotate(55deg) scaleY(.5);border-color:rgba(255,92,200,.55)}
+.qs-orbit i,.qs-orbit b,.qs-orbit em{position:absolute;width:7px;height:7px;border-radius:50%;background:#ff78d2;box-shadow:0 0 13px #ff78d2;animation:qsOrbit 7s linear infinite}.qs-orbit i{top:10px;left:45px}.qs-orbit b{right:9px;bottom:27px;background:#6ce9e0;box-shadow:0 0 13px #6ce9e0;animation-duration:5s}.qs-orbit em{left:13px;bottom:23px;width:5px;height:5px;background:#f4d47a;animation-duration:9s}.qs-orbit-core{font-size:30px;color:#f5d77d;text-shadow:0 0 24px rgba(245,215,125,.65);animation:qsPulse 2.6s ease-in-out infinite}
+@keyframes qsOrbit{to{transform:rotate(360deg) translateX(3px)}}@keyframes qsPulse{50%{transform:scale(1.18) rotate(12deg);filter:brightness(1.25)}}
+.qs-label{margin:15px 0 8px;color:#aaa0cb}.qs-amounts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.qs-amount{padding:10px 2px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#e9e5f5;font-size:11px;font-weight:900;transition:transform .2s ease,background .2s ease,border-color .2s ease}.qs-amount.active{background:linear-gradient(120deg,#8b70ff,#d45cb8);border-color:transparent;color:white;box-shadow:0 6px 17px rgba(123,97,255,.32);transform:translateY(-2px)}
+.qs-strategies{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qs-strategy{display:flex;align-items:center;gap:9px;text-align:left;padding:10px;border-radius:14px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.10);color:#e8e3f5;min-width:0}.qs-strategy>span:first-child{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:11px;background:rgba(255,255,255,.10);font-size:17px}.qs-strategy b,.qs-strategy small{display:block}.qs-strategy b{font-size:10px}.qs-strategy small{font-size:9px;color:#aaa2bf;margin-top:3px}.qs-strategy.active{border-color:rgba(199,168,255,.72);background:linear-gradient(120deg,rgba(123,97,255,.26),rgba(255,92,200,.13));box-shadow:inset 0 0 0 1px rgba(199,168,255,.12)}
+.qs-cta{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding:14px 15px;border-radius:15px;background:linear-gradient(110deg,#f3d47b,#e8a9e8 52%,#8b78ff);color:#20182e;font-size:12px;font-weight:950;box-shadow:0 9px 22px rgba(123,97,255,.25);transition:transform .2s ease,filter .2s ease}.qs-cta span{font-size:18px;line-height:10px}.qs-cta:active{transform:scale(.975);filter:brightness(1.08)}
+.qs-foot{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;color:rgba(236,231,249,.55);font-size:8px;font-weight:800;letter-spacing:.04em}.qs-foot i{width:14px;height:1px;background:rgba(236,231,249,.25)}
+body.theme-dark .quickstart{box-shadow:0 22px 52px rgba(0,0,0,.4)}@media(max-width:370px){.quickstart{padding:15px}.qs-orbit{flex-basis:82px;width:82px;height:82px}.qs-top h2{font-size:22px}.qs-amounts{gap:4px}.qs-amount{font-size:10px}}@media(prefers-reduced-motion:reduce){.qs-orbit-core,.qs-orbit i,.qs-orbit b,.qs-orbit em{animation:none!important}}
+
+/* V39 all-screen interaction and visual polish */
+.screen.active{animation:asterScreenIn .36s cubic-bezier(.2,.75,.25,1) both}
+@keyframes asterScreenIn{from{opacity:.45;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card,.art-banner,.wallet-card,.team-nudge,.wallet-security{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.card:focus-within{border-color:rgba(139,112,255,.38)}
+button,.list-row,.wallet-shortcut{ -webkit-tap-highlight-color:transparent}
+button:active,.wallet-shortcut:active{transform:scale(.975)}
+.team-metric{position:relative;overflow:hidden;min-height:112px;padding-top:17px}
+.team-metric:after{content:"";position:absolute;width:90px;height:90px;border-radius:50%;right:-35px;bottom:-45px;background:radial-gradient(circle,rgba(153,119,255,.2),transparent 70%)}
+.metric-icon{width:29px;height:29px;display:grid;place-items:center;border-radius:10px;background:rgba(139,112,255,.12);color:#9577ff;font-size:16px;margin-bottom:10px}
+.metric-foot{font-size:9px;color:var(--muted,#8c8998);margin-top:3px}
+.team-nudge{display:flex;align-items:center;gap:11px;padding:12px 14px;margin:10px 0 15px;border-radius:16px;background:linear-gradient(110deg,rgba(139,112,255,.12),rgba(220,115,195,.08));border:1px solid rgba(139,112,255,.14)}
+.nudge-spark{font-size:22px;color:#a78bfa}.team-nudge b,.team-nudge small{display:block}.team-nudge b{font-size:11px}.team-nudge small{font-size:9px;color:var(--muted,#888);margin-top:3px;line-height:1.4}.nudge-arrow{margin-left:auto;color:#a78bfa;font-size:17px}
+.wallet-hero{position:relative;isolation:isolate;overflow:hidden;padding:22px;border-radius:25px;background:linear-gradient(135deg,#171d29,#24243b 58%,#183b3b);color:#fff;box-shadow:0 18px 38px rgba(23,32,48,.22)}
+.wallet-glow{position:absolute;z-index:-1;width:210px;height:210px;right:-90px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(93,231,199,.28),rgba(93,231,199,0) 70%)}
+.wallet-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.wallet-status{font-size:8px;color:#d1d2dd;white-space:nowrap}.wallet-status i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e9bd66;margin-right:4px}
+.wallet-hero .balance{font-size:36px;font-weight:900;letter-spacing:-.06em}.wallet-currency{font-size:10px;color:#a8b4c2;margin-top:2px}
+.wallet-actions{display:flex;gap:9px;margin-top:19px}.wallet-actions button{flex:1;min-height:43px;border-radius:13px;font-size:11px;font-weight:900;background:linear-gradient(110deg,#f3d47b,#d9b7ff);color:#1d2030}.wallet-actions button+button{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.wallet-actions button span{font-size:15px;margin-right:5px}
+.wallet-foot{display:flex;gap:12px;flex-wrap:wrap;margin-top:15px;color:#a9b8c2;font-size:8px;font-weight:800;letter-spacing:.04em}
+.wallet-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.wallet-shortcut{min-width:0;padding:12px 9px;border:1px solid var(--line,rgba(120,120,140,.15));border-radius:15px;background:var(--card,#fff);cursor:pointer}
+.shortcut-icon{width:28px;height:28px;border-radius:9px;background:rgba(139,112,255,.12);color:#9274f6;display:grid;place-items:center;font-size:16px;margin-bottom:8px}
+.wallet-shortcut b,.wallet-shortcut small{display:block}.wallet-shortcut b{font-size:9px}.wallet-shortcut small{font-size:8px;color:var(--muted,#888);margin-top:3px;line-height:1.35}
+.empty-activity{display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 12px 10px}.empty-orbit{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:#9b82f7;background:radial-gradient(circle,rgba(139,112,255,.2),rgba(139,112,255,.04));border:1px solid rgba(139,112,255,.15);margin-bottom:11px;animation:qsPulse 3.2s ease-in-out infinite}.empty-activity b{font-size:11px}.empty-activity p{max-width:230px;font-size:9px;line-height:1.55;color:var(--muted,#888);margin:6px 0 0}
+.wallet-security{display:flex;align-items:center;gap:10px;padding:13px;border-radius:16px;background:rgba(83,190,158,.08);border:1px solid rgba(83,190,158,.15)}.security-mark{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;background:rgba(83,190,158,.14);color:#36a989;font-size:17px}.wallet-security b,.wallet-security small{display:block}.wallet-security b{font-size:10px}.wallet-security small{font-size:8px;line-height:1.4;color:var(--muted,#888);margin-top:3px}.security-check{margin-left:auto;color:#37b18c;font-weight:900}
+.profile-identity{display:flex;align-items:center;gap:13px;padding:17px;margin:14px 0 20px;border:1px solid var(--line,rgba(120,120,140,.15));border-radius:21px;background:var(--card,#fff);box-shadow:0 10px 25px rgba(50,40,90,.06)}
+.profile-avatar-wrap{position:relative}.profile-identity .avatar{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,#29233f,#7255a8);color:#f5d77d;display:grid;place-items:center;font-size:24px;font-weight:950;box-shadow:0 8px 20px rgba(80,56,140,.2)}
+.online-dot{position:absolute;width:11px;height:11px;border:2px solid var(--card,#fff);border-radius:50%;right:-2px;bottom:0;background:#e4b95c}
+.profile-identity-copy{min-width:0;flex:1}.profile-identity-copy>b{font-size:14px}.member-pill{display:inline-block;margin-top:6px;padding:4px 7px;border-radius:6px;background:rgba(139,112,255,.10);color:#9477e9;font-size:7px;font-weight:950;letter-spacing:.1em}.profile-chevron,.row-chevron{color:#a39ab8;font-size:20px}
+.profile-section-label{margin:17px 3px 8px;font-size:9px;font-weight:950;letter-spacing:.14em;color:var(--muted,#8d8999)}
+.profile-menu{padding:2px 14px}.profile-menu .list-row{min-height:60px;cursor:pointer}.profile-menu .list-row+.list-row{border-top:1px solid var(--line,rgba(120,120,140,.12))}.profile-menu .list-row>div:nth-child(2){flex:1}.profile-menu .list-row b{font-size:11px}.profile-menu .list-icon{width:34px;height:34px;border-radius:11px;background:rgba(139,112,255,.10);color:#9477e9;display:grid;place-items:center}.profile-footer{display:flex;flex-direction:column;align-items:center;gap:5px;padding:22px 0 10px;color:var(--muted,#999);font-size:8px}.profile-footer span:first-child{font-weight:950;letter-spacing:.2em;color:#b39a60}
+body.theme-dark .profile-identity,body.theme-dark .wallet-shortcut{background:#191821;border-color:rgba(255,255,255,.08)}
+body.theme-dark .profile-menu{background:#191821}body.theme-dark .team-nudge{background:linear-gradient(110deg,rgba(139,112,255,.17),rgba(220,115,195,.10))}
+@media(max-width:360px){.wallet-head{align-items:flex-start;flex-direction:column}.wallet-hero{padding:18px}.wallet-shortcut{padding:10px 7px}.profile-identity{padding:14px}}
+@media(prefers-reduced-motion:reduce){.screen.active,.empty-orbit{animation:none!important}}
+
+/* Strategy, calculator and market-feed refinements */
+.invest-steps{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 8px;margin:10px 0 12px;border-radius:14px;background:rgba(139,112,255,.075);color:var(--muted,#8b8796);font-size:8px;font-weight:850}
+.invest-steps span{display:flex;align-items:center;gap:5px;white-space:nowrap}.invest-steps i{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;font-style:normal;background:rgba(130,120,150,.14);font-size:8px}.invest-steps .step-active{color:#9678f4}.invest-steps .step-active i{background:#9274f6;color:#fff}.invest-steps>b{width:17px;height:1px;background:rgba(140,130,160,.28)}
+.invest-cards{gap:10px}.invest-card{position:relative;overflow:hidden;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}.invest-card:after{content:"";position:absolute;width:85px;height:85px;right:-38px;top:-42px;border-radius:50%;background:radial-gradient(circle,rgba(173,143,255,.2),transparent 70%);pointer-events:none}.invest-card.on{transform:translateY(-2px);box-shadow:0 12px 25px rgba(111,84,190,.12)}
+#projChart,#roiChart{border-radius:14px;overflow:hidden}
+.market-context{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:10px 0 14px;border-radius:15px;background:linear-gradient(110deg,rgba(76,190,255,.10),rgba(139,112,255,.09));border:1px solid rgba(87,175,230,.15)}
+.market-pulse-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#45c8ae;box-shadow:0 0 0 4px rgba(69,200,174,.13);animation:marketPulse 2s ease-out infinite}
+@keyframes marketPulse{70%{box-shadow:0 0 0 8px rgba(69,200,174,0)}100%{box-shadow:0 0 0 3px rgba(69,200,174,0)}}
+.market-context>div{flex:1}.market-context b,.market-context small{display:block}.market-context b{font-size:10px}.market-context small{font-size:8px;line-height:1.45;color:var(--muted,#888);margin-top:3px}.context-spark{color:#9c82ed;font-size:17px}
+#marketList .market-row{transition:background .2s ease,transform .2s ease;border-radius:12px}#marketList .market-row:active{transform:scale(.99)}
+#news2>*{transition:transform .2s ease}
+body.theme-dark .invest-steps{background:rgba(153,127,255,.10)}body.theme-dark .market-context{background:linear-gradient(110deg,rgba(76,190,255,.08),rgba(139,112,255,.12))}
+</style>
+<script id="genz-js">
+(function(){
+const E=['✨','💜','🔥','💎','🚀','🎉','⚡'];
+function burst(x,y){for(let i=0;i<10;i++){const e=document.createElement('span');e.className='gz-b';e.textContent=E[i%E.length];const a=Math.PI*2*i/10+Math.random()*.5,d=60+Math.random()*60;e.style.cssText='left:'+x+'px;top:'+y+'px;--dx:'+Math.cos(a)*d+'px;--dy:'+(Math.sin(a)*d-30)+'px;--r:'+(Math.random()*160-80)+'deg';document.body.appendChild(e);setTimeout(()=>e.remove(),950)}}
+document.addEventListener('pointerdown',e=>{const t=e.target.closest('button,.action,.chip');if(!t||t.classList.contains('lv'))return;const cs=getComputedStyle(t);if(cs.position==='static')t.style.position='relative';t.style.overflow='hidden';const r=t.getBoundingClientRect(),d=Math.max(r.width,r.height),p=document.createElement('span');p.className='gz-rip';p.style.cssText='width:'+d+'px;height:'+d+'px;left:'+(e.clientX-r.left-d/2)+'px;top:'+(e.clientY-r.top-d/2)+'px';t.appendChild(p);setTimeout(()=>p.remove(),650)});
+// Lightweight screen shortcuts; financial actions still use the existing authenticated flows.
+document.querySelectorAll('.wallet-shortcut').forEach((item,index)=>item.addEventListener('click',()=>{
+ if(index===0)document.getElementById('deposit')?.click();
+ else if(index===1)document.getElementById('withdraw')?.click();
+ else document.querySelector('.wallet-history')?.scrollIntoView({behavior:'smooth',block:'center'});
+ if(typeof haptic==='function')haptic('light');
+}));
+let qsAmount=50,qsStrategy='Core Crypto';
+const qsRoot=document.getElementById('asterQuickStart');
+if(qsRoot){
+ qsRoot.addEventListener('click',e=>{
+  const amount=e.target.closest('[data-qs-amount]'),strategy=e.target.closest('[data-qs-strategy]');
+  if(amount){qsAmount=Number(amount.dataset.qsAmount);qsRoot.querySelectorAll('[data-qs-amount]').forEach(x=>x.classList.toggle('active',x===amount));}
+  if(strategy){qsStrategy=strategy.dataset.qsStrategy;qsRoot.querySelectorAll('[data-qs-strategy]').forEach(x=>x.classList.toggle('active',x===strategy));}
+ });
+ document.getElementById('qsBuild').addEventListener('click',()=>{
+  const strategyButton=document.querySelector('.invest-package[data-strategy="'+qsStrategy+'"]');if(strategyButton)strategyButton.click();
+  const amountChip=document.querySelector('#amtChips [data-a="'+qsAmount+'"]');if(amountChip)amountChip.click();
+  if(typeof go==='function')go('invest');if(typeof haptic==='function')haptic('medium');
+ });
+}
+document.addEventListener('click',e=>{const b=e.target.closest('.mcopy,#copyTeamCode');if(!b)return;const r=b.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2);if(b.classList.contains('mcopy')){const c=b.dataset.code;if(window.AsterNative&&AsterNative.copyText)AsterNative.copyText(c);else if(navigator.clipboard)navigator.clipboard.writeText(c);if(typeof showToast==='function')showToast('Member code copied')}});
+})();
+</script>
+
+<style id="aster-modern-polish">
+/* Aster modern minimal visual system */
+:root{--aster-accent:#d9b65c;--aster-violet:#9278ef;--aster-glass:rgba(255,255,255,.055)}
+body{scroll-behavior:smooth}
+.screen.on{animation:asterScreenIn .38s cubic-bezier(.2,.75,.25,1) both}
+@keyframes asterScreenIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.screen .title{letter-spacing:-.045em;line-height:1.06}
+.screen .eyebrow{letter-spacing:.15em}
+.card,.wallet-card,.profile-identity,.profile-menu,.v25-chart-card,.v25-stat,.v25-hero,.market-context{border-radius:22px;transition:transform .24s ease,border-color .24s ease,box-shadow .24s ease}
+.card{border:1px solid var(--line,rgba(140,130,160,.15));box-shadow:0 9px 26px rgba(20,16,36,.045)}
+button,.wallet-shortcut,.invest-card,.invest-package,.market-row,.list-row{ -webkit-tap-highlight-color:transparent;transition:transform .18s ease,filter .18s ease,background-color .2s ease,border-color .2s ease}
+button:active,.wallet-shortcut:active,.invest-card:active,.invest-package:active{transform:scale(.975)}
+.wallet-hero{position:relative;overflow:hidden;border:1px solid rgba(224,190,111,.24);box-shadow:0 18px 42px rgba(13,10,25,.18)}
+.wallet-glow{pointer-events:none;filter:blur(3px);opacity:.75;animation:asterGlow 8s ease-in-out infinite alternate}
+@keyframes asterGlow{from{transform:translate3d(-5px,0,0) scale(.94);opacity:.48}to{transform:translate3d(12px,8px,0) scale(1.08);opacity:.9}}
+.art-banner{border-radius:23px;overflow:hidden}
+.wallet-shortcuts{gap:9px}
+.wallet-shortcut{border:1px solid var(--line,rgba(140,130,160,.14));border-radius:18px;box-shadow:0 7px 20px rgba(20,16,36,.035)}
+.wallet-shortcut:active{border-color:rgba(217,182,92,.55)}
+.wallet-history{margin-top:15px}
+.empty-orbit{animation:asterOrbit 12s linear infinite}
+@keyframes asterOrbit{to{transform:rotate(360deg)}}
+#nav{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+#nav button{transition:color .2s ease,background .2s ease,transform .2s ease}
+#nav button:active{transform:translateY(-2px) scale(.96)}
+.v25-hero{box-shadow:0 18px 42px rgba(14,12,28,.14)}
+.v25-strategy-card{transition:transform .25s ease,filter .25s ease}
+.v25-strategy-card:active{transform:scale(.985)}
+.market-row{border-radius:15px}
+.market-row:active{background:var(--card2,rgba(140,130,160,.08))}
+.profile-menu .list-row:active{background:rgba(145,120,239,.07)}
+@media(hover:hover){.card:hover,.wallet-shortcut:hover,.profile-identity:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(20,16,36,.075)}}
+body.theme-dark .card,body.theme-dark .wallet-shortcut,body.theme-dark .profile-identity,body.theme-dark .profile-menu{border-color:rgba(255,255,255,.075);box-shadow:0 12px 30px rgba(0,0,0,.16)}
+body.theme-dark .wallet-shortcut{background:linear-gradient(145deg,#1b1923,#15141c)}
+@media(prefers-reduced-motion:reduce){.screen.on,.wallet-glow,.empty-orbit{animation:none!important}*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+</style>
+<style id="aster-site-match">
+/* Website parity: Manrope body + Unbounded display, Aster's dark neon-gold palette */
+body,button,input,select,textarea{font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3,.title,.disp,.section-title,.v25-title{font-family:Unbounded,Manrope,system-ui,sans-serif;letter-spacing:-.035em}
+body.theme-dark{
+ --bg:#070711;--card:rgba(255,255,255,.055);--card2:#10101b;
+ --text:#f4f4f6;--muted:#b7bbd0;--line:rgba(255,255,255,.13);
+ --gold:#ffe66d;--gold2:#fff2a6;--violet:#b18cff;--cyan:#63f5ff;
+ --green:#75ffd0;--red:#ff72cf;--shadow:0 18px 48px rgba(0,0,0,.38);
+ --g:#ffe66d;--g2:#fff2a6;--v:#b18cff;--c:#63f5ff;--p:#ff72cf;
+ background:radial-gradient(ellipse at 12% 8%,rgba(177,140,255,.13),transparent 31rem),
+ radial-gradient(ellipse at 91% 22%,rgba(99,245,255,.086),transparent 27rem),
+ radial-gradient(ellipse at 74% 65%,rgba(255,114,207,.07),transparent 34rem),#070711;
+ color:var(--text)
+}
+body.theme-dark .top{background:linear-gradient(#070711 55%,transparent)}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card,
+body.theme-dark .profile-identity,body.theme-dark .profile-menu,body.theme-dark .wallet-shortcut{
+ background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.13)
+}
+body.theme-dark .primary,body.theme-dark .wallet-actions button:first-child{
+ background:linear-gradient(120deg,#fff2a6,#ffe66d 55%,#e0b64f);
+ color:#101018;box-shadow:0 10px 28px rgba(224,182,79,.22);animation:none
+}
+body.theme-dark .primary::after{display:none}
+body.theme-dark .tabs button.on{background:linear-gradient(120deg,#ffe66d,#e0b64f)!important;color:#101018!important;box-shadow:0 6px 18px rgba(224,182,79,.2)}
+body.theme-dark .bottom{background:rgba(7,7,17,.88);border-color:rgba(255,255,255,.13);box-shadow:0 18px 50px rgba(0,0,0,.42)}
+body.theme-dark .bottom button.on{background:rgba(255,230,109,.13)}
+body.theme-dark .title{background:linear-gradient(105deg,#fff 4%,#ffe66d 26%,#ff72cf 54%,#b18cff 76%,#63f5ff 98%);background-clip:text;-webkit-background-clip:text;color:transparent}
+body.theme-dark .hero{box-shadow:0 18px 42px rgba(0,0,0,.32),0 0 0 1px rgba(255,255,255,.07) inset}
+body.theme-dark .wallet-hero{background:linear-gradient(135deg,#11111e,#191629 58%,#10242b);border-color:rgba(255,230,109,.22)}
+body.theme-dark .wallet-actions button:first-child{color:#101018}
+body.theme-dark .chip.on,body.theme-dark .invest-card.on{border-color:rgba(255,230,109,.72)}
+@media(prefers-reduced-motion:reduce){body.theme-dark .title{animation:none}}
+</style>
+<style id="aster-doomscroll-news">
+#v39NewsPanel{margin:15px 0 18px;padding:0;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.025));border-radius:22px;box-shadow:0 16px 38px rgba(0,0,0,.24)}
+#v39NewsPanel .news-scroll-head{display:flex;align-items:center;justify-content:space-between;padding:15px 16px 12px;border-bottom:1px solid rgba(255,255,255,.09)}
+#v39NewsPanel .news-scroll-title{font:700 13px Unbounded,Manrope,sans-serif;letter-spacing:-.025em}
+#v39NewsPanel .news-scroll-live{font:800 8px Manrope,sans-serif;letter-spacing:.12em;color:#ffe66d}
+#v39NewsPanel .news-scroll-live:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#75ffd0;margin:0 7px 1px 0;box-shadow:0 0 0 4px rgba(117,255,208,.1)}
+#v39NewsFeed{max-height:430px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(255,230,109,.35) transparent}
+#v39NewsFeed .news-scroll-item{display:flex;align-items:center;gap:11px;padding:13px 14px;text-decoration:none;color:inherit;border-bottom:1px solid rgba(255,255,255,.075);transition:background .2s ease}
+#v39NewsFeed .news-scroll-item:last-child{border-bottom:0}
+#v39NewsFeed .news-scroll-item:active{background:rgba(255,230,109,.07)}
+#v39NewsFeed .news-scroll-index{font:700 10px Unbounded,Manrope,sans-serif;color:rgba(255,230,109,.62);width:19px;flex:0 0 19px}
+#v39NewsFeed .news-scroll-copy{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+#v39NewsFeed .news-scroll-copy b{font:700 11px/1.45 Manrope,sans-serif;color:#f4f4f6}
+#v39NewsFeed .news-scroll-tag{font:800 7px Manrope,sans-serif;letter-spacing:.14em;color:#63f5ff}
+#v39NewsFeed .news-scroll-tag.forex{color:#b18cff}
+#v39NewsFeed .news-scroll-time{font:500 8px Manrope,sans-serif;color:#9293a7}
+#v39NewsFeed .news-scroll-arrow{font-size:15px;color:#ffe66d;flex:0 0 auto}
+@media(prefers-reduced-motion:no-preference){#v39NewsFeed .news-scroll-item{animation:newsIn .35s ease both}#v39NewsFeed .news-scroll-item:nth-child(2){animation-delay:.025s}#v39NewsFeed .news-scroll-item:nth-child(3){animation-delay:.05s}#v39NewsFeed .news-scroll-item:nth-child(4){animation-delay:.075s}}
+@keyframes newsIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<style id="aster-site-parity-refinement">
+/* Match the uploaded Aster website's actual design tokens and glass treatment. */
+:root{--aster-g:#ffe66d;--aster-g2:#fff2a6;--aster-v:#b18cff;--aster-c:#63f5ff;--aster-p:#ff72cf;--aster-mint:#75ffd0;--aster-orange:#ffad73;--aster-blue:#7ca8ff}
+body.theme-dark{--gold:var(--aster-g);--gold2:var(--aster-g2);--violet:var(--aster-v);--cyan:var(--aster-c);--green:var(--aster-mint);--red:var(--aster-p);--muted:#b7bbd0;--line:rgba(255,255,255,.13);--card:rgba(255,255,255,.055);--card2:rgba(255,255,255,.075);background:radial-gradient(ellipse at 12% 8%,rgba(177,140,255,.13),transparent 31rem),radial-gradient(ellipse at 91% 22%,rgba(99,245,255,.086),transparent 27rem),radial-gradient(ellipse at 74% 65%,rgba(255,114,207,.07),transparent 34rem),#070711}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card,body.theme-dark .profile-identity,body.theme-dark .profile-menu,body.theme-dark .wallet-shortcut{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.13);box-shadow:0 12px 34px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.045)}
+body.theme-dark .title{background-image:linear-gradient(105deg,#fff 4%,#ffe66d 26%,#ff72cf 54%,#b18cff 76%,#63f5ff 98%);background-size:100% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+body.theme-dark .primary,body.theme-dark .wallet-actions button:first-child{background:linear-gradient(110deg,#ffe66d,#fff2a6);color:#14121f;border:1px solid rgba(255,230,109,.45);box-shadow:0 8px 24px rgba(255,230,109,.16);font-weight:800}
+body.theme-dark .tabs button.on{background:linear-gradient(110deg,#ffe66d,#fff2a6)!important;color:#14121f!important}
+body.theme-dark .invest-package.on,body.theme-dark .chip.on{background:linear-gradient(110deg,rgba(255,230,109,.2),rgba(177,140,255,.16));border-color:rgba(255,230,109,.6);color:#fff}
+body.theme-dark .section-head h2,body.theme-dark .eyebrow{letter-spacing:.13em}
+body.theme-dark .bottom{background:rgba(10,0,30,.76);border-color:rgba(99,245,255,.18);box-shadow:0 18px 50px rgba(0,0,0,.42)}
+body.theme-dark .bottom button.on{background:linear-gradient(120deg,rgba(177,140,255,.18),rgba(255,114,207,.13))}
+body.theme-dark .v25-hero,body.theme-dark .hero{border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 44px rgba(0,0,0,.28)}
+body.theme-dark input,body.theme-dark select,body.theme-dark textarea{font-family:Manrope,system-ui,sans-serif}
+</style>
+</body>
+</html>
+
+<style>
+/* Compact Auto-Invest package selector */
+.invest-package-toggle{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0 18px;padding:5px;border-radius:17px;background:rgba(130,120,150,.09)}
+.invest-package{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:11px 8px;border:1px solid transparent;border-radius:13px;font-size:13px;font-weight:900;color:var(--muted);transition:all .2s ease}
+.invest-package span{font-size:17px}.invest-package.on{color:var(--text);background:var(--card2);border-color:rgba(214,165,47,.55);box-shadow:0 5px 16px rgba(27,22,56,.09)}
+body.theme-dark .invest-package-toggle{background:rgba(255,255,255,.07)}body.theme-dark .invest-package.on{background:#211e2b;color:#fff}
+</style>
++fmt(weeklyGain,2)+' / week';$('#projChart').innerHTML=line([amount,projected],'#8d72ff');$('#projNote').textContent='Illustrative weekly gain at 2.85%: '+fmt(weeklyGain,2)+' USDT per week on '+fmt(amount,0)+' USDT. This is an assumption for illustration only, not a promised or guaranteed return; actual returns can be negative.'}
 function roiCalc(){const a=+$('#roiAmt').value,r=+$('#roiRate').value/100,w=+$('#roiWeeks').value;$('#roiAmtLabel').textContent='$'+fmt(a,0);$('#roiRateLabel').textContent=(r*100)+'%';$('#roiWeeksLabel').textContent=w+' weeks';$$( '#roiAmtChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===a));$$( '#roiRateChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===r*100));$$( '#roiWeekChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===w));let vals=[a];for(let i=1;i<=w;i++)vals.push(vals[i-1]*(1+r));const end=vals[vals.length-1];$('#roiOut').textContent='$'+fmt(end,0);$('#roiProfit').textContent='$'+fmt(end-a,0);$('#roiMultiple').textContent=(end/a).toFixed(2)+'×';$('#roiChart').innerHTML=line(vals,'#8d72ff')}['roiAmt','roiRate','roiWeeks'].forEach(id=>$('#'+id).oninput=roiCalc);$('#roiAmtChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiAmt').value=b.dataset.v;roiCalc()}};$('#roiRateChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiRate').value=b.dataset.v;roiCalc()}};$('#roiWeekChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiWeeks').value=b.dataset.v;roiCalc()}};function go(id){if(!document.getElementById(id)||!document.getElementById(id).classList.contains('screen'))return false;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$( '#nav button' ).forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets'){loadMarkets()}if(id==='team'){setTimeout(loadTeam,80)}return true}window.asterNavigate=go;
 $$( '[data-go]' ).forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
 $('#homeDeposit').addEventListener('click',()=>{go('wallet');setTimeout(()=>$('#deposit')?.click(),80)});
