@@ -17,25 +17,11 @@ ready(function(){
     }
   });
   const home=$('#home');
-  /* Replace the old Aster Pulse/market strip with a real, scrollable crypto + forex news feed. */
-  if(home && !$('#v39NewsPanel')){
-    const panel=document.createElement('section');panel.id='v39NewsPanel';panel.innerHTML='<div class="news-scroll-head"><span class="news-scroll-title">Market intelligence</span><span class="news-scroll-live">LIVE HEADLINES</span></div><div id="v39NewsFeed" role="feed" aria-label="Latest crypto and forex news"><div class="small muted" style="padding:16px">Loading market headlines…</div></div>';
-    const hero=home.querySelector('.hero');if(hero)hero.insertAdjacentElement('afterend',panel);else home.prepend(panel);
-    const refresh=()=>{if(typeof window.loadNews==='function')window.loadNews('#v39NewsFeed')};
-    if(document.readyState==='complete')refresh();else window.addEventListener('load',refresh,{once:true});
-    setInterval(refresh,300000);
-  }
-  /* Home-page cleanup: remove the redundant One Plan promo and Aster Pulse market card. */
-  $('#v39Plan')?.remove();
-  if(home){
-    home.querySelector('#homeMarkets')?.remove();
-    home.querySelector('#homeTicker')?.remove();
-    home.querySelector('#news')?.closest('.card')?.remove();
-    home.querySelectorAll('.live-ticker,.market-card-head,.v25-strategy,.v25-section-title').forEach(el=>el.remove());
-    home.querySelectorAll('.section-head').forEach(head=>{
-      if(/market pulse|aster pulse/i.test(head.textContent||'')) head.remove();
-    });
-  }
+  /* The requested Home cleanup is intentional: keep the Home tab itself,
+     but remove every content panel inside it (ROI card, globe banner,
+     Aster Pulse/news feed, quick-start and other promotional panels).
+     Account features remain available in their dedicated tabs. */
+  if(home) home.replaceChildren();
   const invest=$('#invest');
   /* Keep the Auto-Invest screen focused: no allocation-mode or automation selectors. */
   $('#v39Controls')?.remove();
