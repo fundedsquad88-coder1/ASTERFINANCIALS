@@ -438,9 +438,27 @@ async function treasuryDepositSheet(){
 $('#deposit').onclick=treasuryDepositSheet;
 async function withdrawSheet(){
  let network='BEP20';
- openSheet('Withdraw USDT','<div class="sim-badge">Server-controlled withdrawal</div><p>Funds are reserved immediately by the backend. Final settlement requires the configured provider and confirmation webhook.</p><div class="withdraw-network" id="withdrawNetwork"><button class="on" data-net="BEP20">BEP20</button><button data-net="TRC20">TRC20</button></div><input class="input" id="withdrawAddress" placeholder="Destination wallet address"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit withdrawal</button><div class="notice">Never submit a withdrawal to an address you have not verified. Aster will not pretend a transaction was broadcast unless a provider confirms it.</div><div class="small muted" id="withdrawState" style="margin-top:9px"></div>');
- $('#withdrawNetwork').onclick=e=>{const b=e.target.closest('button');if(!b)return;network=b.dataset.net;$$( '#withdrawNetwork button' ).forEach(x=>x.classList.remove('on'));b.classList.add('on')};
- $('#submitWithdrawal').onclick=async()=>{try{const address=$('#withdrawAddress').value.trim(),amount=Number($('#withdrawAmount').value);if(!address||!amount||amount<=0)throw new Error('Enter a valid destination and amount.');const d=await apiCall('/v1/wallet/withdrawals',{method:'POST',headers:{'Idempotency-Key':'ui-withdraw-'+idem()},body:JSON.stringify({currency:'USDT',network,address,amount})});$('#withdrawState').textContent='Withdrawal #'+d.id+' created · '+d.status+' · '+d.provider_reference;showToast('Withdrawal request created')}catch(e){$('#withdrawState').textContent=e.message;showToast(e.message)}};
+ openSheet('Withdraw USDT','<div class="sim-badge">Server-controlled withdrawal</div><p>Funds are reserved immediately by the backend. Final settlement requires the configured provider and confirmation webhook.</p><div class="withdraw-network" id="withdrawNetwork"><button type="button" class="on" data-net="BEP20" aria-pressed="true">BEP20</button><button type="button" data-net="TRC20" aria-pressed="false">TRC20</button></div><div class="small muted" id="withdrawNetworkHint">BNB Smart Chain · destination must be a 0x address.</div><input class="input" id="withdrawAddress" autocomplete="off" spellcheck="false" placeholder="BEP20 destination (0x…)"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" inputmode="decimal" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit withdrawal</button><div class="notice">Never submit a withdrawal to an address you have not verified. Aster will not pretend a transaction was broadcast unless a provider confirms it.</div><div class="small muted" id="withdrawState" style="margin-top:9px" aria-live="polite"></div>');
+ const networkButtons=$('#withdrawNetwork button');
+ networkButtons.forEach(button=>button.addEventListener('click',()=>{
+   network=button.dataset.net;
+   networkButtons.forEach(item=>{const active=item===button;item.classList.toggle('on',active);item.setAttribute('aria-pressed',String(active))});
+   const trc=network==='TRC20';
+   $('#withdrawAddress').placeholder=trc?'TRC20 destination (T…)':'BEP20 destination (0x…)';
+   $('#withdrawNetworkHint').textContent=trc?'Tron · destination must be a valid T-prefixed TRC20 address.':'BNB Smart Chain · destination must be a 0x address.';
+   $('#withdrawState').textContent='';
+ }));
+ $('#submitWithdrawal').onclick=async()=>{
+   try{
+     const address=$('#withdrawAddress').value.trim(),amount=Number($('#withdrawAmount').value);
+     const valid=network==='TRC20'?/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address):/^0x[a-fA-F0-9]{40}$/.test(address);
+     if(!valid)throw new Error(network==='TRC20'?'Enter a valid 34-character TRC20 address beginning with T.':'Enter a valid 42-character BEP20 address beginning with 0x.');
+     if(!Number.isFinite(amount)||amount<=0)throw new Error('Enter a valid withdrawal amount greater than zero.');
+     const d=await apiCall('/v1/wallet/withdrawals',{method:'POST',headers:{'Idempotency-Key':'ui-withdraw-'+idem()},body:JSON.stringify({currency:'USDT',network,address,amount})});
+     $('#withdrawState').textContent='Withdrawal #'+d.id+' created · '+d.status+' · '+d.provider_reference;
+     showToast('Withdrawal request created');
+   }catch(e){$('#withdrawState').textContent=e.message;showToast(e.message)}
+ };
 }
 $('#withdraw').onclick=withdrawSheet;
 
