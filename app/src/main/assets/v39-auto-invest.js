@@ -23,7 +23,7 @@ ready(function(){
   if(home){
     home.querySelectorAll('.card,.art-banner,.v25-hero,.market-context,[id]').forEach(el=>{
       if(el===home || el.id==='home') return;
-      const label=(el.innerText||el.textContent||'').replace(/\\s+/g,' ').trim().toLowerCase();
+      const label=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
       if(label.includes('roi calculator') ||
          label.includes('global markets, beautifully simple') ||
          label.includes('aster pulse') ||
