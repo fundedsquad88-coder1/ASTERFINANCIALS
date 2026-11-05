@@ -17,32 +17,33 @@ ready(function(){
     }
   });
   const home=$('#home');
-  /* Remove ONLY the three Home footer panels shown in the user's screenshot.
-     Keep the Home heading, quick-start planner, balance hero, active strategies,
-     navigation and all other Home content intact. */
+  /* Keep the Home content and remove only the three panels requested. */
   if(home){
     home.querySelectorAll('.card,.art-banner,.v25-hero,.market-context,[id]').forEach(el=>{
       if(el===home || el.id==='home') return;
       const label=(el.innerText||el.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
-      if(label.includes('roi calculator') ||
-         label.includes('global markets, beautifully simple') ||
-         label.includes('aster pulse') ||
-         label.includes('markets are moving')){
-        /* Remove the panel itself, not its parent Home screen. */
+      if(label.includes('roi calculator') || label.includes('global markets, beautifully simple') ||
+         label.includes('aster pulse') || label.includes('markets are moving')){
         if(el.matches('.card,.art-banner,.v25-hero,.market-context')) el.remove();
-        else {
-          const panel=el.closest('.card,.art-banner,.v25-hero,.market-context');
-          if(panel && home.contains(panel)) panel.remove();
-        }
+        else { const panel=el.closest('.card,.art-banner,.v25-hero,.market-context'); if(panel&&home.contains(panel))panel.remove(); }
       }
     });
-    /* Remove the old market-pulse panel and its heading only. */
     home.querySelector('#homeMarkets')?.remove();
     home.querySelector('#homeTicker')?.remove();
     home.querySelector('#news')?.closest('.card')?.remove();
-    home.querySelectorAll('.section-head').forEach(head=>{
-      if(/market pulse|aster pulse/i.test(head.textContent||'')) head.remove();
-    });
+    home.querySelectorAll('.section-head').forEach(head=>{if(/market pulse|aster pulse/i.test(head.textContent||''))head.remove()});
+    /* Live crypto + forex doomscroll feed at the bottom of Home. */
+    if(!$('#v39NewsPanel',home)){
+      const panel=document.createElement('section');
+      panel.id='v39NewsPanel';
+      panel.className='v39-news-panel';
+      panel.innerHTML='<div class="v39-news-head"><div><div class="eyebrow">MARKET INTELLIGENCE</div><b>Crypto & Forex Live News</b></div><span class="v39-live"><i></i> LIVE</span></div><div id="v39NewsFeed" class="v39-news-feed" role="feed" aria-label="Scrollable crypto and forex market headlines"><div class="small muted">Loading live headlines…</div></div>';
+      home.appendChild(panel);
+    }
+    const refreshNews=()=>{if(typeof window.loadNews==='function')window.loadNews('#v39NewsFeed')};
+    window.addEventListener('load',refreshNews,{once:true});
+    if(document.readyState==='complete')refreshNews();
+    if(!window.__asterNewsRefresh)window.__asterNewsRefresh=window.setInterval(refreshNews,300000);
   }
   const invest=$('#invest');
   /* Keep the Auto-Invest screen focused: no allocation-mode or automation selectors. */
