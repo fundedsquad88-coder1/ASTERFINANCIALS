@@ -75,7 +75,7 @@ def test_deposit_to_withdrawal_dry_run_lifecycle():
             network=BEP20,
             address="0x" + "2" * 40,
             amount=Decimal("10"),
-            status="pending",
+            status="approved",
         )
     )
     db.add(
