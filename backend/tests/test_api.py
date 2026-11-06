@@ -104,7 +104,9 @@ def test_autoinvest_principal_cannot_be_released_or_cancelled():
     csrf = client.cookies.get("AsterCSRF")
 
     db = SessionLocal()
-    db.add(Wallet(user_id=user_id, available=0, invested=10, pending=0))
+    wallet = db.query(Wallet).filter(Wallet.user_id == user_id).one()
+    wallet.available = 0
+    wallet.invested = 10
     position = AutoInvest(
         user_id=user_id,
         strategy="Core Crypto",
