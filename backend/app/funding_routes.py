@@ -26,6 +26,7 @@ from app.main import (
     post_double_entry,
     Referral,
     AuditEvent,
+    accrue_referral_commissions,
 )
 from app.treasury import NETWORKS, normalize_network, treasury_address, valid_address
 from app.withdrawal_engine import reconcile_withdrawal_confirmation, reconcile_withdrawal_failure
@@ -256,6 +257,12 @@ async def funding_webhook(request: Request, dbs: Session = Depends(db)):
                     currency=intent.currency,
                     status="posted",
                 )
+            )
+            accrue_referral_commissions(
+                dbs,
+                depositing_user_id=intent.user_id,
+                deposit_amount=body.amount,
+                source_reference=ref,
             )
             intent.amount = body.amount
             intent.status = "confirmed"
