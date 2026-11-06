@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import blockchain
 from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent
-from app.main import AuditEvent, Base, User, Wallet
+from app.main import AuditEvent, Base, Referral, User, Wallet, accrue_referral_commissions
 from app.treasury import BEP20, TRC20, treasury_address
 
 
@@ -147,6 +147,49 @@ def test_credit_transfer_quarantines_ambiguous_match():
 
     assert blockchain.credit_transfer(dbs, transfer) is False
     assert transfer.status == "quarantined"
+
+
+def test_referral_rewards_accrue_pending_across_nine_levels_idempotently():
+    dbs = session()
+    users = []
+    for index in range(4):
+        user = User(
+            email=f"level{index}@example.com",
+            password_hash="test",
+            referral_code=f"LEVEL{index}",
+            status="active",
+            kyc_status="verified",
+        )
+        dbs.add(user)
+        dbs.flush()
+        users.append(user)
+
+    # users[0] refers users[1], who refers users[2], who refers users[3].
+    for parent, child in zip(users[:-1], users[1:]):
+        dbs.add(Referral(referrer_user_id=parent.id, referred_user_id=child.id))
+    dbs.flush()
+
+    first = accrue_referral_commissions(
+        dbs,
+        depositing_user_id=users[3].id,
+        deposit_amount=Decimal("100"),
+        source_reference="DEP-TEST-ONCE",
+    )
+    second = accrue_referral_commissions(
+        dbs,
+        depositing_user_id=users[3].id,
+        deposit_amount=Decimal("100"),
+        source_reference="DEP-TEST-ONCE",
+    )
+    dbs.commit()
+
+    assert [item["amount"] for item in first] == ["10.00000000", "3.00000000", "2.00000000"]
+    assert second == []
+    links = dbs.scalars(select(Referral).order_by(Referral.id.asc())).all()
+    assert [link.pending_bonus for link in links] == [
+        Decimal("2.00000000"), Decimal("3.00000000"), Decimal("10.00000000")
+    ]
+    dbs.close()
 
 
 def test_bsc_scan_deduplicates_transfer_and_advances_cursor(monkeypatch):
