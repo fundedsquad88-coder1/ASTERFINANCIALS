@@ -689,6 +689,7 @@ def release_autoinvest(autoinvest_id:int,user:User=Depends(current_user),dbs:Ses
     row=dbs.scalar(select(AutoInvest).where(AutoInvest.id==autoinvest_id,AutoInvest.user_id==user.id).with_for_update())
     if not row: raise HTTPException(404,"Auto-Invest not found")
     if row.status not in ("active","paused"): raise HTTPException(409,"Strategy cannot be released")
+    raise HTTPException(409, "Auto-Invest principal is locked. Only separately verified, withdrawable returns may be requested.")
     reference="AIR-"+secrets.token_hex(6).upper()
     transfer_wallet_balance(dbs,user_id=user.id,amount=row.amount,source="user.invested",destination="user.available",reference=reference)
     w=dbs.scalar(select(Wallet).where(Wallet.user_id==user.id).with_for_update()); w.invested-=row.amount; w.available+=row.amount
@@ -824,6 +825,7 @@ def cancel_autoinvest(autoinvest_id: int, user: User = Depends(current_user), db
         raise HTTPException(404, "Auto-Invest not found")
     if row.status not in {"active", "paused"}:
         raise HTTPException(409, "Strategy cannot be cancelled")
+    raise HTTPException(409, "Auto-Invest principal is locked and cannot be cancelled or released.")
     reference = "AIC-" + secrets.token_hex(6).upper()
     transfer_wallet_balance(dbs, user_id=user.id, amount=row.amount, source="user.invested", destination="user.available", reference=reference)
     wallet_row = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id).with_for_update())
