@@ -189,6 +189,76 @@ class Referral(Base):
     status: Mapped[str] = mapped_column(String(24), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+def accrue_referral_commissions(
+    dbs: Session,
+    *,
+    depositing_user_id: int,
+    deposit_amount: Decimal,
+    source_reference: str,
+) -> list[dict[str, str]]:
+    """Record nine-level referral rewards as pending liabilities, never spendable wallet funds."""
+    from decimal import ROUND_DOWN
+
+    rates = [Decimal("10"), Decimal("3"), Decimal("2"), Decimal("1"),
+             Decimal("1"), Decimal("1"), Decimal("1"), Decimal("1"), Decimal("1")]
+    current_user_id = depositing_user_id
+    visited = {depositing_user_id}
+    accrued: list[dict[str, str]] = []
+    quantum = Decimal("0.00000001")
+
+    for level, rate in enumerate(rates, start=1):
+        link = dbs.scalar(
+            select(Referral).where(Referral.referred_user_id == current_user_id).with_for_update()
+        )
+        if not link:
+            break
+        recipient_id = link.referrer_user_id
+        if recipient_id in visited:
+            break
+        visited.add(recipient_id)
+
+        bonus = (deposit_amount * rate / Decimal("100")).quantize(quantum, rounding=ROUND_DOWN)
+        if bonus > 0:
+            digest_ref = hashlib.sha256(
+                f"{source_reference}:{recipient_id}:{level}".encode()
+            ).hexdigest()[:40]
+            commission_ref = f"REF-{digest_ref}"
+            existing = dbs.scalar(select(LedgerEntry).where(
+                LedgerEntry.user_id == recipient_id,
+                LedgerEntry.reference == commission_ref,
+            ))
+            if not existing:
+                link.pending_bonus += bonus
+                dbs.add(LedgerEntry(
+                    user_id=recipient_id,
+                    kind="referral_bonus",
+                    amount=bonus,
+                    reference=commission_ref,
+                    currency="USDT",
+                    status="pending",
+                ))
+                dbs.add(Notification(
+                    user_id=recipient_id,
+                    title="Referral reward pending review",
+                    body=f"A {rate}% referral reward of {bonus} USDT was recorded as pending. It is not yet withdrawable.",
+                ))
+                dbs.add(AuditEvent(
+                    user_id=recipient_id,
+                    event_type="referral_reward_pending",
+                    metadata_json=json.dumps({
+                        "level": level,
+                        "rate_percent": str(rate),
+                        "amount": str(bonus),
+                        "source_reference": source_reference[:160],
+                    }),
+                ))
+                accrued.append({"level": str(level), "user_id": str(recipient_id), "amount": str(bonus)})
+
+        current_user_id = recipient_id
+
+    return accrued
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
