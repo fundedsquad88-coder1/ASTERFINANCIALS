@@ -787,6 +787,87 @@ def admin_autoinvest_execute_v31(limit: int = 25, x_aster_admin_key: Optional[st
         raise HTTPException(503, str(exc))
 
 
+
+@app.get("/v1/admin/withdrawals/queue")
+def admin_withdrawal_queue(
+    limit: int = 100,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    if limit < 1 or limit > 500:
+        raise HTTPException(422, "limit must be between 1 and 500")
+    rows = dbs.scalars(select(WithdrawalRequest).where(
+        WithdrawalRequest.status.in_(["pending", "approved"])
+    ).order_by(WithdrawalRequest.created_at.asc()).limit(limit)).all()
+    return {"items": [{
+        "id": r.id, "user_id": r.user_id, "amount": str(r.amount),
+        "currency": r.currency, "network": r.network, "address": r.address,
+        "status": r.status, "provider_reference": r.provider_reference,
+        "created_at": r.created_at.isoformat(),
+    } for r in rows]}
+
+
+@app.post("/v1/admin/withdrawals/{withdrawal_id}/approve")
+def admin_approve_withdrawal(
+    withdrawal_id: int,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    row = dbs.scalar(select(WithdrawalRequest).where(
+        WithdrawalRequest.id == withdrawal_id
+    ).with_for_update())
+    if not row:
+        raise HTTPException(404, "Withdrawal not found")
+    if row.status != "pending":
+        raise HTTPException(409, f"Cannot approve withdrawal in {row.status} status")
+    row.status = "approved"
+    dbs.add(AuditEvent(user_id=row.user_id, event_type="withdrawal_approved",
+        metadata_json=json.dumps({"withdrawal_id": row.id, "amount": str(row.amount)})))
+    dbs.add(Notification(user_id=row.user_id, title="Withdrawal approved",
+        body="Your withdrawal request has been approved and is awaiting secure provider processing."))
+    dbs.commit()
+    return {"id": row.id, "status": row.status}
+
+
+@app.post("/v1/admin/withdrawals/{withdrawal_id}/reject")
+def admin_reject_withdrawal(
+    withdrawal_id: int,
+    reason: str = "Rejected after review",
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+    row = dbs.scalar(select(WithdrawalRequest).where(
+        WithdrawalRequest.id == withdrawal_id
+    ).with_for_update())
+    if not row:
+        raise HTTPException(404, "Withdrawal not found")
+    if row.status != "pending":
+        raise HTTPException(409, f"Cannot reject withdrawal in {row.status} status")
+    from app.withdrawal_engine import reconcile_withdrawal_failure
+    try:
+        result = reconcile_withdrawal_failure(
+            dbs, provider_reference=row.provider_reference,
+            reason="admin_rejected",
+        )
+    except ValueError as exc:
+        dbs.rollback()
+        raise HTTPException(409, str(exc))
+    dbs.add(Notification(user_id=row.user_id, title="Withdrawal rejected",
+        body="Your withdrawal request was rejected and the reserved amount was returned to your available balance."))
+    dbs.add(AuditEvent(user_id=row.user_id, event_type="withdrawal_admin_rejected",
+        metadata_json=json.dumps({"withdrawal_id": row.id, "reason": reason[:300]})))
+    dbs.commit()
+    return {"id": row.id, "status": result["status"], "released_amount": str(row.amount)}
+
 @app.post("/v1/admin/withdrawals/process")
 def admin_process_withdrawals_v32(
     limit: int = 25,
