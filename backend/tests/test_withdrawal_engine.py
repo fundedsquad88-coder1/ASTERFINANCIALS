@@ -30,7 +30,7 @@ def test_withdrawal_engine_submits_then_reconciles_idempotently():
         network="TRC20",
         address="T" + "1" * 33,
         amount=Decimal("5"),
-        status="pending",
+        status="approved",
     )
     db.add(row)
     db.flush()
