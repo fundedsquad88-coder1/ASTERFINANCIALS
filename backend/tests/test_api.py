@@ -311,11 +311,9 @@ def test_admin_autoinvest_sync_fails_closed_without_provider(monkeypatch):
         "/v1/admin/autoinvest/sync?limit=10",
         headers={"X-Aster-Admin-Key": "B" * 32},
     )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["ok"] is True
-    assert body["status"] == "synced"
-    assert body["count"] == 0
+    # No configured valuation provider must fail closed.
+    assert response.status_code == 503
+    assert "provider" in response.json()["detail"].lower()
 
 
 def test_admin_autoinvest_execute_is_fail_closed_by_default(monkeypatch):
