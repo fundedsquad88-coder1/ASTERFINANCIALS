@@ -120,7 +120,10 @@ def test_autoinvest_principal_cannot_be_released_or_cancelled():
     db.close()
 
     headers = {"X-Aster-CSRF": csrf}
-    released = client.post(f"/v1/autoinvest/{position_id}/release", headers=headers)
+    released = client.post(
+        f"/v1/autoinvest/{position_id}/release",
+        headers={**headers, "Idempotency-Key": "locked-release-" + __import__("secrets").token_hex(8)},
+    )
     cancelled = client.post(f"/v1/autoinvest/{position_id}/cancel", headers=headers)
     assert released.status_code == 409
     assert cancelled.status_code == 409
