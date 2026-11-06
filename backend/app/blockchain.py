@@ -214,7 +214,10 @@ def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
             DepositIntent.currency == "USDT",
             DepositIntent.status == "pending",
             DepositIntent.deposit_address == treasury_address(transfer.network),
-            DepositIntent.amount == transfer.amount,
+            # An amount is optional on the deposit form. If supplied, it must
+            # match exactly; otherwise a single unambiguous pending intent is
+            # required before funds can be credited.
+            (DepositIntent.amount.is_(None) | (DepositIntent.amount == transfer.amount)),
         )
     ).all()
 
