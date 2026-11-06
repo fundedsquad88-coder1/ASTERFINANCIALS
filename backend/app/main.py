@@ -224,8 +224,10 @@ class LoginIn(BaseModel):
 
 class AutoInvestIn(BaseModel):
     strategy: str = Field(pattern="^(Core Crypto|Global FX|core-crypto|global-fx)$")
-    amount: Decimal = Field(gt=0)
-    duration_weeks: int = Field(ge=1, le=104)
+    amount: Decimal = Field(gt=0, le=500)
+    # Kept for backwards compatibility with older APKs; the current product
+    # does not expose a member-facing duration selector.
+    duration_weeks: int = Field(default=8, ge=1, le=104)
 
 
 MAX_VALUATION_AGE_SECONDS = int(os.getenv("MAX_VALUATION_AGE_SECONDS", "300"))
@@ -539,11 +541,24 @@ def create_autoinvest(body: AutoInvestIn, user: User = Depends(current_user), db
         import json
         return json.loads(existing.response_body)
     try:
+        allowed_amounts = {Decimal("10"), Decimal("25"), Decimal("50"), Decimal("100"), Decimal("250"), Decimal("500")}
+        if body.amount not in allowed_amounts:
+            raise HTTPException(422, "Choose one of the available Auto-Invest amounts: 10, 25, 50, 100, 250 or 500 USDT.")
         strategy_name = {"core-crypto":"Core Crypto","global-fx":"Global FX"}.get(body.strategy, body.strategy)
+        w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id).with_for_update())
+        if not w:
+            raise HTTPException(404, "Wallet not found")
+        active_principal = dbs.scalar(
+            select(func.coalesce(func.sum(AutoInvest.amount), 0)).where(
+                AutoInvest.user_id == user.id,
+                AutoInvest.status.in_(["active", "paused"]),
+            )
+        ) or Decimal("0")
+        if Decimal(str(active_principal)) + body.amount > Decimal("500"):
+            raise HTTPException(409, "The maximum active Auto-Invest principal per account is 500 USDT.")
         reference = "AI-" + secrets.token_hex(6).upper()
         transfer_wallet_balance(dbs, user_id=user.id, amount=body.amount,
                                 source="user.available", destination="user.invested", reference=reference)
-        w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
         w.available -= body.amount
         w.invested += body.amount
         strategy = AutoInvest(user_id=user.id, strategy=strategy_name, amount=body.amount,
