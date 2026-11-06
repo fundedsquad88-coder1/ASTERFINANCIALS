@@ -438,7 +438,18 @@ def revoke_session(session_id: int, user: User = Depends(current_user), dbs: Ses
 @app.get("/v1/referrals")
 def referrals(user: User = Depends(current_user), dbs: Session = Depends(db)):
     rows = dbs.scalars(select(Referral).where(Referral.referrer_user_id == user.id).order_by(Referral.id.desc())).all()
-    return {"code":user.referral_code,"rate":"15%","count":len(rows),"pending_bonus":str(sum((r.pending_bonus for r in rows),Decimal("0"))),"paid_bonus":str(sum((r.paid_bonus for r in rows),Decimal("0"))),"referrals":[{"id":r.id,"referred_user_id":r.referred_user_id,"status":r.status,"pending_bonus":str(r.pending_bonus),"paid_bonus":str(r.paid_bonus)} for r in rows]}
+    rates = [10, 3, 2, 1, 1, 1, 1, 1, 1]
+    return {
+        "code": user.referral_code,
+        "rate": "21% across up to 9 levels",
+        "rate_schedule": [{"level": level, "rate_percent": rate} for level, rate in enumerate(rates, start=1)],
+        "policy_total_percent": sum(rates),
+        "count": len(rows),
+        "pending_bonus": str(sum((r.pending_bonus for r in rows), Decimal("0"))),
+        "paid_bonus": str(sum((r.paid_bonus for r in rows), Decimal("0"))),
+        "referrals": [{"id": r.id, "referred_user_id": r.referred_user_id, "status": r.status,
+                       "pending_bonus": str(r.pending_bonus), "paid_bonus": str(r.paid_bonus)} for r in rows],
+    }
 
 @app.get("/v1/team")
 def team(user: User = Depends(current_user), dbs: Session = Depends(db)):
