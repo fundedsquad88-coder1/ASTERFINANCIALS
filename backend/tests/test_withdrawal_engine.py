@@ -71,6 +71,36 @@ def test_withdrawal_engine_submits_then_reconciles_idempotently():
     db.close()
 
 
+def test_withdrawal_engine_does_not_submit_unapproved_pending_requests():
+    db = SessionLocal()
+    email = "pending-" + __import__("secrets").token_hex(5) + "@example.com"
+    user = User(
+        email=email,
+        password_hash="test",
+        status="active",
+        referral_code="PENDING-" + __import__("secrets").token_hex(4).upper(),
+    )
+    db.add(user)
+    db.flush()
+    row = WithdrawalRequest(
+        user_id=user.id,
+        provider="aster-treasury",
+        provider_reference="AST-WD-PENDING-" + __import__("secrets").token_hex(4).upper(),
+        currency="USDT",
+        network="TRC20",
+        address="T" + "2" * 33,
+        amount=Decimal("2"),
+        status="pending",
+    )
+    db.add(row)
+    db.commit()
+
+    assert process_pending_withdrawals(db, DryRunWithdrawalProvider()) == []
+    db.refresh(row)
+    assert row.status == "pending"
+    db.close()
+
+
 def test_withdrawal_engine_failure_releases_pending_once():
     db = SessionLocal()
     email = "fail-" + __import__("secrets").token_hex(5) + "@example.com"
