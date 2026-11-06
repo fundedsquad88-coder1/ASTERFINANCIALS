@@ -53,17 +53,18 @@ def process_pending_withdrawals(
     *,
     limit: int = 25,
 ) -> list[dict[str, object]]:
-    """Submit pending withdrawals idempotently.
+    """Submit only admin-approved withdrawals idempotently.
 
-    Only pending requests are claimed. A provider exception rolls the
-    transaction back and leaves the request pending for a later retry.
+    Member requests remain reserved in pending status until an administrator
+    approves them. A provider exception rolls back and leaves them approved
+    for a controlled retry.
     """
     if limit < 1 or limit > 100:
         raise ValueError("limit must be between 1 and 100")
     provider = provider or DryRunWithdrawalProvider()
     rows = dbs.scalars(
         select(WithdrawalRequest)
-        .where(WithdrawalRequest.status == "pending")
+        .where(WithdrawalRequest.status == "approved")
         .order_by(WithdrawalRequest.id.asc())
         .limit(limit)
         .with_for_update()
