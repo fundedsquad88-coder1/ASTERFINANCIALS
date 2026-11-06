@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from app.main import app
+from app.main import app, SessionLocal, AutoInvest, Wallet
 
 client = TestClient(app)
 
@@ -92,6 +92,42 @@ def test_portfolio_and_autoinvest_lifecycle():
         json={"strategy": "Core Crypto", "amount": "10", "duration_weeks": 4},
     )
     assert create.status_code == 409
+
+
+def test_autoinvest_principal_cannot_be_released_or_cancelled():
+    email = "locked-" + __import__("secrets").token_hex(5) + "@example.com"
+    registered = client.post("/v1/auth/register", json={
+        "email": email, "password": "AsterTestPassword!123"
+    })
+    assert registered.status_code == 201
+    user_id = registered.json()["id"]
+    csrf = client.cookies.get("AsterCSRF")
+
+    db = SessionLocal()
+    db.add(Wallet(user_id=user_id, available=0, invested=10, pending=0))
+    position = AutoInvest(
+        user_id=user_id,
+        strategy="Core Crypto",
+        amount=10,
+        duration_weeks=8,
+        status="active",
+    )
+    db.add(position)
+    db.commit()
+    position_id = position.id
+    db.close()
+
+    headers = {"X-Aster-CSRF": csrf}
+    released = client.post(f"/v1/autoinvest/{position_id}/release", headers=headers)
+    cancelled = client.post(f"/v1/autoinvest/{position_id}/cancel", headers=headers)
+    assert released.status_code == 409
+    assert cancelled.status_code == 409
+
+    db = SessionLocal()
+    wallet = db.query(Wallet).filter(Wallet.user_id == user_id).one()
+    assert wallet.available == 0
+    assert wallet.invested == 10
+    db.close()
 
 
 def test_autoinvest_cancel_boundary_without_funds():
