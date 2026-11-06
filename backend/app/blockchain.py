@@ -237,6 +237,8 @@ def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
         return False
 
     intent = pending[0]
+    if intent.amount is None:
+        intent.amount = transfer.amount
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == intent.user_id).with_for_update())
     if not wallet:
         raise RuntimeError("Wallet not found for deposit intent")
