@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent
-from app.main import AuditEvent, LedgerEntry, Wallet, post_double_entry
+from app.main import AuditEvent, LedgerEntry, Wallet, post_double_entry, accrue_referral_commissions
 from app.treasury import BEP20, TRC20, treasury_address
 
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a6e0c22e2c"
@@ -259,6 +259,12 @@ def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
         user_id=intent.user_id, kind="deposit", amount=transfer.amount,
         reference=reference, currency="USDT", status="posted",
     ))
+    accrue_referral_commissions(
+        dbs,
+        depositing_user_id=intent.user_id,
+        deposit_amount=transfer.amount,
+        source_reference=reference,
+    )
     dbs.add(AuditEvent(
         user_id=intent.user_id,
         event_type="blockchain_deposit_credited",
