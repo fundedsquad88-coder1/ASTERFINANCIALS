@@ -19,6 +19,39 @@ def test_register_login_and_protected_wallet():
     assert wallet.json()["available"] in {"0", "0E-8"}
 
 
+def test_autoinvest_enforces_fixed_packages_and_account_principal_limit():
+    email = "packages-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+    headers = {"X-Aster-CSRF": csrf, "Idempotency-Key": "package-test-" + __import__("secrets").token_hex(8)}
+
+    unsupported = client.post(
+        "/v1/autoinvest",
+        headers=headers,
+        json={"strategy": "Core Crypto", "amount": "15"},
+    )
+    assert unsupported.status_code == 422
+    assert "Choose one of the available Auto-Invest amounts" in unsupported.json()["detail"]
+
+    above_cap = client.post(
+        "/v1/autoinvest",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "package-cap-" + __import__("secrets").token_hex(8)},
+        json={"strategy": "Core Crypto", "amount": "501"},
+    )
+    assert above_cap.status_code == 422
+
+    # Duration is now optional for the current app; an unfunded account still
+    # cannot activate a position or create an artificial balance.
+    unfunded = client.post(
+        "/v1/autoinvest",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "package-unfunded-" + __import__("secrets").token_hex(8)},
+        json={"strategy": "Core Crypto", "amount": "10"},
+    )
+    assert unfunded.status_code == 409
+    assert unfunded.json()["detail"] == "Insufficient available balance"
+
+
 def test_autoinvest_requires_idempotency_key():
     email = "ai-" + __import__("secrets").token_hex(5) + "@example.com"
     response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
