@@ -23,5 +23,19 @@ services:
     depends_on:
       db:
         condition: service_healthy
+  worker:
+    build: .
+    command: ["python", "-m", "app.blockchain_worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://aster:change-me-in-local-only@db:5432/aster
+      ASTER_BLOCKCHAIN_POLL_SECONDS: "15"
+      ASTER_TRON_ENABLED: "${ASTER_TRON_ENABLED:-false}"
+      ASTER_TRON_API_URL: "${ASTER_TRON_API_URL:-https://api.trongrid.io}"
+      ASTER_TRON_API_KEY: "${ASTER_TRON_API_KEY:-}"
+      ASTER_BSC_RPC_URL: "${ASTER_BSC_RPC_URL:-}"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
 volumes:
   aster-db:
