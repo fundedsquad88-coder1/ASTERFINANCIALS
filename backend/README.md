@@ -36,8 +36,9 @@ you are deliberately testing against a controlled chain environment.
 - Wallet balances are ledger-backed records; the Android client must never fabricate balances or returns.
 - Auto-Invest activation checks authenticated identity and available balance before creating server state.
 - Deposits/withdrawals remain provider-gated. The repository contains public treasury receiving-address configuration only; it contains no signing keys or payout credentials.
-- Shared treasury deposits are attributed by the member-submitted transaction hash and independently observed transfer event. If a TRON transaction contains multiple USDT transfers to the shared treasury, every matching event is quarantined rather than guessing which member owns it.
-- Amount-only matching is prohibited. A unique payment address/reference or an approved gateway allocation mechanism is required before real-money deposits are enabled.
+- A member-submitted transaction hash is a lookup hint, not proof of ownership. Shared-treasury deposits are never automatically credited from a hash claim alone.
+- If a transaction contains multiple USDT transfers to the shared treasury, every matching event is quarantined rather than guessing which member owns it.
+- A deposit remains quarantined until a unique payment address/reference, an independently verified wallet-ownership/allocation mechanism, or an auditable manual review establishes the member-to-transfer link. Amount-only matching is prohibited.
 - Identity/KYC verification is intentionally not enabled at the current account stage. Custody/provider adapters, push delivery, admin authorization and audit controls must be connected before handling real customer funds.
 
 ## Service boundaries
