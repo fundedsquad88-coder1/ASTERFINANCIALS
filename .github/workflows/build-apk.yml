@@ -120,6 +120,7 @@ jobs:
           test -s backend/alembic/versions/0004_email_verification.py
           test -s backend/alembic/versions/0005_account_profile.py
           test -s backend/alembic/versions/0006_blockchain_monitoring.py
+          test -s backend/alembic/versions/0007_deposit_transaction_claim.py
           test -s backend/app/blockchain.py
           test -s backend/app/blockchain_worker.py
           grep -q 'BlockchainTransfer' backend/app/funding.py
