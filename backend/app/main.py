@@ -267,7 +267,7 @@ class AuditEvent(Base):
     metadata_json: Mapped[str] = mapped_column(String(4000), default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-from app.funding import DepositIntent, WithdrawalRequest, ProviderEvent
+from app.funding import BlockchainTransfer, DepositIntent, WithdrawalRequest, ProviderEvent
 
 if os.getenv("ASTER_SKIP_CREATE_ALL", "false").lower() != "true":
     Base.metadata.create_all(engine)
@@ -987,3 +987,95 @@ def admin_process_withdrawals_v32(
     except RuntimeError as exc:
         dbs.rollback()
         raise HTTPException(502, str(exc))
+
+
+def _require_admin(x_aster_admin_key: Optional[str]) -> None:
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+
+
+@app.get("/v1/admin/operations/summary")
+def admin_operations_summary(
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    _require_admin(x_aster_admin_key)
+
+    def counts(model):
+        rows = dbs.execute(
+            select(model.status, func.count(model.id)).group_by(model.status)
+        ).all()
+        return {str(status): int(total) for status, total in rows}
+
+    pending_referrals = dbs.scalar(
+        select(func.coalesce(func.sum(LedgerEntry.amount), 0)).where(
+            LedgerEntry.kind == "referral_bonus",
+            LedgerEntry.status == "pending",
+        )
+    ) or Decimal("0")
+    return {
+        "deposits": counts(DepositIntent),
+        "withdrawals": counts(WithdrawalRequest),
+        "blockchain_transfers": counts(BlockchainTransfer),
+        "pending_referral_liability": str(pending_referrals),
+        "referral_settlement_enabled": False,
+        "note": "Referral rewards remain pending liabilities until a separately approved settlement reserve and policy are configured.",
+    }
+
+
+@app.get("/v1/admin/blockchain/quarantine")
+def admin_blockchain_quarantine(
+    limit: int = 100,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    _require_admin(x_aster_admin_key)
+    if limit < 1 or limit > 500:
+        raise HTTPException(422, "limit must be between 1 and 500")
+    rows = dbs.scalars(
+        select(BlockchainTransfer)
+        .where(BlockchainTransfer.status.in_(["quarantined", "reconciliation_required"]))
+        .order_by(BlockchainTransfer.observed_at.asc())
+        .limit(limit)
+    ).all()
+    return {
+        "items": [{
+            "id": row.id,
+            "network": row.network,
+            "tx_hash": row.tx_hash,
+            "amount": str(row.amount),
+            "token_contract": row.token_contract,
+            "from_address": row.from_address,
+            "to_address": row.to_address,
+            "status": row.status,
+            "deposit_intent_id": row.deposit_intent_id,
+            "observed_at": row.observed_at.isoformat(),
+        } for row in rows]
+    }
+
+
+@app.get("/v1/admin/referrals/pending")
+def admin_pending_referral_rewards(
+    limit: int = 100,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    _require_admin(x_aster_admin_key)
+    if limit < 1 or limit > 500:
+        raise HTTPException(422, "limit must be between 1 and 500")
+    rows = dbs.scalars(
+        select(LedgerEntry)
+        .where(LedgerEntry.kind == "referral_bonus", LedgerEntry.status == "pending")
+        .order_by(LedgerEntry.created_at.asc())
+        .limit(limit)
+    ).all()
+    return {"items": [{
+        "id": row.id,
+        "user_id": row.user_id,
+        "amount": str(row.amount),
+        "currency": row.currency,
+        "reference": row.reference,
+        "status": row.status,
+        "created_at": row.created_at.isoformat(),
+    } for row in rows]}
