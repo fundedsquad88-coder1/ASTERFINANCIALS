@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
-from app.main import app, SessionLocal, AutoInvest, Wallet
+from app.main import app, SessionLocal, AutoInvest, Wallet, BlockchainTransfer, DepositIntent
+from app.blockchain import DEFAULT_BSC_USDT
+from app.treasury import BEP20, treasury_address
 
 client = TestClient(app)
 
@@ -393,3 +395,82 @@ def test_admin_pending_referral_queue_requires_admin_key(monkeypatch):
     )
     assert response.status_code == 200
     assert isinstance(response.json()["items"], list)
+
+
+def test_shared_treasury_deposit_requires_admin_attribution_review(monkeypatch):
+    email = "attribution-" + __import__("secrets").token_hex(5) + "@example.com"
+    registered = client.post("/v1/auth/register", json={
+        "email": email,
+        "password": "AsterTestPassword!123",
+    })
+    assert registered.status_code == 201
+    user_id = registered.json()["id"]
+    csrf = client.cookies.get("AsterCSRF")
+    headers = {
+        "X-Aster-CSRF": csrf,
+        "Idempotency-Key": "attribution-" + __import__("secrets").token_hex(8),
+    }
+
+    created = client.post(
+        "/v1/wallet/deposits",
+        headers=headers,
+        json={"currency": "USDT", "network": "BEP20", "expected_amount": "25"},
+    )
+    assert created.status_code == 201
+    deposit_id = created.json()["id"]
+    tx_hash = "0x" + "a" * 64
+    submitted = client.post(
+        f"/v1/wallet/deposits/{deposit_id}/transaction",
+        headers={"X-Aster-CSRF": csrf},
+        json={"tx_hash": tx_hash},
+    )
+    assert submitted.status_code == 200
+    assert "member ownership is independently confirmed" in submitted.json()["message"]
+
+    dbs = SessionLocal()
+    transfer = BlockchainTransfer(
+        network=BEP20,
+        tx_hash=tx_hash + ":0",
+        log_index=0,
+        block_number=100,
+        token_contract=DEFAULT_BSC_USDT,
+        from_address="0x" + "1" * 40,
+        to_address=treasury_address(BEP20),
+        amount=25,
+        confirmations=20,
+        status="quarantined",
+    )
+    dbs.add(transfer)
+    dbs.commit()
+    transfer_id = transfer.id
+    dbs.close()
+
+    monkeypatch.setenv("ASTER_ADMIN_API_KEY", "F" * 32)
+    approval = client.post(
+        f"/v1/admin/blockchain/transfers/{transfer_id}/approve-attribution",
+        headers={"X-Aster-Admin-Key": "F" * 32},
+        json={
+            "deposit_intent_id": deposit_id,
+            "review_reference": "manual-proof-2026-01",
+        },
+    )
+    assert approval.status_code == 200
+    assert approval.json()["status"] == "credited"
+
+    dbs = SessionLocal()
+    wallet = dbs.query(Wallet).filter(Wallet.user_id == user_id).one()
+    intent = dbs.query(DepositIntent).filter(DepositIntent.id == deposit_id).one()
+    assert wallet.available == 25
+    assert intent.status == "confirmed"
+    dbs.close()
+
+    duplicate = client.post(
+        f"/v1/admin/blockchain/transfers/{transfer_id}/approve-attribution",
+        headers={"X-Aster-Admin-Key": "F" * 32},
+        json={
+            "deposit_intent_id": deposit_id,
+            "review_reference": "manual-proof-2026-01",
+        },
+    )
+    assert duplicate.status_code == 200
+    assert duplicate.json()["duplicate"] is True
