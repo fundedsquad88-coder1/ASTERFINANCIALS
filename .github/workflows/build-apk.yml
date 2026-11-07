@@ -3,14 +3,28 @@ name: Build Aster APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, claude-ui-v1, v24-premium-upgrade, v27-account-foundation, v39-auto-invest-wealth ]
+    branches: [ main, claude-ui-v1, v24-premium-upgrade, v27-account-foundation, v39-auto-invest-wealth, v39-deposit-ledger-hardening ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, v39-auto-invest-wealth ]
 
 jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: aster_test
+          POSTGRES_USER: aster
+          POSTGRES_PASSWORD: aster_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aster -d aster_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -60,6 +74,27 @@ jobs:
           print('Backend foundation checks passed')
           PY
 
+      - name: Run backend blockchain and ledger tests
+        shell: bash
+        run: |
+          set -e
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements-dev.txt
+          PYTHONPATH=backend pytest -q backend/tests
+
+      - name: Validate PostgreSQL migrations
+        shell: bash
+        run: |
+          set -e
+          cd backend
+          alembic heads
+          alembic history --verbose
+          DATABASE_URL=postgresql+psycopg://aster:aster_test_password@localhost:5432/aster_test alembic upgrade head
+          DATABASE_URL=postgresql+psycopg://aster:aster_test_password@localhost:5432/aster_test alembic current
+
+      - name: Build backend container
+        run: docker build -t aster-backend-ci backend
+
       - name: Static source checks
         shell: bash
         run: |
@@ -75,7 +110,6 @@ jobs:
           grep -q 'android.permission.VIBRATE' app/src/main/AndroidManifest.xml
           ! grep -qiE 'api\.binance\.com|api[1-4]\.binance' app/src/main/java/com/asterfinancials/app/MainActivity.java
           ! grep -qiE 'api\.binance\.com|data-api\.binance|api[1-4]\.binance' app/src/main/java/com/asterfinancials/app/MainActivity.java
-          grep -q 'Illustrative' app/src/main/assets/index.html
           test -s app/src/main/assets/v39-auto-invest.js
           test -s app/src/main/assets/v39-auto-invest.css
           test -s app/src/main/assets/v24-upgrade.js
@@ -88,6 +122,7 @@ jobs:
           test -s backend/alembic/versions/0004_email_verification.py
           test -s backend/alembic/versions/0005_account_profile.py
           test -s backend/alembic/versions/0006_blockchain_monitoring.py
+          test -s backend/alembic/versions/0007_deposit_tx_claim.py
           test -s backend/app/blockchain.py
           test -s backend/app/blockchain_worker.py
           grep -q 'BlockchainTransfer' backend/app/funding.py

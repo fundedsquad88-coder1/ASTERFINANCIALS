@@ -14,12 +14,30 @@ services:
       retries: 10
   api:
     build: .
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql+psycopg://aster:change-me-in-local-only@db:5432/aster
       SESSION_COOKIE_SECURE: "false"
       ALLOWED_ORIGINS: http://localhost:8000
     ports:
       - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+  worker:
+    build: .
+    env_file:
+      - .env
+    command: ["python", "-m", "app.blockchain_worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://aster:change-me-in-local-only@db:5432/aster
+      ASTER_BLOCKCHAIN_POLL_SECONDS: "15"
+      ASTER_TRON_ENABLED: "${ASTER_TRON_ENABLED:-false}"
+      ASTER_TRON_API_URL: "${ASTER_TRON_API_URL:-https://api.trongrid.io}"
+      ASTER_TRON_API_KEY: "${ASTER_TRON_API_KEY:-}"
+      ASTER_BSC_RPC_URL: "${ASTER_BSC_RPC_URL:-}"
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy

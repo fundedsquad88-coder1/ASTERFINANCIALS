@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from pwdlib import PasswordHash
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, create_engine, select, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, create_engine, select, func, or_
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./aster-dev.db")
@@ -783,7 +783,20 @@ def admin_blockchain_status(x_aster_admin_key: Optional[str] = Header(default=No
     expected = os.getenv("ASTER_ADMIN_API_KEY", "")
     if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
         raise HTTPException(403, "Admin authorization required")
-    return {"ok": True, "bep20": {"configured": bool(os.getenv("ASTER_BSC_RPC_URL")), "confirmations": max(1, int(os.getenv("ASTER_BSC_CONFIRMATIONS", "12")))}, "trc20": {"configured": bool(os.getenv("ASTER_TRON_API_URL") or os.getenv("ASTER_TRON_API_KEY")), "confirmations": max(1, int(os.getenv("ASTER_TRON_CONFIRMATIONS", "1")))}}
+    tron_enabled = os.getenv("ASTER_TRON_ENABLED", "false").strip().lower() == "true"
+    return {
+        "ok": True,
+        "bep20": {
+            "configured": bool(os.getenv("ASTER_BSC_RPC_URL")),
+            "confirmations": max(1, int(os.getenv("ASTER_BSC_CONFIRMATIONS", "12"))),
+        },
+        "trc20": {
+            "enabled": tron_enabled,
+            "configured": tron_enabled,
+            "api_key_configured": bool(os.getenv("ASTER_TRON_API_KEY")),
+            "confirmations": max(1, int(os.getenv("ASTER_TRON_CONFIRMATIONS", "1"))),
+        },
+    }
 
 @app.post("/v1/admin/blockchain/scan")
 def admin_blockchain_scan(x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"), dbs: Session = Depends(db)):
@@ -974,3 +987,190 @@ def admin_process_withdrawals_v32(
     except RuntimeError as exc:
         dbs.rollback()
         raise HTTPException(502, str(exc))
+
+
+def _require_admin(x_aster_admin_key: Optional[str]) -> None:
+    expected = os.getenv("ASTER_ADMIN_API_KEY", "")
+    if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
+        raise HTTPException(403, "Admin authorization required")
+
+
+@app.get("/v1/admin/operations/summary")
+def admin_operations_summary(
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    _require_admin(x_aster_admin_key)
+    from app.funding import BlockchainTransfer
+
+    def counts(model):
+        rows = dbs.execute(
+            select(model.status, func.count(model.id)).group_by(model.status)
+        ).all()
+        return {str(status): int(total) for status, total in rows}
+
+    pending_referrals = dbs.scalar(
+        select(func.coalesce(func.sum(LedgerEntry.amount), 0)).where(
+            LedgerEntry.kind == "referral_bonus",
+            LedgerEntry.status == "pending",
+        )
+    ) or Decimal("0")
+    return {
+        "deposits": counts(DepositIntent),
+        "withdrawals": counts(WithdrawalRequest),
+        "blockchain_transfers": counts(BlockchainTransfer),
+        "pending_referral_liability": str(pending_referrals),
+        "referral_settlement_enabled": False,
+        "note": "Referral rewards remain pending liabilities until a separately approved settlement reserve and policy are configured.",
+    }
+
+
+@app.get("/v1/admin/blockchain/quarantine")
+def admin_blockchain_quarantine(
+    limit: int = 100,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    _require_admin(x_aster_admin_key)
+    from app.funding import BlockchainTransfer
+    if limit < 1 or limit > 500:
+        raise HTTPException(422, "limit must be between 1 and 500")
+    rows = dbs.scalars(
+        select(BlockchainTransfer)
+        .where(BlockchainTransfer.status.in_(["quarantined", "reconciliation_required"]))
+        .order_by(BlockchainTransfer.observed_at.asc())
+        .limit(limit)
+    ).all()
+    return {
+        "items": [{
+            "id": row.id,
+            "network": row.network,
+            "tx_hash": row.tx_hash,
+            "amount": str(row.amount),
+            "token_contract": row.token_contract,
+            "from_address": row.from_address,
+            "to_address": row.to_address,
+            "status": row.status,
+            "deposit_intent_id": row.deposit_intent_id,
+            "observed_at": row.observed_at.isoformat(),
+        } for row in rows]
+    }
+
+
+@app.get("/v1/admin/referrals/pending")
+def admin_pending_referral_rewards(
+    limit: int = 100,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    _require_admin(x_aster_admin_key)
+    if limit < 1 or limit > 500:
+        raise HTTPException(422, "limit must be between 1 and 500")
+    rows = dbs.scalars(
+        select(LedgerEntry)
+        .where(LedgerEntry.kind == "referral_bonus", LedgerEntry.status == "pending")
+        .order_by(LedgerEntry.created_at.asc())
+        .limit(limit)
+    ).all()
+    return {"items": [{
+        "id": row.id,
+        "user_id": row.user_id,
+        "amount": str(row.amount),
+        "currency": row.currency,
+        "reference": row.reference,
+        "status": row.status,
+        "created_at": row.created_at.isoformat(),
+    } for row in rows]}
+
+
+class DepositAttributionApprovalIn(BaseModel):
+    deposit_intent_id: int = Field(gt=0)
+    review_reference: str = Field(min_length=6, max_length=160)
+
+
+@app.post("/v1/admin/blockchain/transfers/{transfer_id}/approve-attribution")
+def admin_approve_deposit_attribution(
+    transfer_id: int,
+    body: DepositAttributionApprovalIn,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    _require_admin(x_aster_admin_key)
+    from app.blockchain import credit_transfer
+    from app.funding import BlockchainTransfer
+    from app.treasury import treasury_address
+
+    transfer = dbs.scalar(
+        select(BlockchainTransfer)
+        .where(BlockchainTransfer.id == transfer_id)
+        .with_for_update()
+    )
+    if not transfer:
+        raise HTTPException(404, "Blockchain transfer not found")
+
+    intent = dbs.scalar(
+        select(DepositIntent)
+        .where(DepositIntent.id == body.deposit_intent_id)
+        .with_for_update()
+    )
+    if not intent:
+        raise HTTPException(404, "Deposit intent not found")
+
+    if transfer.status == "credited" and transfer.deposit_intent_id == intent.id:
+        return {"id": transfer.id, "status": "credited", "duplicate": True}
+    if intent.status != "pending":
+        raise HTTPException(409, f"Deposit intent cannot be approved from {intent.status}")
+    if transfer.status not in {"quarantined", "confirmed"}:
+        raise HTTPException(409, f"Transfer cannot be approved from {transfer.status}")
+
+    tx_hash = transfer.tx_hash.split(":", 1)[0].lower()
+    if (
+        transfer.network != intent.network
+        or intent.currency != "USDT"
+        or intent.tx_hash != tx_hash
+        or intent.deposit_address != treasury_address(intent.network)
+        or transfer.to_address != treasury_address(intent.network)
+    ):
+        raise HTTPException(409, "Transfer does not match the selected deposit intent")
+
+    if intent.amount is not None and intent.amount != transfer.amount:
+        raise HTTPException(409, "Deposit amount mismatch")
+
+    matching_events = dbs.scalar(
+        select(func.count(BlockchainTransfer.id)).where(
+            BlockchainTransfer.network == transfer.network,
+            or_(
+                BlockchainTransfer.tx_hash.like(tx_hash + ":%"),
+                BlockchainTransfer.tx_hash == tx_hash,
+            ),
+        )
+    ) or 0
+    if int(matching_events) != 1:
+        raise HTTPException(409, "Transaction contains multiple treasury transfers and cannot be auto-attributed")
+
+    transfer.status = "confirmed"
+    if not credit_transfer(dbs, transfer, attribution_verified=True):
+        dbs.rollback()
+        raise HTTPException(409, "Deposit attribution could not be reconciled")
+
+    dbs.add(AuditEvent(
+        user_id=intent.user_id,
+        event_type="deposit_attribution_admin_approved",
+        metadata_json=json.dumps({
+            "transfer_id": transfer.id,
+            "deposit_intent_id": intent.id,
+            "review_reference": body.review_reference,
+            "network": transfer.network,
+            "tx_hash": transfer.tx_hash,
+            "amount": str(transfer.amount),
+        }),
+    ))
+    dbs.commit()
+    return {
+        "id": transfer.id,
+        "deposit_intent_id": intent.id,
+        "status": transfer.status,
+        "amount": str(transfer.amount),
+        "review_reference": body.review_reference,
+        "duplicate": False,
+    }

@@ -7,9 +7,10 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app import blockchain
-from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent
-from app.main import AuditEvent, Base, Referral, User, Wallet, accrue_referral_commissions
+from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent, WithdrawalRequest
+from app.main import AuditEvent, Base, LedgerEntry, Referral, User, Wallet, accrue_referral_commissions
 from app.treasury import BEP20, TRC20, treasury_address
+from app.withdrawal_engine import reconcile_withdrawal_confirmation
 
 
 def session():
@@ -38,7 +39,7 @@ def test_treasury_addresses_are_valid_and_expected():
     assert treasury_address(TRC20) == "TLkgCEs6zFk49FuEhMPzMbPfNjZ5UEGV3b"
 
 
-def test_credit_transfer_requires_exactly_one_matching_intent():
+def test_credit_transfer_credits_only_after_independent_attribution():
     dbs = session()
     user = seed_user(dbs)
     intent = DepositIntent(
@@ -69,7 +70,7 @@ def test_credit_transfer_requires_exactly_one_matching_intent():
     dbs.add(transfer)
     dbs.flush()
 
-    assert blockchain.credit_transfer(dbs, transfer) is True
+    assert blockchain.credit_transfer(dbs, transfer, attribution_verified=True) is True
     dbs.commit()
 
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
@@ -123,7 +124,7 @@ def test_credit_transfer_credits_exact_claimed_hash_once():
     )
     dbs.add(transfer)
     dbs.flush()
-    assert blockchain.credit_transfer(dbs, transfer) is True
+    assert blockchain.credit_transfer(dbs, transfer, attribution_verified=True) is True
     assert transfer.status == "credited"
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
     assert wallet.available == Decimal("25")
@@ -250,12 +251,16 @@ def test_bsc_scan_deduplicates_transfer_and_advances_cursor(monkeypatch):
 
     result = blockchain.bsc_scan(dbs)
     assert result["detected"] == 1
-    assert result["credited"] == 1
+    assert result["credited"] == 0
     assert result["from_block"] == 100
     assert result["cursor"] == 112
 
     dbs.expire_all()
-    assert dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == "0xdeposit:0")) is not None
+    observed = dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == "0xdeposit:0"))
+    assert observed is not None
+    assert observed.status == "quarantined"
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    assert wallet.available == Decimal("0")
     assert dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == BEP20)).cursor == 112
 
 
@@ -295,6 +300,7 @@ def test_tron_scan_follows_fingerprint_pages_without_skipping_timestamp(monkeypa
         return {"data": [row("trx-page-2")], "meta": {}}
 
     monkeypatch.setattr(blockchain, "http_json", fake_http)
+    monkeypatch.setenv("ASTER_TRON_ENABLED", "true")
     monkeypatch.setenv("ASTER_TRON_API_URL", "https://tron.example")
     monkeypatch.setenv("ASTER_TRON_START_MS", "0")
     monkeypatch.setenv("ASTER_TRON_PAGE_SIZE", "1")
@@ -302,7 +308,246 @@ def test_tron_scan_follows_fingerprint_pages_without_skipping_timestamp(monkeypa
     result = blockchain.tron_scan(dbs)
     assert result["pages"] == 2
     assert result["detected"] == 2
-    assert result["credited"] == 1
+    assert result["credited"] == 0
     assert result["has_more"] is False
     assert len(calls) == 2
     assert dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == TRC20)).cursor == 1700000000000
+
+
+def test_tron_scan_quarantines_multiple_treasury_events_in_one_transaction(monkeypatch):
+    dbs = session()
+    user = seed_user(dbs)
+    tx_hash = "f" * 64
+    dbs.add(DepositIntent(
+        user_id=user.id,
+        provider="aster",
+        currency="USDT",
+        network=TRC20,
+        amount=Decimal("5.000000"),
+        status="pending",
+        deposit_address=treasury_address(TRC20),
+        tx_hash=tx_hash,
+    ))
+    dbs.flush()
+
+    def row(event_index, value):
+        return {
+            "transaction_id": tx_hash,
+            "event_index": event_index,
+            "block_timestamp": 1700000001000,
+            "token_info": {"address": blockchain.DEFAULT_TRON_USDT},
+            "to": treasury_address(TRC20),
+            "from": "T" + "A" * 33,
+            "value": str(value),
+            "block": 124,
+        }
+
+    def fake_http(url, payload=None, headers=None):
+        return {"data": [row(0, 5_000_000), row(1, 7_000_000)], "meta": {}}
+
+    monkeypatch.setattr(blockchain, "http_json", fake_http)
+    monkeypatch.setenv("ASTER_TRON_ENABLED", "true")
+    monkeypatch.setenv("ASTER_TRON_API_URL", "https://tron.example")
+    monkeypatch.setenv("ASTER_TRON_START_MS", "0")
+    monkeypatch.setenv("ASTER_TRON_PAGE_SIZE", "10")
+
+    result = blockchain.tron_scan(dbs)
+    transfers = dbs.scalars(
+        select(BlockchainTransfer).where(BlockchainTransfer.network == TRC20)
+    ).all()
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+
+    assert result["detected"] == 2
+    assert result["credited"] == 0
+    assert {item.tx_hash for item in transfers} == {f"{tx_hash}:0", f"{tx_hash}:1"}
+    assert all(item.status == "quarantined" for item in transfers)
+    assert wallet.available == Decimal("0")
+
+
+def test_nine_level_referral_schedule_totals_21_percent_and_is_idempotent():
+    dbs = session()
+    users = []
+    for index in range(10):
+        user = User(
+            email=f"nine-level-{index}@example.com",
+            password_hash="test",
+            referral_code=f"NINE{index}",
+            status="active",
+            kyc_status="verified",
+        )
+        dbs.add(user)
+        dbs.flush()
+        users.append(user)
+
+    # users[0] is level 1; users[9] is the depositing member.
+    for parent, child in zip(users[:-1], users[1:]):
+        dbs.add(Referral(referrer_user_id=parent.id, referred_user_id=child.id))
+    dbs.flush()
+
+    first = accrue_referral_commissions(
+        dbs,
+        depositing_user_id=users[9].id,
+        deposit_amount=Decimal("100"),
+        source_reference="DEP-NINE-LEVEL",
+    )
+    duplicate = accrue_referral_commissions(
+        dbs,
+        depositing_user_id=users[9].id,
+        deposit_amount=Decimal("100"),
+        source_reference="DEP-NINE-LEVEL",
+    )
+    dbs.commit()
+
+    expected = [
+        Decimal("10"), Decimal("3"), Decimal("2"), Decimal("1"),
+        Decimal("1"), Decimal("1"), Decimal("1"), Decimal("1"), Decimal("1"),
+    ]
+    assert [Decimal(item["amount"]) for item in first] == expected
+    assert sum((Decimal(item["amount"]) for item in first), Decimal("0")) == Decimal("21")
+    assert [int(item["level"]) for item in first] == list(range(1, 10))
+    assert duplicate == []
+    pending_entries = dbs.scalars(
+        select(LedgerEntry).where(LedgerEntry.kind == "referral_bonus")
+    ).all()
+    assert len(pending_entries) == 9
+    assert all(item.status == "pending" for item in pending_entries)
+
+
+def test_tron_scan_is_disabled_without_explicit_opt_in(monkeypatch):
+    dbs = session()
+    monkeypatch.delenv("ASTER_TRON_ENABLED", raising=False)
+
+    def unexpected_http(*args, **kwargs):
+        raise AssertionError("TRON network must not be called while disabled")
+
+    monkeypatch.setattr(blockchain, "http_json", unexpected_http)
+    result = blockchain.tron_scan(dbs)
+    assert result["status"] == "not_configured"
+    assert result["detected"] == 0
+    assert result["credited"] == 0
+
+
+def test_bsc_scan_quarantines_multiple_treasury_events_in_one_transaction(monkeypatch):
+    dbs = session()
+    user = seed_user(dbs)
+    tx_hash = "0x" + "d" * 64
+    dbs.add(DepositIntent(
+        user_id=user.id,
+        provider="aster",
+        currency="USDT",
+        network=BEP20,
+        amount=Decimal("5.00000000"),
+        status="pending",
+        deposit_address=treasury_address(BEP20),
+        tx_hash=tx_hash,
+    ))
+    dbs.flush()
+
+    sender = "1" * 40
+    recipient = treasury_address(BEP20)[2:].lower()
+    def log(index, amount):
+        return {
+            "transactionHash": tx_hash,
+            "logIndex": hex(index),
+            "blockNumber": "0x64",
+            "topics": [
+                blockchain.TRANSFER_TOPIC,
+                "0x" + "0" * 24 + sender,
+                "0x" + "0" * 24 + recipient,
+            ],
+            "data": hex(amount * 10**18),
+        }
+
+    def fake_http(url, payload=None, headers=None):
+        method = payload["method"]
+        if method == "eth_blockNumber":
+            return {"result": "0x70"}
+        if method == "eth_getBlockByNumber":
+            return {"result": {"number": "0x70"}}
+        if method == "eth_getLogs":
+            return {"result": [log(0, 5), log(1, 7)]}
+        raise AssertionError(method)
+
+    monkeypatch.setattr(blockchain, "http_json", fake_http)
+    monkeypatch.setenv("ASTER_BSC_RPC_URL", "http://test-rpc")
+    monkeypatch.setenv("ASTER_BSC_START_BLOCK", "99")
+    monkeypatch.setenv("ASTER_BSC_LOG_BATCH", "100")
+
+    result = blockchain.bsc_scan(dbs)
+    transfers = dbs.scalars(
+        select(BlockchainTransfer).where(BlockchainTransfer.network == BEP20)
+    ).all()
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+
+    assert result["detected"] == 2
+    assert result["credited"] == 0
+    assert {item.tx_hash for item in transfers} == {f"{tx_hash}:0", f"{tx_hash}:1"}
+    assert all(item.status == "quarantined" for item in transfers)
+    assert wallet.available == Decimal("0")
+
+
+def test_provider_confirmation_cannot_bypass_admin_approval():
+    dbs = session()
+    user = seed_user(dbs)
+    withdrawal = WithdrawalRequest(
+        user_id=user.id,
+        provider="aster-treasury",
+        provider_reference="AST-WD-PENDING-TEST",
+        currency="USDT",
+        network=TRC20,
+        address="T" + "1" * 33,
+        amount=Decimal("5"),
+        status="pending",
+    )
+    dbs.add(withdrawal)
+    dbs.flush()
+
+    import pytest
+    with pytest.raises(ValueError, match="not confirmable from pending"):
+        reconcile_withdrawal_confirmation(
+            dbs,
+            provider_reference=withdrawal.provider_reference,
+            tx_hash="f" * 64,
+        )
+    assert withdrawal.status == "pending"
+    dbs.close()
+
+
+def test_credit_transfer_quarantines_claimed_hash_without_independent_attribution():
+    dbs = session()
+    user = seed_user(dbs)
+    tx_hash = "0x" + "9" * 64
+    intent = DepositIntent(
+        user_id=user.id,
+        provider="aster",
+        currency="USDT",
+        network=BEP20,
+        amount=Decimal("15"),
+        status="pending",
+        deposit_address=treasury_address(BEP20),
+        tx_hash=tx_hash,
+    )
+    dbs.add(intent)
+    dbs.flush()
+    transfer = BlockchainTransfer(
+        network=BEP20,
+        tx_hash=tx_hash + ":4",
+        log_index=4,
+        block_number=99,
+        token_contract=blockchain.DEFAULT_BSC_USDT,
+        from_address="0x" + "1" * 40,
+        to_address=treasury_address(BEP20),
+        amount=Decimal("15"),
+        confirmations=20,
+        status="confirmed",
+    )
+    dbs.add(transfer)
+    dbs.flush()
+
+    assert blockchain.credit_transfer(dbs, transfer) is False
+    assert transfer.status == "quarantined"
+    assert transfer.deposit_intent_id is None
+    assert intent.status == "pending"
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    assert wallet.available == Decimal("0")
+    dbs.close()
