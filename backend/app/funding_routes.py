@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -158,6 +159,48 @@ def create_deposit(
     dbs.commit()
     return result
 
+@router.post("/v1/wallet/deposits/{deposit_id}/transaction")
+def submit_deposit_transaction(
+    deposit_id: int,
+    body: dict,
+    user: User = Depends(current_user),
+    dbs: Session = Depends(db),
+    _: None = Depends(require_csrf),
+):
+    raw_hash = str(body.get("tx_hash", "")).strip()
+    network_hint = dbs.scalar(select(DepositIntent).where(
+        DepositIntent.id == deposit_id, DepositIntent.user_id == user.id
+    ))
+    if not network_hint:
+        raise HTTPException(404, "Deposit not found")
+    if network_hint.status != "pending":
+        raise HTTPException(409, "This deposit intent is no longer pending")
+    if network_hint.tx_hash:
+        if network_hint.tx_hash == raw_hash:
+            return {"id": network_hint.id, "status": "transaction_submitted", "tx_hash": raw_hash}
+        raise HTTPException(409, "A transaction hash is already attached to this deposit")
+    if network_hint.network == "BEP20":
+        if not re.fullmatch(r"0x[a-fA-F0-9]{64}", raw_hash):
+            raise HTTPException(422, "Enter a valid BNB Smart Chain transaction hash")
+        normalized_hash = raw_hash.lower()
+    else:
+        if not re.fullmatch(r"[a-fA-F0-9]{64}", raw_hash):
+            raise HTTPException(422, "Enter a valid TRON transaction hash")
+        normalized_hash = raw_hash.lower()
+    duplicate = dbs.scalar(select(DepositIntent).where(DepositIntent.tx_hash == normalized_hash))
+    if duplicate:
+        raise HTTPException(409, "This transaction hash is already linked to a deposit")
+    network_hint.tx_hash = normalized_hash
+    network_hint.updated_at = datetime.now(timezone.utc)
+    dbs.add(AuditEvent(
+        user_id=user.id,
+        event_type="deposit_transaction_submitted",
+        metadata_json=json.dumps({"deposit_id": deposit_id, "network": network_hint.network, "tx_hash": normalized_hash}),
+    ))
+    dbs.commit()
+    return {"id": network_hint.id, "status": "transaction_submitted", "tx_hash": normalized_hash,
+            "message": "Transaction submitted for independent blockchain verification."}
+
 @router.get("/v1/wallet/deposits/{deposit_id}")
 def get_deposit(
     deposit_id: int,
@@ -179,6 +222,7 @@ def get_deposit(
         "network": intent.network,
         "deposit_address": intent.deposit_address,
         "provider_reference": intent.provider_reference,
+        "tx_hash": intent.tx_hash,
         "amount": str(intent.amount) if intent.amount is not None else None,
         "expected_amount": str(intent.amount) if intent.amount is not None else None,
         "created_at": intent.created_at.isoformat(),
