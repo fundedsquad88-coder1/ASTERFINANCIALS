@@ -43,15 +43,14 @@ class WithdrawalCreateIn(BaseModel):
     currency: str = Field(default="USDT", pattern="^USDT$")
     network: str = Field(min_length=2, max_length=32)
     address: str = Field(min_length=10, max_length=256)
-    amount: Decimal = Field(gt=0)
-
+    amount: Decimal = Field(gt=0, max_digits=28, decimal_places=8)
 
 
 class WithdrawalWebhookIn(BaseModel):
     event_id: str = Field(min_length=8, max_length=200)
     event_type: str = Field(min_length=3, max_length=80)
     provider_reference: str = Field(min_length=3, max_length=160)
-    status: str = Field(pattern="^(confirmed|failed|reversed)$")
+    status: str = Field(pattern="^(confirmed|failed)$")
     tx_hash: Optional[str] = Field(default=None, max_length=256)
 
 class ProviderWebhookIn(BaseModel):
@@ -62,6 +61,11 @@ class ProviderWebhookIn(BaseModel):
     amount: Decimal = Field(gt=0)
     currency: str = Field(default="USDT", pattern="^USDT$")
     network: str = Field(min_length=2, max_length=32)
+
+def require_verified_kyc(user: User) -> None:
+    if user.kyc_status != "verified":
+        raise HTTPException(403, "Identity verification must be completed before deposits or withdrawals.")
+
 
 def provider_name():
     # Aster's first custody rail is its own treasury wallet. An external
@@ -119,6 +123,7 @@ def create_deposit(
     )
     if existing:
         return json.loads(existing.response_body)
+    require_verified_kyc(user)
 
     provider_reference = "AST-DEP-" + secrets.token_hex(10).upper()
     intent = DepositIntent(
@@ -261,10 +266,13 @@ async def funding_webhook(request: Request, dbs: Session = Depends(db)):
     if network not in NETWORKS:
         raise HTTPException(422, "Unsupported USDT network")
 
+    payload_hash = hashlib.sha256(raw).hexdigest()
     existing = dbs.scalar(
         select(ProviderEvent).where(ProviderEvent.event_id == body.event_id)
     )
     if existing:
+        if existing.provider != provider or existing.payload_hash != payload_hash:
+            raise HTTPException(409, "Provider event ID was reused with a different payload")
         return {"ok": True, "status": existing.status, "duplicate": True}
 
     intent = dbs.scalar(
@@ -285,11 +293,16 @@ async def funding_webhook(request: Request, dbs: Session = Depends(db)):
         provider=provider,
         event_id=body.event_id,
         event_type=body.event_type,
-        payload_hash=hashlib.sha256(raw).hexdigest(),
+        payload_hash=payload_hash,
     )
     dbs.add(event)
 
     if body.status == "confirmed":
+        owner = dbs.scalar(select(User).where(User.id == intent.user_id))
+        if not owner or owner.kyc_status != "verified":
+            raise HTTPException(409, "Deposit cannot be credited until identity verification is complete")
+        if intent.status not in {"pending", "confirmed"}:
+            raise HTTPException(409, f"Deposit intent cannot be confirmed from {intent.status}")
         if intent.status != "confirmed":
             if intent.amount is not None and intent.amount != body.amount:
                 raise HTTPException(409, "Deposit amount mismatch")
@@ -367,6 +380,7 @@ def create_withdrawal(
     )
     if existing:
         return json.loads(existing.response_body)
+    require_verified_kyc(user)
 
     provider_reference = "AST-WD-" + secrets.token_hex(10).upper()
     ref = "WD-" + provider_reference
@@ -451,10 +465,13 @@ async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
         raise HTTPException(400, "Invalid withdrawal provider payload")
 
     provider = provider_name()
+    payload_hash = hashlib.sha256(raw).hexdigest()
     existing = dbs.scalar(
         select(ProviderEvent).where(ProviderEvent.event_id == body.event_id)
     )
     if existing:
+        if existing.provider != provider or existing.payload_hash != payload_hash:
+            raise HTTPException(409, "Provider event ID was reused with a different payload")
         row = dbs.scalar(
             select(WithdrawalRequest).where(
                 WithdrawalRequest.provider_reference == body.provider_reference
@@ -480,7 +497,7 @@ async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
         provider=provider,
         event_id=body.event_id,
         event_type=body.event_type,
-        payload_hash=hashlib.sha256(raw).hexdigest(),
+        payload_hash=payload_hash,
     )
     dbs.add(event)
 

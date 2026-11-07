@@ -18,7 +18,20 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sess
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./aster-dev.db")
 SESSION_TTL_HOURS = int(os.getenv("SESSION_TTL_HOURS", "24"))
 COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
-ALLOWED_ORIGINS = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "").split(",") if x.strip()]
+SESSION_COOKIE_SAMESITE = os.getenv(
+    "SESSION_COOKIE_SAMESITE", "none" if COOKIE_SECURE else "lax"
+).strip().lower()
+if SESSION_COOKIE_SAMESITE not in {"lax", "strict", "none"}:
+    raise RuntimeError("SESSION_COOKIE_SAMESITE must be lax, strict, or none")
+if SESSION_COOKIE_SAMESITE == "none" and not COOKIE_SECURE:
+    raise RuntimeError("SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true")
+SESSION_COOKIE_NAME = "__Host-AsterSession" if COOKIE_SECURE else "AsterSession"
+ALLOWED_ORIGINS = [
+    x.strip() for x in os.getenv(
+        "ALLOWED_ORIGINS",
+        "https://appassets.androidplatform.net,https://asterfinancials.netlify.app",
+    ).split(",") if x.strip()
+]
 CSRF_HEADER = "X-Aster-CSRF"
 password_hash = PasswordHash.recommended()
 
@@ -278,7 +291,7 @@ app = FastAPI(title="Aster Financials API", version="0.4.0")
 if ALLOWED_ORIGINS:
     app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS, allow_credentials=True,
                        allow_methods=["GET","POST","PATCH","DELETE","OPTIONS"],
-                       allow_headers=["Content-Type","X-Aster-CSRF"])
+                       allow_headers=["Content-Type","X-Aster-CSRF","Idempotency-Key","X-Aster-Admin-Key","Authorization"])
 allowed_hosts = [x.strip() for x in os.getenv("ALLOWED_HOSTS", "").split(",") if x.strip()]
 if allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
@@ -328,13 +341,15 @@ def issue_session(response: Response, dbs: Session, user_id: int) -> str:
     dbs.add(SessionToken(user_id=user_id, token_hash=digest(raw), csrf_hash=digest(csrf),
                          expires_at=datetime.now(timezone.utc)+timedelta(hours=SESSION_TTL_HOURS)))
     dbs.commit()
-    response.set_cookie("__Host-AsterSession", raw, httponly=True, secure=COOKIE_SECURE, samesite="lax",
-                        path="/", max_age=SESSION_TTL_HOURS*3600)
-    response.set_cookie("AsterCSRF", csrf, httponly=False, secure=COOKIE_SECURE, samesite="lax",
-                        path="/", max_age=SESSION_TTL_HOURS*3600)
+    response.set_cookie(SESSION_COOKIE_NAME, raw, httponly=True, secure=COOKIE_SECURE,
+                        samesite=SESSION_COOKIE_SAMESITE, path="/",
+                        max_age=SESSION_TTL_HOURS*3600)
+    response.set_cookie("AsterCSRF", csrf, httponly=False, secure=COOKIE_SECURE,
+                        samesite=SESSION_COOKIE_SAMESITE, path="/",
+                        max_age=SESSION_TTL_HOURS*3600)
     return csrf
 
-def current_user(session_cookie: Optional[str] = Cookie(default=None, alias="__Host-AsterSession"),
+def current_user(session_cookie: Optional[str] = Cookie(default=None, alias=SESSION_COOKIE_NAME),
                  dbs: Session = Depends(db)):
     if not session_cookie:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -353,7 +368,7 @@ def require_idempotency_key(
         raise HTTPException(status_code=400, detail="A valid Idempotency-Key is required")
     return key
 
-def require_csrf(session_cookie: Optional[str] = Cookie(default=None, alias="__Host-AsterSession"),
+def require_csrf(session_cookie: Optional[str] = Cookie(default=None, alias=SESSION_COOKIE_NAME),
                  csrf_cookie: Optional[str] = Cookie(default=None, alias="AsterCSRF"),
                  csrf_header: Optional[str] = Header(default=None, alias=CSRF_HEADER),
                  dbs: Session = Depends(db)):
@@ -391,18 +406,25 @@ def email_verification_confirm(body: EmailVerifyIn, user: User = Depends(current
 
 @app.get("/v1/production/status")
 def production_status():
+    funding_name = os.getenv("ASTER_FUNDING_PROVIDER", "aster-treasury").strip().lower()
+    funding_secret_ready = len(os.getenv("ASTER_FUNDING_WEBHOOK_SECRET", "")) >= 32
+    withdrawal_mode = os.getenv("ASTER_WITHDRAWAL_PROVIDER", "dry-run").strip().lower()
+    tron_enabled = os.getenv("ASTER_TRON_ENABLED", "false").strip().lower() == "true"
     return {
         "api": "ready",
-        "database": "configured" if os.getenv("DATABASE_URL") else "local-development-fallback",
-        "funding_provider": bool(os.getenv("ASTER_FUNDING_PROVIDER") or os.getenv("ASTER_FUNDING_WEBHOOK_SECRET")),
+        "database": "configured" if os.getenv("DATABASE_URL", "").startswith("postgresql") else "local-development-fallback",
+        "funding_provider": funding_name not in {"", "aster", "aster-treasury"} and funding_secret_ready,
         "blockchain_bep20_rpc": bool(os.getenv("ASTER_BSC_RPC_URL")),
-        "blockchain_trc20_api": bool(os.getenv("ASTER_TRON_API_KEY") or os.getenv("ASTER_TRON_API_URL")),
-        "email_provider": bool(os.getenv("ASTER_EMAIL_PROVIDER")),
-        "auto_invest_execution_provider": bool(os.getenv("ASTER_AUTOINVEST_PROVIDER")),
-        "valuation_provider": bool(os.getenv("ASTER_VALUATION_PROVIDER")),
-        "push_provider": bool(os.getenv("ASTER_PUSH_PROVIDER")),
-        "kyc_aml_provider": bool(os.getenv("ASTER_KYC_PROVIDER")),
-        "note": "Features without a configured provider remain fail-closed; the API never fabricates settlement or performance."
+        "blockchain_trc20_api": tron_enabled and bool(os.getenv("ASTER_TRON_API_URL")),
+        "email_provider": False,
+        "auto_invest_execution_provider": False,
+        "withdrawal_provider_mode": withdrawal_mode,
+        "live_withdrawals_enabled": False,
+        "valuation_provider": False,
+        "push_provider": False,
+        "kyc_aml_provider": False,
+        "production_ready": False,
+        "note": "Provider presence is not proof of approval. Live investment execution, valuation, and payout remain disabled until reviewed adapters and staging verification are installed."
     }
 
 @app.get("/v1/admin/treasury/summary")
@@ -440,12 +462,12 @@ def login(body: LoginIn, response: Response, dbs: Session = Depends(db)):
     return {"id": user.id, "email": user.email, "kyc_status": user.kyc_status, "csrf_token": csrf}
 
 @app.post("/v1/auth/logout")
-def logout(response: Response, session_cookie: Optional[str] = Cookie(default=None, alias="__Host-AsterSession"),
+def logout(response: Response, session_cookie: Optional[str] = Cookie(default=None, alias=SESSION_COOKIE_NAME),
            dbs: Session = Depends(db)):
     if session_cookie:
         row = dbs.scalar(select(SessionToken).where(SessionToken.token_hash==digest(session_cookie)))
         if row: dbs.delete(row); dbs.commit()
-    response.delete_cookie("__Host-AsterSession", path="/")
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     response.delete_cookie("AsterCSRF", path="/")
     return {"ok": True}
 
@@ -490,7 +512,7 @@ def password_reset_confirm(body: PasswordResetConfirmIn, response: Response, dbs
     user.password_hash = password_hash.hash(body.password); row.used_at = datetime.now(timezone.utc)
     dbs.query(SessionToken).filter(SessionToken.user_id == user.id).delete(synchronize_session=False)
     dbs.add(AuditEvent(user_id=user.id, event_type="password_reset_completed")); dbs.commit()
-    response.delete_cookie("__Host-AsterSession", path="/"); response.delete_cookie("AsterCSRF", path="/")
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/"); response.delete_cookie("AsterCSRF", path="/")
     return {"ok": True}
 
 @app.get("/v1/security/sessions")
@@ -625,6 +647,15 @@ def create_autoinvest(body: AutoInvestIn, user: User = Depends(current_user), db
         allowed_amounts = {Decimal("10"), Decimal("25"), Decimal("50"), Decimal("100"), Decimal("250"), Decimal("500")}
         if body.amount not in allowed_amounts:
             raise HTTPException(422, "Choose one of the available Auto-Invest amounts: 10, 25, 50, 100, 250 or 500 USDT.")
+        if user.kyc_status != "verified":
+            raise HTTPException(403, "Identity verification is required before Auto-Invest activation.")
+        try:
+            from app.autoinvest_execution import execution_provider
+            execution, execution_mode = execution_provider()
+        except RuntimeError as exc:
+            raise HTTPException(503, str(exc))
+        if execution_mode == "disabled":
+            raise HTTPException(503, "Auto-Invest execution provider is not configured. No funds have been reserved.")
         strategy_name = {"core-crypto":"Core Crypto","global-fx":"Global FX"}.get(body.strategy, body.strategy)
         w = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id).with_for_update())
         if not w:
@@ -922,6 +953,9 @@ def admin_approve_withdrawal(
         raise HTTPException(404, "Withdrawal not found")
     if row.status != "pending":
         raise HTTPException(409, f"Cannot approve withdrawal in {row.status} status")
+    owner = dbs.scalar(select(User).where(User.id == row.user_id))
+    if not owner or owner.kyc_status != "verified":
+        raise HTTPException(403, "Identity verification is required before withdrawal approval")
     row.status = "approved"
     dbs.add(AuditEvent(user_id=row.user_id, event_type="withdrawal_approved",
         metadata_json=json.dumps({"withdrawal_id": row.id, "amount": str(row.amount)})))
@@ -1118,6 +1152,9 @@ def admin_approve_deposit_attribution(
 
     if transfer.status == "credited" and transfer.deposit_intent_id == intent.id:
         return {"id": transfer.id, "status": "credited", "duplicate": True}
+    owner = dbs.scalar(select(User).where(User.id == intent.user_id))
+    if not owner or owner.kyc_status != "verified":
+        raise HTTPException(403, "Identity verification is required before deposit attribution can be approved")
     if intent.status != "pending":
         raise HTTPException(409, f"Deposit intent cannot be approved from {intent.status}")
     if transfer.status not in {"quarantined", "confirmed"}:
