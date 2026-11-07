@@ -408,7 +408,6 @@ def email_verification_confirm(body: EmailVerifyIn, user: User = Depends(current
 def production_status():
     funding_name = os.getenv("ASTER_FUNDING_PROVIDER", "aster-treasury").strip().lower()
     funding_secret_ready = len(os.getenv("ASTER_FUNDING_WEBHOOK_SECRET", "")) >= 32
-    auto_mode = os.getenv("ASTER_AUTOINVEST_EXECUTION_PROVIDER", "disabled").strip().lower()
     withdrawal_mode = os.getenv("ASTER_WITHDRAWAL_PROVIDER", "dry-run").strip().lower()
     tron_enabled = os.getenv("ASTER_TRON_ENABLED", "false").strip().lower() == "true"
     return {
@@ -417,13 +416,13 @@ def production_status():
         "funding_provider": funding_name not in {"", "aster", "aster-treasury"} and funding_secret_ready,
         "blockchain_bep20_rpc": bool(os.getenv("ASTER_BSC_RPC_URL")),
         "blockchain_trc20_api": tron_enabled and bool(os.getenv("ASTER_TRON_API_URL")),
-        "email_provider": bool(os.getenv("ASTER_EMAIL_PROVIDER")),
-        "auto_invest_execution_provider": auto_mode not in {"", "disabled", "fail-closed"},
+        "email_provider": False,
+        "auto_invest_execution_provider": False,
         "withdrawal_provider_mode": withdrawal_mode,
         "live_withdrawals_enabled": False,
         "valuation_provider": False,
-        "push_provider": bool(os.getenv("ASTER_PUSH_PROVIDER")),
-        "kyc_aml_provider": bool(os.getenv("ASTER_KYC_PROVIDER")),
+        "push_provider": False,
+        "kyc_aml_provider": False,
         "production_ready": False,
         "note": "Provider presence is not proof of approval. Live investment execution, valuation, and payout remain disabled until reviewed adapters and staging verification are installed."
     }
