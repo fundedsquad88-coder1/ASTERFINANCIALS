@@ -78,42 +78,56 @@ def test_credit_transfer_requires_exactly_one_matching_intent():
     assert dbs.scalar(select(AuditEvent).where(AuditEvent.event_type == "blockchain_deposit_credited")) is not None
 
 
-def test_credit_transfer_accepts_single_intent_without_preset_amount():
+def test_credit_transfer_requires_exact_submitted_transaction_hash():
     dbs = session()
     user = seed_user(dbs)
     intent = DepositIntent(
-        user_id=user.id,
-        provider="aster",
-        currency="USDT",
-        network=BEP20,
-        amount=None,
-        status="pending",
-        deposit_address=treasury_address(BEP20),
+        user_id=user.id, provider="aster", currency="USDT", network=BEP20,
+        amount=None, status="pending", deposit_address=treasury_address(BEP20),
+        tx_hash="0x" + "a" * 64,
     )
     dbs.add(intent)
     dbs.flush()
     transfer = BlockchainTransfer(
-        network=BEP20,
-        tx_hash="0xno-preset-amount:0",
-        log_index=0,
-        block_number=101,
-        token_contract=blockchain.DEFAULT_BSC_USDT,
-        from_address="0x" + "2" * 40,
-        to_address=treasury_address(BEP20),
-        amount=Decimal("7.25000000"),
-        confirmations=12,
-        status="confirmed",
+        network=BEP20, tx_hash="0x" + "b" * 64, log_index=0, block_number=10,
+        token_contract=blockchain.DEFAULT_BSC_USDT, from_address="0x" + "1" * 40,
+        to_address=treasury_address(BEP20), amount=Decimal("25"),
+        confirmations=20, status="confirmed",
     )
     dbs.add(transfer)
     dbs.flush()
-
-    assert blockchain.credit_transfer(dbs, transfer) is True
-    dbs.commit()
-    dbs.refresh(intent)
+    assert blockchain.credit_transfer(dbs, transfer) is False
+    assert transfer.status == "quarantined"
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
-    assert intent.amount == Decimal("7.25000000")
-    assert intent.status == "confirmed"
-    assert wallet.available == Decimal("7.25000000")
+    assert wallet.available == Decimal("0")
+    dbs.close()
+
+
+def test_credit_transfer_credits_exact_claimed_hash_once():
+    dbs = session()
+    user = seed_user(dbs)
+    tx_hash = "0x" + "c" * 64
+    intent = DepositIntent(
+        user_id=user.id, provider="aster", currency="USDT", network=BEP20,
+        amount=Decimal("25"), status="pending", deposit_address=treasury_address(BEP20),
+        tx_hash=tx_hash,
+    )
+    dbs.add(intent)
+    dbs.flush()
+    transfer = BlockchainTransfer(
+        network=BEP20, tx_hash=tx_hash, log_index=0, block_number=11,
+        token_contract=blockchain.DEFAULT_BSC_USDT, from_address="0x" + "1" * 40,
+        to_address=treasury_address(BEP20), amount=Decimal("25"),
+        confirmations=20, status="confirmed",
+    )
+    dbs.add(transfer)
+    dbs.flush()
+    assert blockchain.credit_transfer(dbs, transfer) is True
+    assert transfer.status == "credited"
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    assert wallet.available == Decimal("25")
+    assert blockchain.credit_transfer(dbs, transfer) is False
+    dbs.close()
 
 
 def test_credit_transfer_quarantines_ambiguous_match():
