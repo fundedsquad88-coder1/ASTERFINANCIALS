@@ -193,7 +193,8 @@ def test_double_entry_created_for_autoinvest():
     csrf = client.cookies.get("AsterCSRF")
     # No funded wallet is available in the public API yet, so this boundary must remain fail-closed.
     response = client.post("/v1/autoinvest", headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "ledger-test-key-123456"}, json={"strategy":"core-crypto","amount":"10","duration_weeks":1})
-    assert response.status_code == 409
+    assert response.status_code == 403
+    assert "Identity verification is required" in response.json()["detail"]
 
 
 def test_ledger_integrity_endpoint_reports_balanced_state():
