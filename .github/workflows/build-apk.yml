@@ -87,6 +87,8 @@ jobs:
         run: |
           set -e
           cd backend
+          alembic heads
+          alembic history --verbose
           DATABASE_URL=postgresql+psycopg://aster:aster_test_password@localhost:5432/aster_test alembic upgrade head
           DATABASE_URL=postgresql+psycopg://aster:aster_test_password@localhost:5432/aster_test alembic current
 
