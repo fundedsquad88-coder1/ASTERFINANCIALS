@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#102b55"/><stop offset=".45" stop-color="#2f6591"/><stop offset="1" stop-color="#d7efff"/></linearGradient>
+ <radialGradient id="orb"><stop stop-color="#f7fbff"/><stop offset=".35" stop-color="#d9edff"/><stop offset="1" stop-color="#7aaed0"/></radialGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="15"/></filter>
+</defs>
+<rect width="1200" height="500" fill="url(#bg)"/>
+<g opacity=".25" filter="url(#glow)"><circle cx="830" cy="260" r="170" fill="#fff"/><circle cx="1080" cy="100" r="100" fill="#bde9ff"/></g>
+<g opacity=".35" stroke="#e9f8ff"><path d="M0 410C300 250 500 520 1200 180" fill="none" stroke-width="2"/><path d="M0 450C330 300 620 560 1200 220" fill="none" stroke-width="2"/></g>
+<g><circle cx="870" cy="250" r="142" fill="url(#orb)" stroke="#fff" stroke-width="5" opacity=".95"/><path d="M728 250h284M870 108c-70 45-70 239 0 284M870 108c70 45 70 239 0 284M744 182c80 38 172 38 252 0M744 318c80-38 172-38 252 0" fill="none" stroke="#7ea5c0" stroke-width="3"/><circle cx="870" cy="250" r="151" fill="none" stroke="#f8fdff" stroke-width="3" opacity=".7"/></g>
+<g fill="#fff" stroke="#c8e8ff" stroke-width="4"><circle cx="1010" cy="130" r="52"/><circle cx="1080" cy="330" r="58"/><circle cx="700" cy="150" r="50"/><circle cx="650" cy="360" r="54"/></g>
+<g font-family="Arial" font-weight="800" fill="#29465f" text-anchor="middle"><text x="1010" y="151" font-size="44">$</text><text x="1080" y="350" font-size="42">€</text><text x="700" y="168" font-size="42">¥</text><text x="650" y="379" font-size="38">£</text></g>
+<g fill="#fff" opacity=".18" font-family="Arial"><text x="45" y="80" font-size="18">GLOBAL FX</text><text x="45" y="110" font-size="14">USD · EUR · GBP · JPY · CHF</text></g>
+</svg>
