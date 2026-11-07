@@ -570,3 +570,21 @@ def test_provider_event_id_cannot_be_replayed_with_a_different_payload(monkeypat
     rejected = send(tampered)
     assert rejected.status_code == 409
     assert "reused with a different payload" in rejected.json()["detail"]
+
+
+def test_production_status_does_not_overstate_unimplemented_providers(monkeypatch):
+    monkeypatch.delenv("ASTER_BSC_RPC_URL", raising=False)
+    monkeypatch.delenv("ASTER_TRON_ENABLED", raising=False)
+    monkeypatch.delenv("ASTER_AUTOINVEST_EXECUTION_PROVIDER", raising=False)
+    monkeypatch.delenv("ASTER_FUNDING_WEBHOOK_SECRET", raising=False)
+    response = client.get("/v1/production/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["funding_provider"] is False
+    assert body["blockchain_bep20_rpc"] is False
+    assert body["blockchain_trc20_api"] is False
+    assert body["auto_invest_execution_provider"] is False
+    assert body["live_withdrawals_enabled"] is False
+    assert body["valuation_provider"] is False
+    assert body["kyc_aml_provider"] is False
+    assert body["production_ready"] is False
