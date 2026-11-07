@@ -10,7 +10,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.funding import DepositIntent, ProviderEvent, WithdrawalRequest
@@ -196,16 +196,16 @@ def submit_deposit_transaction(
     # Reconcile a transfer the chain worker may have observed before the user submitted its hash.
     from app.blockchain import credit_transfer
     from app.funding import BlockchainTransfer
-    if network_hint.network == "BEP20":
-        observed = dbs.scalars(select(BlockchainTransfer).where(
-            BlockchainTransfer.network == network_hint.network,
+    # Both chains can emit multiple token-transfer events in one transaction.
+    # Reconcile only when the submitted transaction resolves to exactly one
+    # treasury transfer; otherwise leave every event quarantined for review.
+    observed = dbs.scalars(select(BlockchainTransfer).where(
+        BlockchainTransfer.network == network_hint.network,
+        or_(
             BlockchainTransfer.tx_hash.like(normalized_hash + ":%"),
-        )).all()
-    else:
-        observed = dbs.scalars(select(BlockchainTransfer).where(
-            BlockchainTransfer.network == network_hint.network,
-            BlockchainTransfer.tx_hash == normalized_hash,
-        )).all()
+            BlockchainTransfer.tx_hash == normalized_hash,  # legacy single-event rows
+        ),
+    )).all()
     if len(observed) == 1 and observed[0].status in {"quarantined", "confirmed"}:
         observed[0].status = "confirmed"
         credit_transfer(dbs, observed[0])
