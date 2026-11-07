@@ -338,7 +338,7 @@ public class MainActivity extends Activity {
                 + "return 'exit';"
                 + "})()",
                 value -> {
-                    if (value == null || "\\"exit\\"".equals(value)) {
+                    if (value == null || "\"exit\"".equals(value)) {
                         finishBackNavigation();
                     }
                 }
