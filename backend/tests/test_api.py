@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from app.main import app, SessionLocal, AutoInvest, Wallet
+from app.main import app, SessionLocal, AutoInvest, Wallet, User
 from app.funding import BlockchainTransfer, DepositIntent
 from app.blockchain import DEFAULT_BSC_USDT
 from app.treasury import BEP20, treasury_address
@@ -51,8 +51,8 @@ def test_autoinvest_enforces_fixed_packages_and_account_principal_limit():
         headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "package-unfunded-" + __import__("secrets").token_hex(8)},
         json={"strategy": "Core Crypto", "amount": "10"},
     )
-    assert unfunded.status_code == 409
-    assert unfunded.json()["detail"] == "Insufficient available balance"
+    assert unfunded.status_code == 403
+    assert "Identity verification is required" in unfunded.json()["detail"]
 
 
 def test_autoinvest_requires_idempotency_key():
@@ -76,8 +76,8 @@ def test_autoinvest_idempotency_replays_same_result():
     headers = {"X-Aster-CSRF": csrf, "Idempotency-Key": "idem-" + __import__("secrets").token_hex(16)}
     first = client.post("/v1/autoinvest", headers=headers,
                         json={"strategy": "Core Crypto", "amount": "10", "duration_weeks": 4})
-    assert first.status_code == 409
-    assert first.json()["detail"] == "Insufficient available balance"
+    assert first.status_code == 403
+    assert "Identity verification is required" in first.json()["detail"]
 
 
 def test_portfolio_and_autoinvest_lifecycle():
@@ -94,7 +94,8 @@ def test_portfolio_and_autoinvest_lifecycle():
         headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "life-" + __import__("secrets").token_hex(16)},
         json={"strategy": "Core Crypto", "amount": "10", "duration_weeks": 4},
     )
-    assert create.status_code == 409
+    assert create.status_code == 403
+    assert "Identity verification is required" in create.json()["detail"]
 
 
 def test_autoinvest_principal_cannot_be_released_or_cancelled():
@@ -475,3 +476,96 @@ def test_shared_treasury_deposit_requires_admin_attribution_review(monkeypatch):
     )
     assert duplicate.status_code == 200
     assert duplicate.json()["duplicate"] is True
+
+
+def test_autoinvest_fails_closed_when_verified_user_has_no_execution_provider(monkeypatch):
+    email = "provider-gate-" + __import__("secrets").token_hex(5) + "@example.com"
+    registered = client.post("/v1/auth/register", json={
+        "email": email, "password": "AsterTestPassword!123"
+    })
+    assert registered.status_code == 201
+    user_id = registered.json()["id"]
+    csrf = client.cookies.get("AsterCSRF")
+    db = SessionLocal()
+    user = db.query(User).filter(User.id == user_id).one()
+    user.kyc_status = "verified"
+    db.commit()
+    db.close()
+
+    monkeypatch.setenv("ASTER_AUTOINVEST_EXECUTION_PROVIDER", "disabled")
+    response = client.post(
+        "/v1/autoinvest",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "provider-gate-" + __import__("secrets").token_hex(12)},
+        json={"strategy": "Core Crypto", "amount": "10"},
+    )
+    assert response.status_code == 503
+    assert "execution provider is not configured" in response.json()["detail"]
+    db = SessionLocal()
+    wallet = db.query(Wallet).filter(Wallet.user_id == user_id).one()
+    assert wallet.available == 0
+    assert wallet.invested == 0
+    assert db.query(AutoInvest).filter(AutoInvest.user_id == user_id).count() == 0
+    db.close()
+
+
+def test_appassets_cors_allows_authenticated_funding_headers():
+    origin = "https://appassets.androidplatform.net"
+    response = client.options(
+        "/v1/wallet/deposits",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,idempotency-key,x-aster-csrf",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == origin
+    allowed = response.headers.get("access-control-allow-headers", "").lower()
+    assert "idempotency-key" in allowed
+    assert "x-aster-csrf" in allowed
+
+
+def test_provider_event_id_cannot_be_replayed_with_a_different_payload(monkeypatch):
+    import hashlib, hmac, json
+    monkeypatch.setenv("ASTER_FUNDING_WEBHOOK_SECRET", "W" * 40)
+    email = "webhook-replay-" + __import__("secrets").token_hex(5) + "@example.com"
+    registered = client.post("/v1/auth/register", json={
+        "email": email, "password": "AsterTestPassword!123"
+    })
+    assert registered.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+    created = client.post(
+        "/v1/wallet/deposits",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "webhook-intent-" + __import__("secrets").token_hex(8)},
+        json={"currency": "USDT", "network": "BEP20", "expected_amount": "12.5"},
+    )
+    assert created.status_code == 201
+    reference = created.json()["provider_reference"]
+
+    def send(payload):
+        raw = json.dumps(payload, separators=(",", ":")).encode()
+        signature = hmac.new(b"W" * 40, raw, hashlib.sha256).hexdigest()
+        return client.post(
+            "/v1/wallet/provider/webhook",
+            content=raw,
+            headers={"Content-Type": "application/json", "X-Aster-Provider-Signature": signature},
+        )
+
+    payload = {
+        "event_id": "evt-replay-" + __import__("secrets").token_hex(5),
+        "event_type": "deposit.confirmed",
+        "provider_reference": reference,
+        "status": "confirmed",
+        "amount": "12.5",
+        "currency": "USDT",
+        "network": "BEP20",
+    }
+    first = send(payload)
+    assert first.status_code == 200
+    duplicate = send(payload)
+    assert duplicate.status_code == 200
+    assert duplicate.json()["duplicate"] is True
+    tampered = dict(payload, amount="13.5")
+    rejected = send(tampered)
+    assert rejected.status_code == 409
+    assert "reused with a different payload" in rejected.json()["detail"]
