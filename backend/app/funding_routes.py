@@ -43,8 +43,7 @@ class WithdrawalCreateIn(BaseModel):
     currency: str = Field(default="USDT", pattern="^USDT$")
     network: str = Field(min_length=2, max_length=32)
     address: str = Field(min_length=10, max_length=256)
-    amount: Decimal = Field(gt=0)
-
+    amount: Decimal = Field(gt=0, max_digits=28, decimal_places=8)
 
 
 class WithdrawalWebhookIn(BaseModel):
