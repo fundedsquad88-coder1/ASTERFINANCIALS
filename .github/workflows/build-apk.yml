@@ -3,9 +3,9 @@ name: Build Aster APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, claude-ui-v1, v24-premium-upgrade, v27-account-foundation, v39-auto-invest-wealth ]
+    branches: [ main, claude-ui-v1, v24-premium-upgrade, v27-account-foundation, v39-auto-invest-wealth, v39-deposit-ledger-hardening ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, v39-auto-invest-wealth ]
 
 jobs:
   build:
