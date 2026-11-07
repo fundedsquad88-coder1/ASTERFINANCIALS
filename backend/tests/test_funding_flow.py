@@ -41,6 +41,7 @@ def test_deposit_to_withdrawal_dry_run_lifecycle():
         amount=Decimal("25"),
         status="pending",
         deposit_address=treasury_address(BEP20),
+        tx_hash="0xflow",
     )
     db.add(intent)
     db.flush()
