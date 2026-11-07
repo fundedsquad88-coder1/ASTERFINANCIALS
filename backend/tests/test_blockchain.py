@@ -124,7 +124,7 @@ def test_credit_transfer_credits_exact_claimed_hash_once():
     )
     dbs.add(transfer)
     dbs.flush()
-    assert blockchain.credit_transfer(dbs, transfer) is True
+    assert blockchain.credit_transfer(dbs, transfer, attribution_verified=True) is True
     assert transfer.status == "credited"
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
     assert wallet.available == Decimal("25")
