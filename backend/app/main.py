@@ -953,6 +953,9 @@ def admin_approve_withdrawal(
         raise HTTPException(404, "Withdrawal not found")
     if row.status != "pending":
         raise HTTPException(409, f"Cannot approve withdrawal in {row.status} status")
+    owner = dbs.scalar(select(User).where(User.id == row.user_id))
+    if not owner or owner.kyc_status != "verified":
+        raise HTTPException(403, "Identity verification is required before withdrawal approval")
     row.status = "approved"
     dbs.add(AuditEvent(user_id=row.user_id, event_type="withdrawal_approved",
         metadata_json=json.dumps({"withdrawal_id": row.id, "amount": str(row.amount)})))
@@ -1149,6 +1152,9 @@ def admin_approve_deposit_attribution(
 
     if transfer.status == "credited" and transfer.deposit_intent_id == intent.id:
         return {"id": transfer.id, "status": "credited", "duplicate": True}
+    owner = dbs.scalar(select(User).where(User.id == intent.user_id))
+    if not owner or owner.kyc_status != "verified":
+        raise HTTPException(403, "Identity verification is required before deposit attribution can be approved")
     if intent.status != "pending":
         raise HTTPException(409, f"Deposit intent cannot be approved from {intent.status}")
     if transfer.status not in {"quarantined", "confirmed"}:
