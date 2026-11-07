@@ -7,9 +7,10 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app import blockchain
-from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent
+from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent, WithdrawalRequest
 from app.main import AuditEvent, Base, LedgerEntry, Referral, User, Wallet, accrue_referral_commissions
 from app.treasury import BEP20, TRC20, treasury_address
+from app.withdrawal_engine import reconcile_withdrawal_confirmation
 
 
 def session():
@@ -479,3 +480,30 @@ def test_bsc_scan_quarantines_multiple_treasury_events_in_one_transaction(monkey
     assert {item.tx_hash for item in transfers} == {f"{tx_hash}:0", f"{tx_hash}:1"}
     assert all(item.status == "quarantined" for item in transfers)
     assert wallet.available == Decimal("0")
+
+
+def test_provider_confirmation_cannot_bypass_admin_approval():
+    dbs = session()
+    user = seed_user(dbs)
+    withdrawal = WithdrawalRequest(
+        user_id=user.id,
+        provider="aster-treasury",
+        provider_reference="AST-WD-PENDING-TEST",
+        currency="USDT",
+        network=TRC20,
+        address="T" + "1" * 33,
+        amount=Decimal("5"),
+        status="pending",
+    )
+    dbs.add(withdrawal)
+    dbs.flush()
+
+    import pytest
+    with pytest.raises(ValueError, match="not confirmable from pending"):
+        reconcile_withdrawal_confirmation(
+            dbs,
+            provider_reference=withdrawal.provider_reference,
+            tx_hash="f" * 64,
+        )
+    assert withdrawal.status == "pending"
+    dbs.close()
