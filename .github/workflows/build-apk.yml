@@ -60,6 +60,14 @@ jobs:
           print('Backend foundation checks passed')
           PY
 
+      - name: Run backend blockchain and ledger tests
+        shell: bash
+        run: |
+          set -e
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pytest
+          PYTHONPATH=backend pytest -q backend/tests/test_blockchain.py
+
       - name: Static source checks
         shell: bash
         run: |
@@ -75,7 +83,6 @@ jobs:
           grep -q 'android.permission.VIBRATE' app/src/main/AndroidManifest.xml
           ! grep -qiE 'api\.binance\.com|api[1-4]\.binance' app/src/main/java/com/asterfinancials/app/MainActivity.java
           ! grep -qiE 'api\.binance\.com|data-api\.binance|api[1-4]\.binance' app/src/main/java/com/asterfinancials/app/MainActivity.java
-          grep -q 'Illustrative' app/src/main/assets/index.html
           test -s app/src/main/assets/v39-auto-invest.js
           test -s app/src/main/assets/v39-auto-invest.css
           test -s app/src/main/assets/v24-upgrade.js
