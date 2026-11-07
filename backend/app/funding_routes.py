@@ -51,7 +51,7 @@ class WithdrawalWebhookIn(BaseModel):
     event_id: str = Field(min_length=8, max_length=200)
     event_type: str = Field(min_length=3, max_length=80)
     provider_reference: str = Field(min_length=3, max_length=160)
-    status: str = Field(pattern="^(confirmed|failed|reversed)$")
+    status: str = Field(pattern="^(confirmed|failed)$")
     tx_hash: Optional[str] = Field(default=None, max_length=256)
 
 class ProviderWebhookIn(BaseModel):
@@ -261,10 +261,13 @@ async def funding_webhook(request: Request, dbs: Session = Depends(db)):
     if network not in NETWORKS:
         raise HTTPException(422, "Unsupported USDT network")
 
+    payload_hash = hashlib.sha256(raw).hexdigest()
     existing = dbs.scalar(
         select(ProviderEvent).where(ProviderEvent.event_id == body.event_id)
     )
     if existing:
+        if existing.provider != provider or existing.payload_hash != payload_hash:
+            raise HTTPException(409, "Provider event ID was reused with a different payload")
         return {"ok": True, "status": existing.status, "duplicate": True}
 
     intent = dbs.scalar(
@@ -285,11 +288,13 @@ async def funding_webhook(request: Request, dbs: Session = Depends(db)):
         provider=provider,
         event_id=body.event_id,
         event_type=body.event_type,
-        payload_hash=hashlib.sha256(raw).hexdigest(),
+        payload_hash=payload_hash,
     )
     dbs.add(event)
 
     if body.status == "confirmed":
+        if intent.status not in {"pending", "confirmed"}:
+            raise HTTPException(409, f"Deposit intent cannot be confirmed from {intent.status}")
         if intent.status != "confirmed":
             if intent.amount is not None and intent.amount != body.amount:
                 raise HTTPException(409, "Deposit amount mismatch")
@@ -451,10 +456,13 @@ async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
         raise HTTPException(400, "Invalid withdrawal provider payload")
 
     provider = provider_name()
+    payload_hash = hashlib.sha256(raw).hexdigest()
     existing = dbs.scalar(
         select(ProviderEvent).where(ProviderEvent.event_id == body.event_id)
     )
     if existing:
+        if existing.provider != provider or existing.payload_hash != payload_hash:
+            raise HTTPException(409, "Provider event ID was reused with a different payload")
         row = dbs.scalar(
             select(WithdrawalRequest).where(
                 WithdrawalRequest.provider_reference == body.provider_reference
@@ -480,7 +488,7 @@ async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
         provider=provider,
         event_id=body.event_id,
         event_type=body.event_type,
-        payload_hash=hashlib.sha256(raw).hexdigest(),
+        payload_hash=payload_hash,
     )
     dbs.add(event)
 
