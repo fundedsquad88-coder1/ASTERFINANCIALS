@@ -339,10 +339,14 @@ public class MainActivity extends Activity {
                 + "})()",
                 value -> {
                     if (value == null || "\\"exit\\"".equals(value)) {
-                        MainActivity.super.onBackPressed();
+                        finishBackNavigation();
                     }
                 }
         );
+    }
+
+    private void finishBackNavigation() {
+        super.onBackPressed();
     }
 
     @Override protected void onDestroy() {
