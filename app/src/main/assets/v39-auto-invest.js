@@ -8,6 +8,9 @@ ready(function(){
   /* Hard product boundary: Auto-Invest / Wealth only. */
   hide('#roiCalc');
   hide('[data-go="roiCalc"]');
+  /* The product is Auto-Invest only; market discovery lives in the Home news feed. */
+  hide('#markets');
+  hide('[data-go="markets"]');
   $$('a').filter(a=>/market|trade|binary/i.test(a.textContent||'')).forEach(a=>a.classList.add('v39-hide'));
   /* Remove legacy copy that makes the product sound like a trading app. */
   /* Market information is discovery-only; execution remains outside this app. */
