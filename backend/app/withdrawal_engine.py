@@ -121,7 +121,9 @@ def reconcile_withdrawal_confirmation(
         raise ValueError("Withdrawal not found")
     if row.status == "confirmed":
         return {"id": row.id, "status": "confirmed", "duplicate": True}
-    if row.status not in {"submitted", "pending"}:
+    # A provider confirmation must never bypass the explicit admin approval
+    # and submission transition. Pending requests are not payout-authorized.
+    if row.status != "submitted":
         raise ValueError(f"Withdrawal is not confirmable from {row.status}")
 
     wallet = dbs.scalar(
