@@ -18,8 +18,6 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql+psycopg://aster:change-me-in-local-only@db:5432/aster
-      SESSION_COOKIE_SECURE: "false"
-      ALLOWED_ORIGINS: http://localhost:8000
     ports:
       - "8000:8000"
     depends_on:
