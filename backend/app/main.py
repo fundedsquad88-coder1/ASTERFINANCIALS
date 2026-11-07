@@ -783,7 +783,20 @@ def admin_blockchain_status(x_aster_admin_key: Optional[str] = Header(default=No
     expected = os.getenv("ASTER_ADMIN_API_KEY", "")
     if len(expected) < 32 or not x_aster_admin_key or not hmac.compare_digest(expected, x_aster_admin_key):
         raise HTTPException(403, "Admin authorization required")
-    return {"ok": True, "bep20": {"configured": bool(os.getenv("ASTER_BSC_RPC_URL")), "confirmations": max(1, int(os.getenv("ASTER_BSC_CONFIRMATIONS", "12")))}, "trc20": {"configured": bool(os.getenv("ASTER_TRON_API_URL") or os.getenv("ASTER_TRON_API_KEY")), "confirmations": max(1, int(os.getenv("ASTER_TRON_CONFIRMATIONS", "1")))}}
+    tron_enabled = os.getenv("ASTER_TRON_ENABLED", "false").strip().lower() == "true"
+    return {
+        "ok": True,
+        "bep20": {
+            "configured": bool(os.getenv("ASTER_BSC_RPC_URL")),
+            "confirmations": max(1, int(os.getenv("ASTER_BSC_CONFIRMATIONS", "12"))),
+        },
+        "trc20": {
+            "enabled": tron_enabled,
+            "configured": tron_enabled,
+            "api_key_configured": bool(os.getenv("ASTER_TRON_API_KEY")),
+            "confirmations": max(1, int(os.getenv("ASTER_TRON_CONFIRMATIONS", "1"))),
+        },
+    }
 
 @app.post("/v1/admin/blockchain/scan")
 def admin_blockchain_scan(x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"), dbs: Session = Depends(db)):
