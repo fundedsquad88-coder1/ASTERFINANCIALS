@@ -341,6 +341,7 @@ def test_tron_scan_quarantines_multiple_treasury_events_in_one_transaction(monke
         return {"data": [row(0, 5_000_000), row(1, 7_000_000)], "meta": {}}
 
     monkeypatch.setattr(blockchain, "http_json", fake_http)
+    monkeypatch.setenv("ASTER_TRON_ENABLED", "true")
     monkeypatch.setenv("ASTER_TRON_API_URL", "https://tron.example")
     monkeypatch.setenv("ASTER_TRON_START_MS", "0")
     monkeypatch.setenv("ASTER_TRON_PAGE_SIZE", "10")
