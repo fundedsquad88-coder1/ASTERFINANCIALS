@@ -6,6 +6,14 @@ from app.treasury import BEP20, treasury_address
 
 client = TestClient(app)
 
+def verify_user_kyc(user_id: int):
+    db = SessionLocal()
+    user = db.query(User).filter(User.id == user_id).one()
+    user.kyc_status = "verified"
+    db.commit()
+    db.close()
+
+
 def test_health():
     response = client.get("/health")
     assert response.status_code == 200
@@ -222,6 +230,7 @@ def test_deposit_uses_aster_treasury_and_withdrawal_stays_fail_closed_without_fu
     email = "fund-" + __import__("secrets").token_hex(5) + "@example.com"
     response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
     assert response.status_code == 201
+    verify_user_kyc(response.json()["id"])
     csrf = client.cookies.get("AsterCSRF")
     deposit = client.post("/v1/wallet/deposits",
         headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "fund-deposit-" + __import__("secrets").token_hex(8)},
@@ -242,6 +251,7 @@ def test_deposit_transaction_hash_is_bound_to_authenticated_intent():
     email = "txclaim-" + __import__("secrets").token_hex(5) + "@example.com"
     response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
     assert response.status_code == 201
+    verify_user_kyc(response.json()["id"])
     csrf = client.cookies.get("AsterCSRF")
     created = client.post("/v1/wallet/deposits",
         headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "txclaim-" + __import__("secrets").token_hex(8)},
@@ -285,6 +295,7 @@ def test_withdrawal_rejects_invalid_network_address_and_is_idempotent():
     email = "wd-" + __import__("secrets").token_hex(5) + "@example.com"
     response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
     assert response.status_code == 201
+    verify_user_kyc(response.json()["id"])
     csrf = client.cookies.get("AsterCSRF")
 
     invalid = client.post(
@@ -408,6 +419,7 @@ def test_shared_treasury_deposit_requires_admin_attribution_review(monkeypatch):
     })
     assert registered.status_code == 201
     user_id = registered.json()["id"]
+    verify_user_kyc(user_id)
     csrf = client.cookies.get("AsterCSRF")
     headers = {
         "X-Aster-CSRF": csrf,
@@ -534,6 +546,7 @@ def test_provider_event_id_cannot_be_replayed_with_a_different_payload(monkeypat
         "email": email, "password": "AsterTestPassword!123"
     })
     assert registered.status_code == 201
+    verify_user_kyc(registered.json()["id"])
     csrf = client.cookies.get("AsterCSRF")
     created = client.post(
         "/v1/wallet/deposits",
