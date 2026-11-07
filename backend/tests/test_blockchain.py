@@ -39,7 +39,7 @@ def test_treasury_addresses_are_valid_and_expected():
     assert treasury_address(TRC20) == "TLkgCEs6zFk49FuEhMPzMbPfNjZ5UEGV3b"
 
 
-def test_credit_transfer_requires_exactly_one_matching_intent():
+def test_credit_transfer_credits_only_after_independent_attribution():
     dbs = session()
     user = seed_user(dbs)
     intent = DepositIntent(
@@ -70,7 +70,7 @@ def test_credit_transfer_requires_exactly_one_matching_intent():
     dbs.add(transfer)
     dbs.flush()
 
-    assert blockchain.credit_transfer(dbs, transfer) is True
+    assert blockchain.credit_transfer(dbs, transfer, attribution_verified=True) is True
     dbs.commit()
 
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
@@ -251,12 +251,16 @@ def test_bsc_scan_deduplicates_transfer_and_advances_cursor(monkeypatch):
 
     result = blockchain.bsc_scan(dbs)
     assert result["detected"] == 1
-    assert result["credited"] == 1
+    assert result["credited"] == 0
     assert result["from_block"] == 100
     assert result["cursor"] == 112
 
     dbs.expire_all()
-    assert dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == "0xdeposit:0")) is not None
+    observed = dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == "0xdeposit:0"))
+    assert observed is not None
+    assert observed.status == "quarantined"
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    assert wallet.available == Decimal("0")
     assert dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == BEP20)).cursor == 112
 
 
@@ -304,7 +308,7 @@ def test_tron_scan_follows_fingerprint_pages_without_skipping_timestamp(monkeypa
     result = blockchain.tron_scan(dbs)
     assert result["pages"] == 2
     assert result["detected"] == 2
-    assert result["credited"] == 1
+    assert result["credited"] == 0
     assert result["has_more"] is False
     assert len(calls) == 2
     assert dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == TRC20)).cursor == 1700000000000
@@ -506,4 +510,44 @@ def test_provider_confirmation_cannot_bypass_admin_approval():
             tx_hash="f" * 64,
         )
     assert withdrawal.status == "pending"
+    dbs.close()
+
+
+def test_credit_transfer_quarantines_claimed_hash_without_independent_attribution():
+    dbs = session()
+    user = seed_user(dbs)
+    tx_hash = "0x" + "9" * 64
+    intent = DepositIntent(
+        user_id=user.id,
+        provider="aster",
+        currency="USDT",
+        network=BEP20,
+        amount=Decimal("15"),
+        status="pending",
+        deposit_address=treasury_address(BEP20),
+        tx_hash=tx_hash,
+    )
+    dbs.add(intent)
+    dbs.flush()
+    transfer = BlockchainTransfer(
+        network=BEP20,
+        tx_hash=tx_hash + ":4",
+        log_index=4,
+        block_number=99,
+        token_contract=blockchain.DEFAULT_BSC_USDT,
+        from_address="0x" + "1" * 40,
+        to_address=treasury_address(BEP20),
+        amount=Decimal("15"),
+        confirmations=20,
+        status="confirmed",
+    )
+    dbs.add(transfer)
+    dbs.flush()
+
+    assert blockchain.credit_transfer(dbs, transfer) is False
+    assert transfer.status == "quarantined"
+    assert transfer.deposit_intent_id is None
+    assert intent.status == "pending"
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    assert wallet.available == Decimal("0")
     dbs.close()
