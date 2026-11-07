@@ -22,6 +22,22 @@ Apply migrations inside the API image before using the service:
 Then inspect the API at `http://localhost:8000/health` and view logs with
 `docker compose -f docker-compose.yml logs -f api worker`.
 
+## Connect the Android app
+
+In the app, open **You → Connect account**, enter the deployed HTTPS API base URL,
+and use **Test & save API address** before signing in or creating an account.
+
+For the Android `WebViewAssetLoader` origin, configure the API with:
+- `ALLOWED_ORIGINS=https://appassets.androidplatform.net,https://asterfinancials.netlify.app`
+- `SESSION_COOKIE_SECURE=true`
+- `SESSION_COOKIE_SAMESITE=none`
+- `ALLOWED_HOSTS` containing the actual API hostname
+
+The Android WebView accepts third-party cookies, but the API must still issue
+`Secure; SameSite=None` cookies over HTTPS for cross-site app-to-API sessions.
+For local HTTP development use `SESSION_COOKIE_SECURE=false` and
+`SESSION_COOKIE_SAMESITE=lax`; do not use that configuration on an internet-facing deployment.
+
 The compose stack includes a separate blockchain worker. It does not scan TRON unless
 `ASTER_TRON_ENABLED=true` is explicitly set. BSC scanning remains disabled until
 `ASTER_BSC_RPC_URL` is configured. Keep both disabled in local development unless
@@ -34,7 +50,7 @@ you are deliberately testing against a controlled chain environment.
 - Mutating authenticated requests require the Aster CSRF header.
 - Provider/API/database secrets never belong in the APK.
 - Wallet balances are ledger-backed records; the Android client must never fabricate balances or returns.
-- Auto-Invest activation checks authenticated identity and available balance before creating server state.
+- Auto-Invest activation additionally requires verified KYC and a real execution provider. It returns a fail-closed error until those integrations exist; it does not reserve principal or create a phantom active position.
 - Deposits/withdrawals remain provider-gated. The repository contains public treasury receiving-address configuration only; it contains no signing keys or payout credentials.
 - A member-submitted transaction hash is a lookup hint, not proof of ownership. Shared-treasury deposits are never automatically credited from a hash claim alone.
 - If a transaction contains multiple USDT transfers to the shared treasury, every matching event is quarantined rather than guessing which member owns it.
