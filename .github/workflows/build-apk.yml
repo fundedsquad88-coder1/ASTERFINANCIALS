@@ -11,6 +11,20 @@ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: aster_test
+          POSTGRES_USER: aster
+          POSTGRES_PASSWORD: aster_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aster -d aster_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -66,7 +80,18 @@ jobs:
           set -e
           python -m pip install --upgrade pip
           python -m pip install -r backend/requirements.txt pytest
-          PYTHONPATH=backend pytest -q backend/tests/test_blockchain.py
+          PYTHONPATH=backend pytest -q backend/tests
+
+      - name: Validate PostgreSQL migrations
+        shell: bash
+        run: |
+          set -e
+          cd backend
+          DATABASE_URL=postgresql+psycopg://aster:aster_test_password@localhost:5432/aster_test alembic upgrade head
+          DATABASE_URL=postgresql+psycopg://aster:aster_test_password@localhost:5432/aster_test alembic current
+
+      - name: Build backend container
+        run: docker build -t aster-backend-ci backend
 
       - name: Static source checks
         shell: bash
