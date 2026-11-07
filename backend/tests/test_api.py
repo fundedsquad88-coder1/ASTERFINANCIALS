@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 from app.main import app, SessionLocal, AutoInvest, Wallet
+from app.funding import DepositIntent, BlockchainTransfer
+from app.treasury import BEP20, treasury_address
 
 client = TestClient(app)
 
@@ -257,6 +259,26 @@ def test_deposit_transaction_hash_is_bound_to_authenticated_intent():
     fetched = client.get(f"/v1/wallet/deposits/{deposit_id}")
     assert fetched.status_code == 200
     assert fetched.json()["tx_hash"] == tx_hash
+
+def test_submitted_hash_reconciles_transfer_seen_before_claim():
+    email = "lateclaim-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+    created = client.post("/v1/wallet/deposits", headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "lateclaim-" + __import__("secrets").token_hex(8)}, json={"currency":"USDT","network":"BEP20","expected_amount":"12"})
+    assert created.status_code == 201
+    tx_hash = "0x" + "f" * 64
+    dbs = SessionLocal()
+    try:
+        dbs.add(BlockchainTransfer(network=BEP20, tx_hash=tx_hash + ":0", log_index=0, block_number=100, token_contract="0x55d398326f99059fF775485246999027B3197955", from_address="0x" + "1" * 40, to_address=treasury_address(BEP20), amount=12, confirmations=20, status="quarantined"))
+        dbs.commit()
+    finally:
+        dbs.close()
+    submitted = client.post(f"/v1/wallet/deposits/{created.json()['id']}/transaction", headers={"X-Aster-CSRF": csrf}, json={"tx_hash": tx_hash})
+    assert submitted.status_code == 200
+    wallet = client.get("/v1/wallet")
+    assert wallet.status_code == 200
+    assert float(wallet.json()["available"]) == 12.0
 
 
 def test_treasury_deposit_addresses_expose_only_public_receiving_addresses():
