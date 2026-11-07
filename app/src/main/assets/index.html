@@ -464,7 +464,7 @@ async function refreshAccountData(){
  const balance=$('#wallet .wallet-hero .balance');
  if(balance)balance.textContent=Number(wallet.available||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
  const walletStatus=$('#wallet .wallet-status');
- if(walletStatus)walletStatus.textContent='Account connected';
+ if(walletStatus)walletStatus.innerHTML='<i></i> Account connected';
  const active=Array.isArray(positions)?positions.filter(x=>x.status==='active').length:0;
  const homeActive=[...$('#home').querySelectorAll('.card')].find(x=>/Active strategies/i.test(x.textContent||''));
  if(homeActive?.querySelector('.stat'))homeActive.querySelector('.stat').textContent=String(active);
@@ -539,7 +539,7 @@ function openConnectSheet(){
   sessionStorage.removeItem('aster_csrf');localStorage.removeItem('aster_csrf');
   updateAccountIdentity(null);
   const balance=$('#wallet .wallet-hero .balance');if(balance)balance.textContent='0.00';
-  const walletStatus=$('#wallet .wallet-status');if(walletStatus)walletStatus.textContent='Account not connected';
+  const walletStatus=$('#wallet .wallet-status');if(walletStatus)walletStatus.innerHTML='<i></i> Account not connected';
   state.textContent='Signed out on this device.';
   showToast('Signed out');
  };
