@@ -25,7 +25,7 @@ if SESSION_COOKIE_SAMESITE not in {"lax", "strict", "none"}:
     raise RuntimeError("SESSION_COOKIE_SAMESITE must be lax, strict, or none")
 if SESSION_COOKIE_SAMESITE == "none" and not COOKIE_SECURE:
     raise RuntimeError("SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true")
-SESSION_COOKIE_NAME = "AsterSession"
+SESSION_COOKIE_NAME = "__Host-AsterSession" if COOKIE_SECURE else "AsterSession"
 ALLOWED_ORIGINS = [
     x.strip() for x in os.getenv(
         "ALLOWED_ORIGINS",
