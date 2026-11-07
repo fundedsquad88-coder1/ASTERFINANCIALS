@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
-from app.main import app, SessionLocal, AutoInvest, Wallet, BlockchainTransfer, DepositIntent
+from app.main import app, SessionLocal, AutoInvest, Wallet
+from app.funding import BlockchainTransfer, DepositIntent
 from app.blockchain import DEFAULT_BSC_USDT
 from app.treasury import BEP20, treasury_address
 
