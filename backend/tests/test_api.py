@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from app.main import app, SessionLocal, AutoInvest, Wallet, User
-from app.funding import BlockchainTransfer, DepositIntent
+from app.funding import BlockchainTransfer, DepositIntent, WithdrawalRequest
 from app.blockchain import DEFAULT_BSC_USDT
 from app.treasury import BEP20, treasury_address
 
@@ -601,3 +601,115 @@ def test_production_status_does_not_overstate_unimplemented_providers(monkeypatc
     assert body["valuation_provider"] is False
     assert body["kyc_aml_provider"] is False
     assert body["production_ready"] is False
+
+
+def test_unverified_account_cannot_create_deposit_or_withdrawal(monkeypatch):
+    email = "kyc-gate-" + __import__("secrets").token_hex(5) + "@example.com"
+    registered = client.post("/v1/auth/register", json={
+        "email": email, "password": "AsterTestPassword!123"
+    })
+    assert registered.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+
+    deposit = client.post(
+        "/v1/wallet/deposits",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "kyc-dep-" + __import__("secrets").token_hex(8)},
+        json={"currency": "USDT", "network": "BEP20"},
+    )
+    assert deposit.status_code == 403
+    assert "Identity verification" in deposit.json()["detail"]
+
+    withdrawal = client.post(
+        "/v1/wallet/withdrawals",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "kyc-wd-" + __import__("secrets").token_hex(8)},
+        json={"currency": "USDT", "network": "BEP20", "address": "0x" + "1" * 40, "amount": "1"},
+    )
+    assert withdrawal.status_code == 403
+    assert "Identity verification" in withdrawal.json()["detail"]
+
+
+def test_signed_deposit_webhook_cannot_credit_unverified_member(monkeypatch):
+    import hashlib, hmac, json
+    monkeypatch.setenv("ASTER_FUNDING_WEBHOOK_SECRET", "K" * 40)
+    email = "kyc-webhook-" + __import__("secrets").token_hex(5) + "@example.com"
+    registered = client.post("/v1/auth/register", json={
+        "email": email, "password": "AsterTestPassword!123"
+    })
+    assert registered.status_code == 201
+    user_id = registered.json()["id"]
+    verify_user_kyc(user_id)
+    csrf = client.cookies.get("AsterCSRF")
+    created = client.post(
+        "/v1/wallet/deposits",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "kyc-webhook-intent-" + __import__("secrets").token_hex(8)},
+        json={"currency": "USDT", "network": "BEP20", "expected_amount": "10"},
+    )
+    assert created.status_code == 201
+
+    db = SessionLocal()
+    user = db.query(User).filter(User.id == user_id).one()
+    user.kyc_status = "unverified"
+    db.commit()
+    wallet = db.query(Wallet).filter(Wallet.user_id == user_id).one()
+    db.close()
+
+    payload = {
+        "event_id": "evt-kyc-" + __import__("secrets").token_hex(5),
+        "event_type": "deposit.confirmed",
+        "provider_reference": created.json()["provider_reference"],
+        "status": "confirmed",
+        "amount": "10",
+        "currency": "USDT",
+        "network": "BEP20",
+    }
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+    signature = hmac.new(b"K" * 40, raw, hashlib.sha256).hexdigest()
+    response = client.post(
+        "/v1/wallet/provider/webhook",
+        content=raw,
+        headers={"Content-Type": "application/json", "X-Aster-Provider-Signature": signature},
+    )
+    assert response.status_code == 409
+    assert "identity verification" in response.json()["detail"].lower()
+
+    db = SessionLocal()
+    wallet = db.query(Wallet).filter(Wallet.user_id == user_id).one()
+    intent = db.query(DepositIntent).filter(DepositIntent.id == created.json()["id"]).one()
+    assert wallet.available == 0
+    assert intent.status == "pending"
+    db.close()
+
+
+def test_admin_cannot_approve_unverified_withdrawal(monkeypatch):
+    email = "kyc-admin-wd-" + __import__("secrets").token_hex(5) + "@example.com"
+    registered = client.post("/v1/auth/register", json={
+        "email": email, "password": "AsterTestPassword!123"
+    })
+    assert registered.status_code == 201
+    user_id = registered.json()["id"]
+    monkeypatch.setenv("ASTER_ADMIN_API_KEY", "J" * 40)
+    db = SessionLocal()
+    row = WithdrawalRequest(
+        user_id=user_id,
+        provider="aster-treasury",
+        provider_reference="AST-WD-KYC-" + __import__("secrets").token_hex(5),
+        currency="USDT",
+        network="BEP20",
+        address="0x" + "1" * 40,
+        amount=Decimal("1"),
+        status="pending",
+    )
+    db.add(row)
+    db.commit()
+    withdrawal_id = row.id
+    db.close()
+
+    response = client.post(
+        f"/v1/admin/withdrawals/{withdrawal_id}/approve",
+        headers={"X-Aster-Admin-Key": "J" * 40},
+    )
+    assert response.status_code == 403
+    db = SessionLocal()
+    saved = db.query(WithdrawalRequest).filter(WithdrawalRequest.id == withdrawal_id).one()
+    assert saved.status == "pending"
+    db.close()
