@@ -61,7 +61,7 @@ def test_deposit_to_withdrawal_dry_run_lifecycle():
     db.add(transfer)
     db.flush()
 
-    assert blockchain.credit_transfer(db, transfer) is True
+    assert blockchain.credit_transfer(db, transfer, attribution_verified=True) is True
     db.commit()
     db.refresh(wallet)
     assert wallet.available == Decimal("25.00000000")
