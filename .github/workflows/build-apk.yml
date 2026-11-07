@@ -67,6 +67,10 @@ jobs:
           test -s app/src/main/assets/index.html
           test -s app/src/main/java/com/asterfinancials/app/MainActivity.java
           grep -q 'WebViewAssetLoader' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q '0xd7F76be1a1c4aC25dAf2DDAbFd51E15AB736012c' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q 'TLkgCEs6zFk49FuEhMPzMbPfNjZ5UEGV3b' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          ! grep -q '0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          ! grep -q 'TMrK4d1r2cGye2TwX3JfjCaUDWwZybaoxD' app/src/main/java/com/asterfinancials/app/MainActivity.java
           grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
           grep -q 'android.permission.VIBRATE' app/src/main/AndroidManifest.xml
           ! grep -qiE 'api\.binance\.com|api[1-4]\.binance' app/src/main/java/com/asterfinancials/app/MainActivity.java
