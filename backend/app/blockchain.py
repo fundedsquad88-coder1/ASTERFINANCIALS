@@ -332,7 +332,12 @@ def tron_scan(dbs: Session) -> dict:
         "credited": credited, "has_more": False,
     }
 
-def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
+def credit_transfer(
+    dbs: Session,
+    transfer: BlockchainTransfer,
+    *,
+    attribution_verified: bool = False,
+) -> bool:
     if transfer.status != "confirmed":
         return False
 
@@ -374,6 +379,26 @@ def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
                 "observed_amount": str(transfer.amount),
                 "tx_hash": transfer.tx_hash,
                 "reason": "amount_mismatch",
+            }),
+        ))
+        return False
+
+    # A member-submitted transaction hash proves that a transfer exists, but
+    # does not prove who owns it. Shared treasury deposits stay quarantined
+    # unless an independently verified gateway/address/wallet allocation has
+    # authorized this exact member-to-transfer association.
+    if not attribution_verified:
+        transfer.status = "quarantined"
+        dbs.add(AuditEvent(
+            user_id=intent.user_id,
+            event_type="deposit_quarantined",
+            metadata_json=json.dumps({
+                "transfer_id": transfer.id,
+                "deposit_intent_id": intent.id,
+                "network": transfer.network,
+                "tx_hash": transfer.tx_hash,
+                "amount": str(transfer.amount),
+                "reason": "member_transaction_claim_is_not_independent_attribution",
             }),
         ))
         return False
