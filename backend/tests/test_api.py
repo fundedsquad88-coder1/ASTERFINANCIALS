@@ -233,6 +233,32 @@ def test_deposit_uses_aster_treasury_and_withdrawal_stays_fail_closed_without_fu
     assert withdrawal.json()["detail"] == "Insufficient available balance"
 
 
+def test_deposit_transaction_hash_is_bound_to_authenticated_intent():
+    email = "txclaim-" + __import__("secrets").token_hex(5) + "@example.com"
+    response = client.post("/v1/auth/register", json={"email": email, "password": "AsterTestPassword!123"})
+    assert response.status_code == 201
+    csrf = client.cookies.get("AsterCSRF")
+    created = client.post("/v1/wallet/deposits",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "txclaim-" + __import__("secrets").token_hex(8)},
+        json={"currency":"USDT","network":"BEP20","expected_amount":"25"})
+    assert created.status_code == 201
+    deposit_id = created.json()["id"]
+    invalid = client.post(f"/v1/wallet/deposits/{deposit_id}/transaction",
+        headers={"X-Aster-CSRF": csrf}, json={"tx_hash":"not-a-hash"})
+    assert invalid.status_code == 422
+    tx_hash = "0x" + "a" * 64
+    submitted = client.post(f"/v1/wallet/deposits/{deposit_id}/transaction",
+        headers={"X-Aster-CSRF": csrf}, json={"tx_hash":tx_hash})
+    assert submitted.status_code == 200
+    assert submitted.json()["status"] == "transaction_submitted"
+    duplicate = client.post(f"/v1/wallet/deposits/{deposit_id}/transaction",
+        headers={"X-Aster-CSRF": csrf}, json={"tx_hash":"0x" + "b" * 64})
+    assert duplicate.status_code == 409
+    fetched = client.get(f"/v1/wallet/deposits/{deposit_id}")
+    assert fetched.status_code == 200
+    assert fetched.json()["tx_hash"] == tx_hash
+
+
 def test_treasury_deposit_addresses_expose_only_public_receiving_addresses():
     response = client.get("/v1/wallet/deposit-addresses")
     assert response.status_code == 200
