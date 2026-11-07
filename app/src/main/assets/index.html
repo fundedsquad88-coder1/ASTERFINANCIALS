@@ -436,6 +436,27 @@ function updateAccountIdentity(me){
  if(name)name.textContent=me?.email||'Aster member';
  if(meta)meta.textContent=me?'Connected · KYC '+(me.kyc_status||'unknown'):'Account not connected';
 }
+function resetAccountUI(){
+ updateAccountIdentity(null);
+ const balance=$('#wallet .wallet-hero .balance');if(balance)balance.textContent='0.00';
+ const walletStatus=$('#wallet .wallet-status');if(walletStatus)walletStatus.innerHTML='<i></i> Account not connected';
+ renderWalletActivity([]);
+ const homeActive=[...$('#home').querySelectorAll('.card')].find(x=>/Active strategies/i.test(x.textContent||''));
+ if(homeActive?.querySelector('.stat'))homeActive.querySelector('.stat').textContent='0';
+ const investHead=[...$('#invest').querySelectorAll('.section-head')].find(x=>/Active strategies/i.test(x.textContent||''));
+ if(investHead?.nextElementSibling)investHead.nextElementSibling.innerHTML='<div class="small muted">Connect your account to load active strategies.</div>';
+ ['insightTotal','insightAvailable','insightInvested','insightInvestedRow'].forEach(id=>{const el=$('#'+id);if(el)el.textContent='0.00 USDT'});
+ const bar=$('#insightBar');if(bar)bar.style.width='0%';
+ const strategies=$('#insightStrategies');if(strategies)strategies.textContent='Connect your account to load strategies.';
+ teamRows=[];teamCode='';teamLevel='all';
+ const code=$('#teamReferralCode');if(code)code.textContent='Connect account';
+ const hint=$('#teamCodeHint');if(hint)hint.textContent='Sign in to view your referral code.';
+ const total=$('#teamTotal');if(total)total.textContent='0';
+ const levels=$('#teamLevels');if(levels)levels.textContent='0';
+ const count=$('#teamMemberCount');if(count)count.textContent='0 members';
+ const members=$('#teamMembers');if(members)members.textContent='Connect your account to load your team.';
+ const copy=$('#copyTeamCode');if(copy)copy.disabled=true;
+}
 function renderWalletActivity(rows){
  const host=$('#wallet .wallet-history'); if(!host)return;
  const old=host.querySelector('.empty-activity,.activity-list');
@@ -537,9 +558,7 @@ function openConnectSheet(){
  $('#authLogout').onclick=async()=>{
   try{if(apiBase())await apiCall('/v1/auth/logout',{method:'POST'});}catch(e){}
   sessionStorage.removeItem('aster_csrf');localStorage.removeItem('aster_csrf');
-  updateAccountIdentity(null);
-  const balance=$('#wallet .wallet-hero .balance');if(balance)balance.textContent='0.00';
-  const walletStatus=$('#wallet .wallet-status');if(walletStatus)walletStatus.innerHTML='<i></i> Account not connected';
+  resetAccountUI();
   state.textContent='Signed out on this device.';
   showToast('Signed out');
  };
