@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.webkit.JavascriptInterface;
+import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -47,6 +48,7 @@ public class MainActivity extends Activity {
                 .build();
 
         webView = new WebView(this);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         webView.setBackgroundColor(Color.rgb(11,10,18));
         webView.setWebViewClient(new SecureWebViewClient());
 
@@ -320,6 +322,27 @@ public class MainActivity extends Activity {
         private String quote(String value) {
             return JSONObject.quote(value == null ? "" : value);
         }
+    }
+
+    @Override public void onBackPressed() {
+        if (webView == null) {
+            super.onBackPressed();
+            return;
+        }
+        webView.evaluateJavascript(
+                "(function(){"
+                + "var back=document.getElementById('sheetBack');"
+                + "if(back&&back.classList.contains('on')){back.classList.remove('on');return 'handled';}"
+                + "var active=document.querySelector('.screen.on');"
+                + "if(active&&active.id!=='home'&&window.asterNavigate){window.asterNavigate('home');return 'handled';}"
+                + "return 'exit';"
+                + "})()",
+                value -> {
+                    if (value == null || "\\"exit\\"".equals(value)) {
+                        MainActivity.super.onBackPressed();
+                    }
+                }
+        );
     }
 
     @Override protected void onDestroy() {
