@@ -306,3 +306,52 @@ def test_tron_scan_follows_fingerprint_pages_without_skipping_timestamp(monkeypa
     assert result["has_more"] is False
     assert len(calls) == 2
     assert dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == TRC20)).cursor == 1700000000000
+
+
+def test_tron_scan_quarantines_multiple_treasury_events_in_one_transaction(monkeypatch):
+    dbs = session()
+    user = seed_user(dbs)
+    tx_hash = "f" * 64
+    dbs.add(DepositIntent(
+        user_id=user.id,
+        provider="aster",
+        currency="USDT",
+        network=TRC20,
+        amount=Decimal("5.000000"),
+        status="pending",
+        deposit_address=treasury_address(TRC20),
+        tx_hash=tx_hash,
+    ))
+    dbs.flush()
+
+    def row(event_index, value):
+        return {
+            "transaction_id": tx_hash,
+            "event_index": event_index,
+            "block_timestamp": 1700000001000,
+            "token_info": {"address": blockchain.DEFAULT_TRON_USDT},
+            "to": treasury_address(TRC20),
+            "from": "T" + "A" * 33,
+            "value": str(value),
+            "block": 124,
+        }
+
+    def fake_http(url, payload=None, headers=None):
+        return {"data": [row(0, 5_000_000), row(1, 7_000_000)], "meta": {}}
+
+    monkeypatch.setattr(blockchain, "http_json", fake_http)
+    monkeypatch.setenv("ASTER_TRON_API_URL", "https://tron.example")
+    monkeypatch.setenv("ASTER_TRON_START_MS", "0")
+    monkeypatch.setenv("ASTER_TRON_PAGE_SIZE", "10")
+
+    result = blockchain.tron_scan(dbs)
+    transfers = dbs.scalars(
+        select(BlockchainTransfer).where(BlockchainTransfer.network == TRC20)
+    ).all()
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+
+    assert result["detected"] == 2
+    assert result["credited"] == 0
+    assert {item.tx_hash for item in transfers} == {f"{tx_hash}:0", f"{tx_hash}:1"}
+    assert all(item.status == "quarantined" for item in transfers)
+    assert wallet.available == Decimal("0")
