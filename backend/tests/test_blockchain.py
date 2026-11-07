@@ -241,3 +241,51 @@ def test_bsc_scan_deduplicates_transfer_and_advances_cursor(monkeypatch):
     dbs.expire_all()
     assert dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == "0xdeposit:0")) is not None
     assert dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == BEP20)).cursor == 112
+
+
+
+def test_tron_scan_follows_fingerprint_pages_without_skipping_timestamp(monkeypatch):
+    dbs = session()
+    user = seed_user(dbs)
+    dbs.add(DepositIntent(
+        user_id=user.id,
+        provider="aster",
+        currency="USDT",
+        network=TRC20,
+        amount=Decimal("5.000000"),
+        status="pending",
+        deposit_address=treasury_address(TRC20),
+    ))
+    dbs.flush()
+
+    def row(tx_hash):
+        return {
+            "transaction_id": tx_hash,
+            "block_timestamp": 1700000000000,
+            "token_info": {"address": blockchain.DEFAULT_TRON_USDT},
+            "to": treasury_address(TRC20),
+            "from": "T" + "A" * 33,
+            "value": "5000000",
+            "block": 123,
+        }
+
+    calls = []
+    def fake_http(url, payload=None, headers=None):
+        calls.append(url)
+        if len(calls) == 1:
+            return {"data": [row("trx-page-1")], "meta": {"fingerprint": "next-page-token"}}
+        assert "fingerprint=next-page-token" in url
+        return {"data": [row("trx-page-2")], "meta": {}}
+
+    monkeypatch.setattr(blockchain, "http_json", fake_http)
+    monkeypatch.setenv("ASTER_TRON_API_URL", "https://tron.example")
+    monkeypatch.setenv("ASTER_TRON_START_MS", "0")
+    monkeypatch.setenv("ASTER_TRON_PAGE_SIZE", "1")
+
+    result = blockchain.tron_scan(dbs)
+    assert result["pages"] == 2
+    assert result["detected"] == 2
+    assert result["credited"] == 1
+    assert result["has_more"] is False
+    assert len(calls) == 2
+    assert dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == TRC20)).cursor == 1700000000000
