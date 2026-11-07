@@ -237,20 +237,18 @@ def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
     if transfer.status != "confirmed":
         return False
 
-    pending = dbs.scalars(
+    # A shared treasury address cannot safely identify a member from amount alone.
+    # Credit only the exact transaction hash the authenticated member submitted.
+    intent = dbs.scalar(
         select(DepositIntent).where(
             DepositIntent.network == transfer.network,
             DepositIntent.currency == "USDT",
             DepositIntent.status == "pending",
             DepositIntent.deposit_address == treasury_address(transfer.network),
-            # An amount is optional on the deposit form. If supplied, it must
-            # match exactly; otherwise a single unambiguous pending intent is
-            # required before funds can be credited.
-            (DepositIntent.amount.is_(None) | (DepositIntent.amount == transfer.amount)),
-        )
-    ).all()
-
-    if len(pending) != 1:
+            DepositIntent.tx_hash == transfer.tx_hash.lower(),
+        ).with_for_update()
+    )
+    if not intent:
         transfer.status = "quarantined"
         dbs.add(AuditEvent(
             user_id=None,
@@ -260,12 +258,27 @@ def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
                 "network": transfer.network,
                 "amount": str(transfer.amount),
                 "tx_hash": transfer.tx_hash,
-                "reason": "no_unique_matching_intent",
+                "reason": "no_exact_member_transaction_claim",
             }),
         ))
         return False
 
-    intent = pending[0]
+    if intent.amount is not None and intent.amount != transfer.amount:
+        transfer.status = "quarantined"
+        dbs.add(AuditEvent(
+            user_id=intent.user_id,
+            event_type="deposit_quarantined",
+            metadata_json=json.dumps({
+                "transfer_id": transfer.id,
+                "deposit_intent_id": intent.id,
+                "expected_amount": str(intent.amount),
+                "observed_amount": str(transfer.amount),
+                "tx_hash": transfer.tx_hash,
+                "reason": "amount_mismatch",
+            }),
+        ))
+        return False
+
     if intent.amount is None:
         intent.amount = transfer.amount
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == intent.user_id).with_for_update())
