@@ -218,6 +218,7 @@ def test_bsc_scan_deduplicates_transfer_and_advances_cursor(monkeypatch):
         amount=Decimal("12.50000000"),
         status="pending",
         deposit_address=treasury_address(BEP20),
+        tx_hash="0xdeposit",
     ))
     dbs.flush()
 
