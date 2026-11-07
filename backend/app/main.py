@@ -1107,17 +1107,16 @@ def admin_approve_deposit_attribution(
 
     intent = dbs.scalar(
         select(DepositIntent)
-        .where(
-            DepositIntent.id == body.deposit_intent_id,
-            DepositIntent.status == "pending",
-        )
+        .where(DepositIntent.id == body.deposit_intent_id)
         .with_for_update()
     )
     if not intent:
-        raise HTTPException(404, "Pending deposit intent not found")
+        raise HTTPException(404, "Deposit intent not found")
 
     if transfer.status == "credited" and transfer.deposit_intent_id == intent.id:
         return {"id": transfer.id, "status": "credited", "duplicate": True}
+    if intent.status != "pending":
+        raise HTTPException(409, f"Deposit intent cannot be approved from {intent.status}")
     if transfer.status not in {"quarantined", "confirmed"}:
         raise HTTPException(409, f"Transfer cannot be approved from {transfer.status}")
 
