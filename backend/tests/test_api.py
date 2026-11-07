@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from decimal import Decimal
 from app.main import app, SessionLocal, AutoInvest, Wallet, User
 from app.funding import BlockchainTransfer, DepositIntent, WithdrawalRequest
 from app.blockchain import DEFAULT_BSC_USDT
