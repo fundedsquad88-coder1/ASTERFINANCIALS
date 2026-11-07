@@ -227,8 +227,8 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface public String treasuryConfig() {
             return "{\"custody\":\"Aster treasury\",\"networks\":["
-                    + "{\"network\":\"BEP20\",\"label\":\"USDT · BEP20\",\"name\":\"BNB Smart Chain\",\"address\":\"0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5\"},"
-                    + "{\"network\":\"TRC20\",\"label\":\"USDT · TRC20\",\"name\":\"Tron\",\"address\":\"TMrK4d1r2cGye2TwX3JfjCaUDWwZybaoxD\"}"
+                    + "{\"network\":\"BEP20\",\"label\":\"USDT · BEP20\",\"name\":\"BNB Smart Chain\",\"address\":\"0xd7F76be1a1c4aC25dAf2DDAbFd51E15AB736012c\"},"
+                    + "{\"network\":\"TRC20\",\"label\":\"USDT · TRC20\",\"name\":\"Tron\",\"address\":\"TLkgCEs6zFk49FuEhMPzMbPfNjZ5UEGV3b\"}"
                     + "]}";
         }
 
