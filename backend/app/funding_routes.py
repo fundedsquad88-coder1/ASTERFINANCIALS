@@ -192,6 +192,24 @@ def submit_deposit_transaction(
         raise HTTPException(409, "This transaction hash is already linked to a deposit")
     network_hint.tx_hash = normalized_hash
     network_hint.updated_at = datetime.now(timezone.utc)
+
+    # Reconcile a transfer the chain worker may have observed before the user submitted its hash.
+    from app.blockchain import credit_transfer
+    from app.funding import BlockchainTransfer
+    if network_hint.network == "BEP20":
+        observed = dbs.scalars(select(BlockchainTransfer).where(
+            BlockchainTransfer.network == network_hint.network,
+            BlockchainTransfer.tx_hash.like(normalized_hash + ":%"),
+        )).all()
+    else:
+        observed = dbs.scalars(select(BlockchainTransfer).where(
+            BlockchainTransfer.network == network_hint.network,
+            BlockchainTransfer.tx_hash == normalized_hash,
+        )).all()
+    if len(observed) == 1 and observed[0].status in {"quarantined", "confirmed"}:
+        observed[0].status = "confirmed"
+        credit_transfer(dbs, observed[0])
+
     dbs.add(AuditEvent(
         user_id=user.id,
         event_type="deposit_transaction_submitted",
