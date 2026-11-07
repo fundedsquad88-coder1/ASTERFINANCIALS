@@ -245,7 +245,7 @@ def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
             DepositIntent.currency == "USDT",
             DepositIntent.status == "pending",
             DepositIntent.deposit_address == treasury_address(transfer.network),
-            DepositIntent.tx_hash == transfer.tx_hash.lower(),
+            DepositIntent.tx_hash == transfer.tx_hash.split(":", 1)[0].lower(),
         ).with_for_update()
     )
     if not intent:
