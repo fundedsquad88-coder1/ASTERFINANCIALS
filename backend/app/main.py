@@ -267,7 +267,7 @@ class AuditEvent(Base):
     metadata_json: Mapped[str] = mapped_column(String(4000), default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-from app.funding import BlockchainTransfer, DepositIntent, WithdrawalRequest, ProviderEvent
+from app.funding import DepositIntent, WithdrawalRequest, ProviderEvent
 
 if os.getenv("ASTER_SKIP_CREATE_ALL", "false").lower() != "true":
     Base.metadata.create_all(engine)
@@ -1001,6 +1001,7 @@ def admin_operations_summary(
     dbs: Session = Depends(db),
 ):
     _require_admin(x_aster_admin_key)
+    from app.funding import BlockchainTransfer
 
     def counts(model):
         rows = dbs.execute(
@@ -1031,6 +1032,7 @@ def admin_blockchain_quarantine(
     dbs: Session = Depends(db),
 ):
     _require_admin(x_aster_admin_key)
+    from app.funding import BlockchainTransfer
     if limit < 1 or limit > 500:
         raise HTTPException(422, "limit must be between 1 and 500")
     rows = dbs.scalars(
@@ -1095,6 +1097,7 @@ def admin_approve_deposit_attribution(
 ):
     _require_admin(x_aster_admin_key)
     from app.blockchain import credit_transfer
+    from app.funding import BlockchainTransfer
     from app.treasury import treasury_address
 
     transfer = dbs.scalar(
