@@ -355,3 +355,53 @@ def test_tron_scan_quarantines_multiple_treasury_events_in_one_transaction(monke
     assert {item.tx_hash for item in transfers} == {f"{tx_hash}:0", f"{tx_hash}:1"}
     assert all(item.status == "quarantined" for item in transfers)
     assert wallet.available == Decimal("0")
+
+
+def test_nine_level_referral_schedule_totals_21_percent_and_is_idempotent():
+    dbs = session()
+    users = []
+    for index in range(10):
+        user = User(
+            email=f"nine-level-{index}@example.com",
+            password_hash="test",
+            referral_code=f"NINE{index}",
+            status="active",
+            kyc_status="verified",
+        )
+        dbs.add(user)
+        dbs.flush()
+        users.append(user)
+
+    # users[0] is level 1; users[9] is the depositing member.
+    for parent, child in zip(users[:-1], users[1:]):
+        dbs.add(Referral(referrer_user_id=parent.id, referred_user_id=child.id))
+    dbs.flush()
+
+    first = accrue_referral_commissions(
+        dbs,
+        depositing_user_id=users[9].id,
+        deposit_amount=Decimal("100"),
+        source_reference="DEP-NINE-LEVEL",
+    )
+    duplicate = accrue_referral_commissions(
+        dbs,
+        depositing_user_id=users[9].id,
+        deposit_amount=Decimal("100"),
+        source_reference="DEP-NINE-LEVEL",
+    )
+    dbs.commit()
+
+    expected = [
+        Decimal("10"), Decimal("3"), Decimal("2"), Decimal("1"),
+        Decimal("1"), Decimal("1"), Decimal("1"), Decimal("1"), Decimal("1"),
+    ]
+    assert [Decimal(item["amount"]) for item in first] == expected
+    assert sum((Decimal(item["amount"]) for item in first), Decimal("0")) == Decimal("21")
+    assert [int(item["level"]) for item in first] == list(range(1, 10))
+    assert duplicate == []
+    pending_entries = dbs.scalars(
+        select(__import__("app.main", fromlist=["LedgerEntry"]).LedgerEntry)
+        .where(__import__("app.main", fromlist=["LedgerEntry"]).LedgerEntry.kind == "referral_bonus")
+    ).all()
+    assert len(pending_entries) == 9
+    assert all(item.status == "pending" for item in pending_entries)
