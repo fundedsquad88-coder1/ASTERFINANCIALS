@@ -350,3 +350,46 @@ def test_admin_autoinvest_execute_is_fail_closed_by_default(monkeypatch):
     )
     assert response.status_code == 503
     assert "execution provider is not configured" in response.json()["detail"]
+
+
+def test_admin_operations_summary_and_quarantine_are_protected(monkeypatch):
+    monkeypatch.setenv("ASTER_ADMIN_API_KEY", "D" * 32)
+    unauthorized = client.get("/v1/admin/operations/summary")
+    assert unauthorized.status_code == 403
+
+    summary = client.get(
+        "/v1/admin/operations/summary",
+        headers={"X-Aster-Admin-Key": "D" * 32},
+    )
+    assert summary.status_code == 200
+    body = summary.json()
+    assert "deposits" in body
+    assert "withdrawals" in body
+    assert "blockchain_transfers" in body
+    assert body["referral_settlement_enabled"] is False
+
+    invalid_limit = client.get(
+        "/v1/admin/blockchain/quarantine?limit=0",
+        headers={"X-Aster-Admin-Key": "D" * 32},
+    )
+    assert invalid_limit.status_code == 422
+
+    quarantine = client.get(
+        "/v1/admin/blockchain/quarantine?limit=10",
+        headers={"X-Aster-Admin-Key": "D" * 32},
+    )
+    assert quarantine.status_code == 200
+    assert isinstance(quarantine.json()["items"], list)
+
+
+def test_admin_pending_referral_queue_requires_admin_key(monkeypatch):
+    monkeypatch.setenv("ASTER_ADMIN_API_KEY", "E" * 32)
+    unauthorized = client.get("/v1/admin/referrals/pending")
+    assert unauthorized.status_code == 403
+
+    response = client.get(
+        "/v1/admin/referrals/pending?limit=10",
+        headers={"X-Aster-Admin-Key": "E" * 32},
+    )
+    assert response.status_code == 200
+    assert isinstance(response.json()["items"], list)
