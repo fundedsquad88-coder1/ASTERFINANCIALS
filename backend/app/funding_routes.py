@@ -145,7 +145,7 @@ def create_deposit(
         "deposit_address": intent.deposit_address,
         "provider_reference": intent.provider_reference,
         "expected_amount": str(intent.amount) if intent.amount is not None else None,
-        "credit_rule": "Credit only after the blockchain transfer is independently verified.",
+        "credit_rule": "Credit only after both the transfer and the member's ownership of that transfer are independently verified.",
     }
     dbs.add(
         IdempotencyKey(
@@ -217,7 +217,7 @@ def submit_deposit_transaction(
     ))
     dbs.commit()
     return {"id": network_hint.id, "status": "transaction_submitted", "tx_hash": normalized_hash,
-            "message": "Transaction submitted for independent blockchain verification."}
+            "message": "Transaction submitted. Because this is a shared treasury address, funds remain uncredited until member ownership is independently confirmed."}
 
 @router.get("/v1/wallet/deposits/{deposit_id}")
 def get_deposit(
