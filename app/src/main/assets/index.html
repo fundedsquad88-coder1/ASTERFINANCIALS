@@ -415,30 +415,164 @@ $('#copyTeamCode').onclick=()=>{if(!teamCode)return;if(window.AsterNative?.copyT
 $('#teamLevelTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-level]');if(!b)return;teamLevel=b.dataset.level;$$('button',$('#teamLevelTabs')).forEach(x=>x.classList.toggle('on',x===b));renderTeam()});
 
 function openSheet(title,body){$('#sheet').innerHTML='<div class="grab"></div><h3>'+title+'</h3>'+body+'<button class="primary" id="closeSheet" style="margin-top:14px">Close</button>';$('#sheetBack').classList.add('on');$('#closeSheet').onclick=()=>$('#sheetBack').classList.remove('on')}
-$('#review').onclick=()=>openSheet('Review Auto-Invest','<p>Strategy: <b>'+$('.invest-package.on').textContent.trim()+'</b><br>Amount: <b>'+$('#amtLabel').textContent+'</b><br>Illustrative daily gain (2.85%): <b>'+$('#projValue').textContent+'</b></p><div class="notice">This is an illustrative example only, not a guaranteed return. This is a review screen only; activation requires a secure authenticated Aster backend.</div>');
-$('#connect').onclick=()=>openSheet('Connect your Aster account','<p>Authentication, KYC/AML checks, account ledger and secure wallet rails belong in the production backend. This UI is ready for that integration but does not invent credentials or balances.</p><button class="secondary" id="request">Continue</button>');
+
+$('#review').onclick=()=>{
+ const strategy=$('.invest-package.on').dataset.strategy||'Core Crypto';
+ const amount=Number($('#amtChips .chip.on')?.dataset.a||10);
+ openSheet('Review Auto-Invest','<p>Package: <b>'+strategy+'</b><br>Principal: <b>'+amount.toFixed(2)+' USDT</b></p><div class="notice">The 2.85% daily figure is an unverified illustration, not a return forecast or promise. Activation is blocked until Aster has a verified execution and valuation provider. No funds will be moved by this review.</div><button class="primary" id="activateAutoInvest" style="margin-top:12px">Request activation</button><div class="small muted" id="activationState" style="margin-top:10px" aria-live="polite"></div>');
+ $('#activateAutoInvest').onclick=async()=>{
+  const state=$('#activationState');
+  try{
+   const result=await apiCall('/v1/autoinvest',{method:'POST',headers:{'Idempotency-Key':'ui-ai-'+idem()},body:JSON.stringify({strategy,amount})});
+   state.textContent='Auto-Invest '+result.id+' · '+result.status+'.';
+   await refreshAccountData();
+  }catch(err){state.textContent='Not activated: '+(err.message||'Provider unavailable')+'. No funds have been reserved.';}
+ };
+};
+
+
+function updateAccountIdentity(me){
+ const name=$('#profileName'), meta=$('.profile-identity-copy .small');
+ if(name)name.textContent=me?.email||'Aster member';
+ if(meta)meta.textContent=me?'Connected · KYC '+(me.kyc_status||'unknown'):'Account not connected';
+}
+function renderWalletActivity(rows){
+ const host=$('#wallet .wallet-history'); if(!host)return;
+ const old=host.querySelector('.empty-activity,.activity-list');
+ if(!Array.isArray(rows)||!rows.length){
+  if(old){old.className='empty-activity';old.innerHTML='<div class="empty-orbit">◷</div><b>Your money story starts here</b><p>Verified deposits, withdrawals and account activity will appear here.</p>';}
+  return;
+ }
+ const list=document.createElement('div');list.className='activity-list';
+ rows.slice(0,12).forEach(row=>{
+  const item=document.createElement('div');item.className='list-row';
+  const left=document.createElement('div');left.style.flex='1';
+  const title=document.createElement('b');title.textContent=String(row.kind||'Account activity').replace(/_/g,' ');
+  const meta=document.createElement('div');meta.className='small muted';meta.textContent=(row.reference||'')+' · '+(row.status||'');
+  left.append(title,meta);
+  const amount=document.createElement('b');amount.textContent=(Number(row.amount)>=0?'+':'')+Number(row.amount||0).toFixed(2)+' '+(row.currency||'USDT');
+  item.append(left,amount);list.appendChild(item);
+ });
+ if(old)old.replaceWith(list);else host.appendChild(list);
+}
+async function refreshAccountData(){
+ const me=await apiCall('/v1/me');
+ const [wallet,positions,transactions]=await Promise.all([
+  apiCall('/v1/wallet'),apiCall('/v1/autoinvest/active'),apiCall('/v1/transactions')
+ ]);
+ updateAccountIdentity(me);
+ const balance=$('#wallet .wallet-hero .balance');
+ if(balance)balance.textContent=Number(wallet.available||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const walletStatus=$('#wallet .wallet-status');
+ if(walletStatus)walletStatus.textContent='Account connected';
+ const active=Array.isArray(positions)?positions.filter(x=>x.status==='active').length:0;
+ const homeActive=[...$('#home').querySelectorAll('.card')].find(x=>/Active strategies/i.test(x.textContent||''));
+ if(homeActive?.querySelector('.stat'))homeActive.querySelector('.stat').textContent=String(active);
+ const investHead=[...$('#invest').querySelectorAll('.section-head')].find(x=>/Active strategies/i.test(x.textContent||''));
+ if(investHead?.nextElementSibling){
+  const host=investHead.nextElementSibling;
+  host.innerHTML=positions.length?positions.map(x=>'<div class="list-row"><div style="flex:1"><b>'+String(x.strategy||'Auto-Invest').replace(/[&<>"]/g,'')+'</b><div class="small muted">'+Number(x.amount||0).toFixed(2)+' USDT · '+String(x.status||'')+'</div></div><span class="badge">'+String(x.status||'').toUpperCase()+'</span></div>').join(''):'<div class="small muted">No active strategies yet.</div>';
+ }
+ renderWalletActivity(transactions);
+ await loadWealth();
+ return me;
+}
+function openConnectSheet(){
+ openSheet('Connect your Aster account',
+  '<p>Connect to your deployed Aster API over HTTPS. Your API address is saved on this device; your password is sent only to that API.</p>'+
+  '<div class="eyebrow">Backend API address</div><input class="input" id="apiBaseInput" type="url" autocomplete="url" placeholder="https://api.your-domain.com">'+
+  '<button class="secondary" id="testApiConnection">Test & save API address</button><div class="small muted" id="apiConnectionState" style="margin:8px 0 14px">No backend address tested yet.</div>'+
+  '<div class="tabs" id="authModeTabs"><button type="button" class="on" data-mode="login">Sign in</button><button type="button" data-mode="register">Create account</button></div>'+
+  '<input class="input" id="authEmail" type="email" autocomplete="email" placeholder="Email address">'+
+  '<input class="input" id="authPassword" type="password" autocomplete="current-password" placeholder="Password (minimum 12 characters)">'+
+  '<input class="input" id="authReferral" type="text" autocomplete="off" placeholder="Referral code (optional)" style="display:none">'+
+  '<button class="primary" id="authSubmit">Sign in</button>'+
+  '<button class="secondary" id="authLogout" style="margin-top:8px">Sign out</button>'+
+  '<div class="small muted" id="authState" style="margin-top:10px" aria-live="polite"></div>');
+ const baseInput=$('#apiBaseInput');baseInput.value=apiBase();
+ let mode='login';
+ const state=$('#authState'),apiState=$('#apiConnectionState');
+ function setMode(next){
+  mode=next;
+  $('button',$('#authModeTabs')).forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
+  $('#authSubmit').textContent=mode==='login'?'Sign in':'Create account';
+  $('#authReferral').style.display=mode==='register'?'block':'none';
+  $('#authPassword').autocomplete=mode==='login'?'current-password':'new-password';
+ }
+ $('#authModeTabs').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(b)setMode(b.dataset.mode)});
+ $('#testApiConnection').onclick=async()=>{
+  try{
+   const parsed=new URL(baseInput.value.trim());
+   if(parsed.protocol!=='https:')throw new Error('Use an HTTPS API address. HTTP is not accepted by the secure app.');
+   if(parsed.username||parsed.password||parsed.search||parsed.hash)throw new Error('Enter only the API base address, without credentials, query or fragment.');
+   const base=(parsed.origin+parsed.pathname).replace(/\/+$/,'');
+   const response=await fetch(base+'/health',{credentials:'include'});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||data.ok!==true)throw new Error('The API health check did not return a healthy Aster response.');
+   if(apiBase()!==base){sessionStorage.removeItem('aster_csrf');localStorage.removeItem('aster_csrf')}
+   localStorage.setItem('aster_api_base',base);
+   apiState.textContent='Connected to Aster API · '+(data.service||'healthy');
+   showToast('API address saved');
+  }catch(err){apiState.textContent=err.message||'Could not reach the API';}
+ };
+ $('#authSubmit').onclick=async()=>{
+  try{
+   if(!apiBase())throw new Error('Test and save your API address first.');
+   const email=$('#authEmail').value.trim(),password=$('#authPassword').value;
+   if(!email||!password)throw new Error('Enter your email and password.');
+   if(mode==='register'&&password.length<12)throw new Error('Use a password with at least 12 characters.');
+   const payload={email,password};
+   if(mode==='register'&&$('#authReferral').value.trim())payload.referral_code=$('#authReferral').value.trim();
+   const response=await fetch(apiBase()+'/v1/auth/'+mode,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw new Error(data.detail||'Authentication failed.');
+   if(!data.csrf_token)throw new Error('The API did not return a CSRF token.');
+   sessionStorage.setItem('aster_csrf',data.csrf_token);
+   localStorage.setItem('aster_csrf',data.csrf_token);
+   const me=await refreshAccountData();
+   state.textContent='Signed in as '+(me.email||email)+' · KYC '+(me.kyc_status||'unknown');
+   showToast(mode==='login'?'Signed in':'Aster account created');
+  }catch(err){state.textContent=err.message||'Could not connect your account';}
+ };
+ $('#authLogout').onclick=async()=>{
+  try{if(apiBase())await apiCall('/v1/auth/logout',{method:'POST'});}catch(e){}
+  sessionStorage.removeItem('aster_csrf');localStorage.removeItem('aster_csrf');
+  updateAccountIdentity(null);
+  const balance=$('#wallet .wallet-hero .balance');if(balance)balance.textContent='0.00';
+  const walletStatus=$('#wallet .wallet-status');if(walletStatus)walletStatus.textContent='Account not connected';
+  state.textContent='Signed out on this device.';
+  showToast('Signed out');
+ };
+ setMode('login');
+ if(apiBase())apiState.textContent='Saved API address · test it before signing in.';
+}
+$('#connect').onclick=openConnectSheet;
+if(apiBase())refreshAccountData().catch(()=>updateAccountIdentity(null));
+
+
 function apiBase(){return (window.ASTER_API_BASE||localStorage.getItem('aster_api_base')||'').replace(/\/$/,'')}
 function apiCall(path,opt={}){
  const base=apiBase();if(!base)throw new Error('Connect your Aster account first.');
- const headers={'Content-Type':'application/json',...(opt.headers||{})};const csrf=sessionStorage.getItem('aster_csrf')||'';if(csrf)headers['X-Aster-CSRF']=csrf;
+ const headers={'Content-Type':'application/json',...(opt.headers||{})};const csrf=sessionStorage.getItem('aster_csrf')||localStorage.getItem('aster_csrf')||'';if(csrf)headers['X-Aster-CSRF']=csrf;
  return fetch(base+path,{credentials:'include',...opt,headers}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Request failed');return d})
 }
 function idem(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random())}
 async function treasuryDepositSheet(){
- let network='BEP20',address='0xd7F76be1a1c4aC25dAf2DDAbFd51E15AB736012c',name='BNB Smart Chain',depositId=null;
+ let network='BEP20',address='',name='BNB Smart Chain',depositId=null;
  // Display the addresses bundled with this APK; never replace them with a stale server response.
- openSheet('Deposit USDT','<div class="sim-badge">Aster treasury rail</div><div class="funding-network" id="fundingNetwork"><button class="on" data-net="BEP20"><b>BEP20</b><br><small>BNB Smart Chain</small></button><button data-net="TRC20"><b>TRC20</b><br><small>Tron</small></button></div><div class="card"><div class="eyebrow">Send USDT to</div><div class="funding-address" id="fundingAddress">'+address+'</div><div class="small muted" id="fundingName">'+name+' · USDT only</div><div class="funding-actions" style="margin-top:10px"><button class="secondary" id="copyFunding">Copy address</button><button class="secondary" id="shareFunding">Share</button></div></div><div class="card"><div class="eyebrow">Expected amount · optional</div><input class="input" id="depositAmount" type="number" min="0.00000001" step="0.00000001" placeholder="e.g. 250"><button class="primary" id="createDepositIntent">Create deposit intent</button><div class="small muted" id="depositIntentState" style="margin-top:9px">Create an intent before sending when your account is connected.</div><input class="input" id="depositTxHash" autocomplete="off" spellcheck="false" placeholder="Paste transaction hash after sending"><button class="secondary" id="submitDepositTx" disabled>Submit transaction hash</button></div><div class="notice"><b>Important:</b> Use only the selected network. A deposit is credited only after independently verified blockchain confirmation.</div>');
+ openSheet('Deposit USDT','<div class="sim-badge">Aster treasury rail</div><div class="funding-network" id="fundingNetwork"><button class="on" data-net="BEP20"><b>BEP20</b><br><small>BNB Smart Chain</small></button><button data-net="TRC20"><b>TRC20</b><br><small>Tron</small></button></div><div class="card"><div class="eyebrow">Send USDT to</div><div class="funding-address" id="fundingAddress">Connect your account and create an intent to load the deposit address.</div><div class="small muted" id="fundingName">Address is supplied by the connected Aster backend.</div><div class="funding-actions" style="margin-top:10px"><button class="secondary" id="copyFunding" disabled>Copy address</button><button class="secondary" id="shareFunding" disabled>Share</button></div></div><div class="card"><div class="eyebrow">Expected amount · optional</div><input class="input" id="depositAmount" type="number" min="0.00000001" step="0.00000001" placeholder="e.g. 250"><button class="primary" id="createDepositIntent">Create deposit intent</button><div class="small muted" id="depositIntentState" style="margin-top:9px">Create an intent before sending when your account is connected.</div><input class="input" id="depositTxHash" autocomplete="off" spellcheck="false" placeholder="Paste transaction hash after sending"><button class="secondary" id="submitDepositTx" disabled>Submit transaction hash</button><button class="secondary" id="refreshDepositStatus" disabled style="margin-top:8px">Refresh deposit status</button></div><div class="notice"><b>Important:</b> Use only the selected network. This is a shared treasury address: submitting a transaction hash does not prove ownership. Credit requires independent ownership review.</div>');
  const nets=$('#fundingNetwork');
- nets.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;network=b.dataset.net;$$('button',nets).forEach(x=>x.classList.remove('on'));b.classList.add('on');const fallback=network==='BEP20'?'0xd7F76be1a1c4aC25dAf2DDAbFd51E15AB736012c':'TLkgCEs6zFk49FuEhMPzMbPfNjZ5UEGV3b';address=fallback;name=network==='BEP20'?'BNB Smart Chain':'Tron';$('#fundingAddress').textContent=address;$('#fundingName').textContent=name+' · USDT only'});
- $('#copyFunding').onclick=()=>{if(window.AsterNative?.copyText)AsterNative.copyText(address);else navigator.clipboard?.writeText(address);showToast('Address copied')};
- $('#shareFunding').onclick=()=>window.AsterNative?.shareText('Aster Financials USDT '+network+' deposit address: '+address);
- $('#createDepositIntent').onclick=async()=>{try{const amount=$('#depositAmount').value;const d=await apiCall('/v1/wallet/deposits',{method:'POST',headers:{'Idempotency-Key':'ui-deposit-'+idem()},body:JSON.stringify({currency:'USDT',network,expected_amount:amount?Number(amount):null})});depositId=d.id;$('#depositIntentState').innerHTML='<b>Intent #'+d.id+'</b> · '+d.status+' · '+d.provider_reference+'<br>Send USDT to the address above, then paste its transaction hash below.';$('#submitDepositTx').disabled=false;showToast('Deposit intent created')}catch(e){$('#depositIntentState').textContent=e.message;showToast(e.message)}};
- $('#submitDepositTx').onclick=async()=>{try{if(!depositId)throw new Error('Create a deposit intent first');const tx=$('#depositTxHash').value.trim();const d=await apiCall('/v1/wallet/deposits/'+depositId+'/transaction',{method:'POST',body:JSON.stringify({tx_hash:tx})});$('#depositIntentState').textContent='Transaction submitted · '+d.tx_hash+' · Awaiting independent blockchain verification.';showToast('Transaction submitted')}catch(e){$('#depositIntentState').textContent=e.message;showToast(e.message)}};
+ nets.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;network=b.dataset.net;depositId=null;address='';name=network==='BEP20'?'BNB Smart Chain':'Tron';$('button',nets).forEach(x=>x.classList.remove('on'));b.classList.add('on');$('#fundingAddress').textContent='Create a new deposit intent to load the '+name+' address.';$('#fundingName').textContent='Address is supplied by the connected Aster backend.';$('#copyFunding').disabled=true;$('#shareFunding').disabled=true;$('#submitDepositTx').disabled=true;$('#refreshDepositStatus').disabled=true;$('#depositTxHash').value=''});
+ $('#copyFunding').onclick=()=>{if(!address)return;if(window.AsterNative?.copyText)AsterNative.copyText(address);else navigator.clipboard?.writeText(address);showToast('Address copied')};
+ $('#shareFunding').onclick=()=>{if(address)window.AsterNative?.shareText('Aster Financials USDT '+network+' deposit address: '+address)};
+ $('#createDepositIntent').onclick=async()=>{try{const amount=$('#depositAmount').value;const d=await apiCall('/v1/wallet/deposits',{method:'POST',headers:{'Idempotency-Key':'ui-deposit-'+idem()},body:JSON.stringify({currency:'USDT',network,expected_amount:amount?Number(amount):null})});depositId=d.id;address=d.deposit_address||'';name=d.network_name||name;$('#fundingAddress').textContent=address||'The backend did not return a deposit address.';$('#fundingName').textContent=name+' · USDT only';$('#copyFunding').disabled=!address;$('#shareFunding').disabled=!address;$('#depositIntentState').textContent='Intent #'+d.id+' · '+d.status+' · '+d.provider_reference+'. '+(d.credit_rule||'Ownership verification is required before credit.');$('#submitDepositTx').disabled=!address;$('#refreshDepositStatus').disabled=false;showToast('Deposit intent created')}catch(e){$('#depositIntentState').textContent=e.message;showToast(e.message)}};
+ $('#submitDepositTx').onclick=async()=>{try{if(!depositId)throw new Error('Create a deposit intent first');const tx=$('#depositTxHash').value.trim();const d=await apiCall('/v1/wallet/deposits/'+depositId+'/transaction',{method:'POST',body:JSON.stringify({tx_hash:tx})});$('#depositIntentState').textContent='Transaction submitted · '+d.tx_hash+' · Awaiting independent ownership verification; no balance has been credited yet.';showToast('Transaction submitted')}catch(e){$('#depositIntentState').textContent=e.message;showToast(e.message)}};
+ $('#refreshDepositStatus').onclick=async()=>{try{if(!depositId)throw new Error('Create a deposit intent first');const d=await apiCall('/v1/wallet/deposits/'+depositId);$('#depositIntentState').textContent='Deposit #'+d.id+' · '+d.status+(d.tx_hash?' · '+d.tx_hash:'')+'. Credit is shown only after backend verification.';await refreshAccountData().catch(()=>{});}catch(e){$('#depositIntentState').textContent=e.message}};
 }
 $('#deposit').onclick=treasuryDepositSheet;
 async function withdrawSheet(){
  let network='BEP20';
- openSheet('Withdraw USDT','<div class="sim-badge">Server-controlled withdrawal</div><p>Funds are reserved immediately by the backend. Final settlement requires the configured provider and confirmation webhook.</p><div class="withdraw-network" id="withdrawNetwork"><button type="button" class="on" data-net="BEP20" aria-pressed="true">BEP20</button><button type="button" data-net="TRC20" aria-pressed="false">TRC20</button></div><div class="small muted" id="withdrawNetworkHint">BNB Smart Chain · destination must be a 0x address.</div><input class="input" id="withdrawAddress" autocomplete="off" spellcheck="false" placeholder="BEP20 destination (0x…)"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" inputmode="decimal" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit withdrawal</button><div class="notice">Never submit a withdrawal to an address you have not verified. Aster will not pretend a transaction was broadcast unless a provider confirms it.</div><div class="small muted" id="withdrawState" style="margin-top:9px" aria-live="polite"></div>');
+ openSheet('Withdraw USDT','<div class="sim-badge">Server-controlled withdrawal</div><p>Funds are reserved immediately by the backend. Final settlement requires the configured provider and confirmation webhook.</p><div class="withdraw-network" id="withdrawNetwork"><button type="button" class="on" data-net="BEP20" aria-pressed="true">BEP20</button><button type="button" data-net="TRC20" aria-pressed="false">TRC20</button></div><div class="small muted" id="withdrawNetworkHint">BNB Smart Chain · destination must be a 0x address.</div><input class="input" id="withdrawAddress" autocomplete="off" spellcheck="false" placeholder="BEP20 destination (0x…)"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" inputmode="decimal" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit withdrawal</button><div class="notice">Never submit a withdrawal to an address you have not verified. Aster will not pretend a transaction was broadcast unless a provider confirms it.</div><div class="small muted" id="withdrawState" style="margin-top:9px" aria-live="polite"></div><div class="divider"></div><div class="row"><b>Recent withdrawals</b><button class="link" id="refreshWithdrawals">Refresh</button></div><div id="withdrawHistory" class="small muted">Connect your account to load withdrawal history.</div>');
  const networkButtons=$('#withdrawNetwork button');
  networkButtons.forEach(button=>button.addEventListener('click',()=>{
    network=button.dataset.net;
@@ -448,6 +582,9 @@ async function withdrawSheet(){
    $('#withdrawNetworkHint').textContent=trc?'Tron · destination must be a valid T-prefixed TRC20 address.':'BNB Smart Chain · destination must be a 0x address.';
    $('#withdrawState').textContent='';
  }));
+ async function refreshWithdrawalHistory(){try{const rows=await apiCall('/v1/wallet/withdrawals');const host=$('#withdrawHistory');host.innerHTML='';if(!rows.length){host.textContent='No withdrawal requests yet.';return;}rows.slice(0,8).forEach(row=>{const line=document.createElement('div');line.className='list-row';const label=document.createElement('span');label.textContent='#'+row.id+' · '+row.network+' · '+row.status;const amount=document.createElement('b');amount.textContent=Number(row.amount).toFixed(2)+' USDT';line.append(label,amount);host.appendChild(line)});}catch(e){$('#withdrawHistory').textContent=e.message||'Could not load withdrawals.'}}
+ $('#refreshWithdrawals').onclick=refreshWithdrawalHistory;
+ refreshWithdrawalHistory();
  $('#submitWithdrawal').onclick=async()=>{
    try{
      const address=$('#withdrawAddress').value.trim(),amount=Number($('#withdrawAmount').value);
@@ -455,7 +592,8 @@ async function withdrawSheet(){
      if(!valid)throw new Error(network==='TRC20'?'Enter a valid 34-character TRC20 address beginning with T.':'Enter a valid 42-character BEP20 address beginning with 0x.');
      if(!Number.isFinite(amount)||amount<=0)throw new Error('Enter a valid withdrawal amount greater than zero.');
      const d=await apiCall('/v1/wallet/withdrawals',{method:'POST',headers:{'Idempotency-Key':'ui-withdraw-'+idem()},body:JSON.stringify({currency:'USDT',network,address,amount})});
-     $('#withdrawState').textContent='Withdrawal #'+d.id+' created · '+d.status+' · '+d.provider_reference;
+     $('#withdrawState').textContent='Withdrawal #'+d.id+' created · '+d.status+' · awaiting administrator review. No blockchain transfer has been broadcast.';
+     await refreshWithdrawalHistory();
      showToast('Withdrawal request created');
    }catch(e){$('#withdrawState').textContent=e.message;showToast(e.message)}
  };
