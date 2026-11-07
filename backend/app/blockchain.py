@@ -158,15 +158,16 @@ def tron_scan(dbs: Session) -> dict:
     if cursor.cursor:
         base_url += f"&min_timestamp={cursor.cursor + 1}"
 
-    detected = credited = 0
     newest = cursor.cursor
     fingerprint = None
     max_pages = max(1, min(50, int(os.getenv("ASTER_TRON_MAX_PAGES", "10"))))
     pages = 0
     has_more = False
+    all_rows = []
 
-    # Follow TronGrid's fingerprint pagination. A timestamp-only cursor can
-    # skip transfers when a busy block timestamp spans more than one page.
+    # Consume every fingerprint page before crediting. A transaction can emit
+    # multiple USDT Transfer events to the treasury; seeing only its first page
+    # must never make that transaction look uniquely attributable.
     while pages < max_pages:
         url = base_url
         if fingerprint:
@@ -178,38 +179,16 @@ def tron_scan(dbs: Session) -> dict:
             raise RuntimeError("TRON API returned an invalid transaction response")
 
         for row in rows:
-            ts = int(row.get("block_timestamp", 0))
-            newest = max(newest, ts)
             tx_hash = str(row.get("transaction_id", ""))
-            if not tx_hash or dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == tx_hash)):
+            if not tx_hash:
                 continue
-
             token_contract = str(row.get("token_info", {}).get("address", ""))
             if token_contract.lower() != cfg["usdt"].lower():
                 continue
-
-            to_address = str(row.get("to", ""))
-            if to_address != treasury:
+            if str(row.get("to", "")) != treasury:
                 continue
-
-            amount = Decimal(str(row.get("value", "0"))) / Decimal(10**6)
-            transfer = BlockchainTransfer(
-                network=TRC20,
-                tx_hash=tx_hash,
-                log_index=None,
-                block_number=int(row.get("block", 0) or 0),
-                token_contract=token_contract,
-                from_address=str(row.get("from", "")),
-                to_address=to_address,
-                amount=amount,
-                confirmations=cfg["confirmations"],
-                status="confirmed",
-            )
-            dbs.add(transfer)
-            dbs.flush()
-            detected += 1
-            if credit_transfer(dbs, transfer):
-                credited += 1
+            newest = max(newest, int(row.get("block_timestamp", 0)))
+            all_rows.append(row)
 
         pages += 1
         fingerprint = (payload.get("meta") or {}).get("fingerprint")
@@ -217,20 +196,89 @@ def tron_scan(dbs: Session) -> dict:
         if not has_more:
             break
 
-    # If the bounded page budget is exhausted, keep the old cursor. Existing
-    # transfers are idempotently deduplicated next run; no later page is lost.
-    if not has_more:
-        cursor.cursor = newest
-        cursor.updated_at = datetime.now(timezone.utc)
+    # A bounded/incomplete pagination cycle is not safe to reconcile. Keep the
+    # cursor unchanged so the complete page set is retried on the next cycle.
+    if has_more:
+        dbs.commit()
+        return {
+            "network": TRC20, "status": "page_limit_reached", "pages": pages,
+            "cursor_ms": cursor.cursor, "detected": 0, "credited": 0,
+            "has_more": True,
+        }
+
+    from collections import Counter, defaultdict
+    event_counts = Counter(str(row["transaction_id"]) for row in all_rows)
+    fallback_indexes = defaultdict(int)
+    detected = credited = 0
+
+    for row in all_rows:
+        tx_hash = str(row["transaction_id"])
+        if row.get("event_index") is not None:
+            event_index = int(row["event_index"])
+        else:
+            # Some compatible indexers omit event_index. A stable ordinal from
+            # the fully collected page set keeps distinct events separate.
+            event_index = fallback_indexes[tx_hash]
+            fallback_indexes[tx_hash] += 1
+        transfer_key = f"{tx_hash}:{event_index}"
+
+        transfer = dbs.scalar(
+            select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == transfer_key)
+        )
+        if not transfer and event_index == 0:
+            # Upgrade a legacy single-event row written before event indexes
+            # were part of the transfer identity.
+            transfer = dbs.scalar(
+                select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == tx_hash)
+            )
+            if transfer:
+                transfer.tx_hash = transfer_key
+
+        if not transfer:
+            amount = Decimal(str(row.get("value", "0"))) / Decimal(10**6)
+            transfer = BlockchainTransfer(
+                network=TRC20,
+                tx_hash=transfer_key,
+                log_index=event_index,
+                block_number=int(row.get("block", 0) or 0),
+                token_contract=str(row.get("token_info", {}).get("address", "")),
+                from_address=str(row.get("from", "")),
+                to_address=str(row.get("to", "")),
+                amount=amount,
+                confirmations=cfg["confirmations"],
+                status="quarantined" if event_counts[tx_hash] > 1 else "confirmed",
+            )
+            dbs.add(transfer)
+            dbs.flush()
+            detected += 1
+
+        if event_counts[tx_hash] > 1:
+            transfer.status = "quarantined"
+            dbs.add(AuditEvent(
+                user_id=None,
+                event_type="deposit_quarantined",
+                metadata_json=json.dumps({
+                    "network": TRC20,
+                    "tx_hash": tx_hash,
+                    "transfer_id": transfer.id,
+                    "reason": "multiple_treasury_transfers_in_one_transaction",
+                    "matching_transfer_count": event_counts[tx_hash],
+                }),
+            ))
+            continue
+
+        if transfer.status != "credited":
+            transfer.status = "confirmed"
+            if credit_transfer(dbs, transfer):
+                credited += 1
+
+    cursor.cursor = newest
+    cursor.updated_at = datetime.now(timezone.utc)
     dbs.commit()
     return {
-        "network": TRC20,
-        "status": "page_limit_reached" if has_more else "scanned",
-        "pages": pages,
-        "cursor_ms": cursor.cursor,
-        "detected": detected,
-        "credited": credited,
-        "has_more": has_more,
+        "network": TRC20, "status": "scanned", "pages": pages,
+        "cursor_ms": cursor.cursor, "detected": detected,
+        "credited": credited, "has_more": False,
     }
 
 def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
