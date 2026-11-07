@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import blockchain
 from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent
-from app.main import AuditEvent, Base, Referral, User, Wallet, accrue_referral_commissions
+from app.main import AuditEvent, Base, LedgerEntry, Referral, User, Wallet, accrue_referral_commissions
 from app.treasury import BEP20, TRC20, treasury_address
 
 
@@ -400,8 +400,7 @@ def test_nine_level_referral_schedule_totals_21_percent_and_is_idempotent():
     assert [int(item["level"]) for item in first] == list(range(1, 10))
     assert duplicate == []
     pending_entries = dbs.scalars(
-        select(__import__("app.main", fromlist=["LedgerEntry"]).LedgerEntry)
-        .where(__import__("app.main", fromlist=["LedgerEntry"]).LedgerEntry.kind == "referral_bonus")
+        select(LedgerEntry).where(LedgerEntry.kind == "referral_bonus")
     ).all()
     assert len(pending_entries) == 9
     assert all(item.status == "pending" for item in pending_entries)
