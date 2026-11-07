@@ -101,6 +101,15 @@ def bsc_scan(dbs: Session) -> dict:
     if not isinstance(logs, list):
         raise RuntimeError("BSC RPC returned an invalid log response")
 
+    from collections import Counter
+    event_counts = Counter(
+        str(log.get("transactionHash"))
+        for log in logs
+        if len(log.get("topics", [])) >= 3
+        and log.get("transactionHash")
+        and log.get("blockNumber")
+    )
+
     detected = credited = 0
     for log in logs:
         topics = log.get("topics", [])
@@ -124,11 +133,27 @@ def bsc_scan(dbs: Session) -> dict:
             to_address="0x" + topics[2][-40:],
             amount=amount,
             confirmations=max(0, safe_head - block_number + 1),
-            status="confirmed" if block_number <= safe_head else "detected",
+            status=(
+                "quarantined" if event_counts[tx_hash] > 1
+                else ("confirmed" if block_number <= safe_head else "detected")
+            ),
         )
         dbs.add(transfer)
         dbs.flush()
         detected += 1
+        if event_counts[tx_hash] > 1:
+            dbs.add(AuditEvent(
+                user_id=None,
+                event_type="deposit_quarantined",
+                metadata_json=json.dumps({
+                    "network": BEP20,
+                    "tx_hash": tx_hash,
+                    "transfer_id": transfer.id,
+                    "reason": "multiple_treasury_transfers_in_one_transaction",
+                    "matching_transfer_count": event_counts[tx_hash],
+                }),
+            ))
+            continue
         if transfer.status == "confirmed" and credit_transfer(dbs, transfer):
             credited += 1
 
