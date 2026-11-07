@@ -7,8 +7,9 @@ Production-oriented service foundation for Aster. This repository contains a run
 1. Copy `.env.example` to `.env`.
 2. Set `DATABASE_URL` to PostgreSQL for production; SQLite is only a local development fallback.
 3. Install `requirements.txt`.
-4. Apply versioned migrations with `alembic upgrade head`.
-5. Run `uvicorn app.main:app --reload`.
+4. Export the settings in `.env` into your shell (for example, `set -a && source .env && set +a` on Linux/macOS).
+5. Apply versioned migrations with `alembic upgrade head`.
+6. Run `uvicorn app.main:app --reload`.
 
 Docker (run from the `backend/` directory):
 
