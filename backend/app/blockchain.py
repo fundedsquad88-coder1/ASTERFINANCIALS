@@ -150,59 +150,88 @@ def tron_scan(dbs: Session) -> dict:
         dbs.add(cursor)
         dbs.flush()
 
-    url = (
+    base_url = (
         f"{cfg['api']}/v1/accounts/{treasury}/transactions/trc20"
         f"?only_confirmed=true&only_to=true&limit={cfg['limit']}"
         f"&order_by=block_timestamp,asc&contract_address={cfg['usdt']}"
     )
     if cursor.cursor:
-        url += f"&min_timestamp={cursor.cursor + 1}"
-
-    payload = http_json(url, headers=headers)
-    rows = payload.get("data", [])
-    if not isinstance(rows, list):
-        raise RuntimeError("TRON API returned an invalid transaction response")
+        base_url += f"&min_timestamp={cursor.cursor + 1}"
 
     detected = credited = 0
     newest = cursor.cursor
-    for row in rows:
-        ts = int(row.get("block_timestamp", 0))
-        newest = max(newest, ts)
-        tx_hash = str(row.get("transaction_id", ""))
-        if not tx_hash or dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == tx_hash)):
-            continue
+    fingerprint = None
+    max_pages = max(1, min(50, int(os.getenv("ASTER_TRON_MAX_PAGES", "10"))))
+    pages = 0
+    has_more = False
 
-        token_contract = str(row.get("token_info", {}).get("address", ""))
-        if token_contract.lower() != cfg["usdt"].lower():
-            continue
+    # Follow TronGrid's fingerprint pagination. A timestamp-only cursor can
+    # skip transfers when a busy block timestamp spans more than one page.
+    while pages < max_pages:
+        url = base_url
+        if fingerprint:
+            from urllib.parse import quote
+            url += f"&fingerprint={quote(fingerprint, safe='')}"
+        payload = http_json(url, headers=headers)
+        rows = payload.get("data", [])
+        if not isinstance(rows, list):
+            raise RuntimeError("TRON API returned an invalid transaction response")
 
-        to_address = str(row.get("to", ""))
-        if to_address != treasury:
-            continue
+        for row in rows:
+            ts = int(row.get("block_timestamp", 0))
+            newest = max(newest, ts)
+            tx_hash = str(row.get("transaction_id", ""))
+            if not tx_hash or dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == tx_hash)):
+                continue
 
-        amount = Decimal(str(row.get("value", "0"))) / Decimal(10**6)
-        transfer = BlockchainTransfer(
-            network=TRC20,
-            tx_hash=tx_hash,
-            log_index=None,
-            block_number=int(row.get("block", 0) or 0),
-            token_contract=token_contract,
-            from_address=str(row.get("from", "")),
-            to_address=to_address,
-            amount=amount,
-            confirmations=cfg["confirmations"],
-            status="confirmed",
-        )
-        dbs.add(transfer)
-        dbs.flush()
-        detected += 1
-        if credit_transfer(dbs, transfer):
-            credited += 1
+            token_contract = str(row.get("token_info", {}).get("address", ""))
+            if token_contract.lower() != cfg["usdt"].lower():
+                continue
 
-    cursor.cursor = newest
-    cursor.updated_at = datetime.now(timezone.utc)
+            to_address = str(row.get("to", ""))
+            if to_address != treasury:
+                continue
+
+            amount = Decimal(str(row.get("value", "0"))) / Decimal(10**6)
+            transfer = BlockchainTransfer(
+                network=TRC20,
+                tx_hash=tx_hash,
+                log_index=None,
+                block_number=int(row.get("block", 0) or 0),
+                token_contract=token_contract,
+                from_address=str(row.get("from", "")),
+                to_address=to_address,
+                amount=amount,
+                confirmations=cfg["confirmations"],
+                status="confirmed",
+            )
+            dbs.add(transfer)
+            dbs.flush()
+            detected += 1
+            if credit_transfer(dbs, transfer):
+                credited += 1
+
+        pages += 1
+        fingerprint = (payload.get("meta") or {}).get("fingerprint")
+        has_more = bool(fingerprint)
+        if not has_more:
+            break
+
+    # If the bounded page budget is exhausted, keep the old cursor. Existing
+    # transfers are idempotently deduplicated next run; no later page is lost.
+    if not has_more:
+        cursor.cursor = newest
+        cursor.updated_at = datetime.now(timezone.utc)
     dbs.commit()
-    return {"network": TRC20, "status": "scanned", "cursor_ms": cursor.cursor, "detected": detected, "credited": credited}
+    return {
+        "network": TRC20,
+        "status": "page_limit_reached" if has_more else "scanned",
+        "pages": pages,
+        "cursor_ms": cursor.cursor,
+        "detected": detected,
+        "credited": credited,
+        "has_more": has_more,
+    }
 
 def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
     if transfer.status != "confirmed":
