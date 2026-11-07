@@ -49,13 +49,14 @@ def test_credit_transfer_requires_exactly_one_matching_intent():
         amount=Decimal("100.00000000"),
         status="pending",
         deposit_address=treasury_address(BEP20),
+        tx_hash="0x" + "e" * 64,
     )
     dbs.add(intent)
     dbs.flush()
 
     transfer = BlockchainTransfer(
         network=BEP20,
-        tx_hash="0xabc:0",
+        tx_hash="0x" + "e" * 64,
         log_index=0,
         block_number=100,
         token_contract=blockchain.DEFAULT_BSC_USDT,
@@ -269,6 +270,7 @@ def test_tron_scan_follows_fingerprint_pages_without_skipping_timestamp(monkeypa
         amount=Decimal("5.000000"),
         status="pending",
         deposit_address=treasury_address(TRC20),
+        tx_hash="trx-page-1",
     ))
     dbs.flush()
 
