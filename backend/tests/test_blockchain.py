@@ -420,3 +420,62 @@ def test_tron_scan_is_disabled_without_explicit_opt_in(monkeypatch):
     assert result["status"] == "not_configured"
     assert result["detected"] == 0
     assert result["credited"] == 0
+
+
+def test_bsc_scan_quarantines_multiple_treasury_events_in_one_transaction(monkeypatch):
+    dbs = session()
+    user = seed_user(dbs)
+    tx_hash = "0x" + "d" * 64
+    dbs.add(DepositIntent(
+        user_id=user.id,
+        provider="aster",
+        currency="USDT",
+        network=BEP20,
+        amount=Decimal("5.00000000"),
+        status="pending",
+        deposit_address=treasury_address(BEP20),
+        tx_hash=tx_hash,
+    ))
+    dbs.flush()
+
+    sender = "1" * 40
+    recipient = treasury_address(BEP20)[2:].lower()
+    def log(index, amount):
+        return {
+            "transactionHash": tx_hash,
+            "logIndex": hex(index),
+            "blockNumber": "0x64",
+            "topics": [
+                blockchain.TRANSFER_TOPIC,
+                "0x" + "0" * 24 + sender,
+                "0x" + "0" * 24 + recipient,
+            ],
+            "data": hex(amount * 10**18),
+        }
+
+    def fake_http(url, payload=None, headers=None):
+        method = payload["method"]
+        if method == "eth_blockNumber":
+            return {"result": "0x70"}
+        if method == "eth_getBlockByNumber":
+            return {"result": {"number": "0x70"}}
+        if method == "eth_getLogs":
+            return {"result": [log(0, 5), log(1, 7)]}
+        raise AssertionError(method)
+
+    monkeypatch.setattr(blockchain, "http_json", fake_http)
+    monkeypatch.setenv("ASTER_BSC_RPC_URL", "http://test-rpc")
+    monkeypatch.setenv("ASTER_BSC_START_BLOCK", "99")
+    monkeypatch.setenv("ASTER_BSC_LOG_BATCH", "100")
+
+    result = blockchain.bsc_scan(dbs)
+    transfers = dbs.scalars(
+        select(BlockchainTransfer).where(BlockchainTransfer.network == BEP20)
+    ).all()
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+
+    assert result["detected"] == 2
+    assert result["credited"] == 0
+    assert {item.tx_hash for item in transfers} == {f"{tx_hash}:0", f"{tx_hash}:1"}
+    assert all(item.status == "quarantined" for item in transfers)
+    assert wallet.available == Decimal("0")
