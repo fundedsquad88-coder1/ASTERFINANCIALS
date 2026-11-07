@@ -510,7 +510,7 @@ function openConnectSheet(){
  openSheet('Connect your Aster account',
   '<p>Connect to your deployed Aster API over HTTPS. Your API address is saved on this device; your password is sent only to that API.</p>'+
   '<div class="eyebrow">Backend API address</div><input class="input" id="apiBaseInput" type="url" autocomplete="url" placeholder="https://api.your-domain.com">'+
-  '<button class="secondary" id="testApiConnection">Test & save API address</button><div class="small muted" id="apiConnectionState" style="margin:8px 0 14px">No backend address tested yet.</div>'+
+  '<button class="secondary" id="testApiConnection">Test & save API address</button><div class="small muted" id="apiConnectionState" style="margin:8px 0 14px">No backend address tested yet.</div><div class="notice">Funding, withdrawals and Auto-Invest require verified identity and approved providers. An unverified account cannot move funds.</div>'+
   '<div class="tabs" id="authModeTabs"><button type="button" class="on" data-mode="login">Sign in</button><button type="button" data-mode="register">Create account</button></div>'+
   '<input class="input" id="authEmail" type="email" autocomplete="email" placeholder="Email address">'+
   '<input class="input" id="authPassword" type="password" autocomplete="current-password" placeholder="Password (minimum 12 characters)">'+
@@ -540,7 +540,19 @@ function openConnectSheet(){
    if(!response.ok||data.ok!==true)throw new Error('The API health check did not return a healthy Aster response.');
    if(apiBase()!==base){sessionStorage.removeItem('aster_csrf');localStorage.removeItem('aster_csrf')}
    localStorage.setItem('aster_api_base',base);
-   apiState.textContent='Connected to Aster API · '+(data.service||'healthy');
+   let gateText='Live-money services remain disabled';
+   try{
+    const statusResponse=await fetch(base+'/v1/production/status',{credentials:'include'});
+    const gates=await statusResponse.json();
+    const missing=[];
+    if(!gates.funding_provider)missing.push('payment gateway');
+    if(!gates.kyc_aml_provider)missing.push('KYC/AML');
+    if(!gates.auto_invest_execution_provider)missing.push('investment execution');
+    if(!gates.valuation_provider)missing.push('valuation');
+    if(!gates.live_withdrawals_enabled)missing.push('live payouts');
+    gateText=missing.length?'Not configured: '+missing.join(', '):'Provider checks reported ready';
+   }catch(e){}
+   apiState.textContent='Aster API healthy · '+gateText;
    showToast('API address saved');
   }catch(err){apiState.textContent=err.message||'Could not reach the API';}
  };
