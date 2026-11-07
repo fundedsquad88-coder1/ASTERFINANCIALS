@@ -13,7 +13,14 @@ Production-oriented service foundation for Aster. This repository contains a run
 
 Docker (run from the `backend/` directory):
 
-`docker compose -f docker-compose.yml up --build`
+`docker compose -f docker-compose.yml up --build -d`
+
+Apply migrations inside the API image before using the service:
+
+`docker compose -f docker-compose.yml run --rm api alembic upgrade head`
+
+Then inspect the API at `http://localhost:8000/health` and view logs with
+`docker compose -f docker-compose.yml logs -f api worker`.
 
 The compose stack includes a separate blockchain worker. It does not scan TRON unless
 `ASTER_TRON_ENABLED=true` is explicitly set. BSC scanning remains disabled until
