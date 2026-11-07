@@ -515,7 +515,7 @@ function openConnectSheet(){
  const state=$('#authState'),apiState=$('#apiConnectionState');
  function setMode(next){
   mode=next;
-  $('button',$('#authModeTabs')).forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
+  $$('button',$('#authModeTabs')).forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
   $('#authSubmit').textContent=mode==='login'?'Sign in':'Create account';
   $('#authReferral').style.display=mode==='register'?'block':'none';
   $('#authPassword').autocomplete=mode==='login'?'current-password':'new-password';
