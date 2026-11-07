@@ -42,6 +42,7 @@ def bsc_config() -> dict:
 
 def tron_config() -> dict:
     return {
+        "enabled": os.getenv("ASTER_TRON_ENABLED", "false").strip().lower() == "true",
         "api": os.getenv("ASTER_TRON_API_URL", "https://api.trongrid.io").rstrip("/"),
         "api_key": os.getenv("ASTER_TRON_API_KEY", "").strip(),
         "usdt": os.getenv("ASTER_TRON_USDT_CONTRACT", DEFAULT_TRON_USDT).strip(),
@@ -142,6 +143,12 @@ def bsc_scan(dbs: Session) -> dict:
 
 def tron_scan(dbs: Session) -> dict:
     cfg = tron_config()
+    if not cfg["enabled"]:
+        return {
+            "network": TRC20, "status": "not_configured",
+            "message": "Set ASTER_TRON_ENABLED=true to enable TRON scanning.",
+            "detected": 0, "credited": 0,
+        }
     treasury = treasury_address(TRC20)
     headers = {"TRON-PRO-API-KEY": cfg["api_key"]} if cfg["api_key"] else {}
     cursor = dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == TRC20))
