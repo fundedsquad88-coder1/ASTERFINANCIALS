@@ -18,6 +18,7 @@ class DepositIntent(Base):
     amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(28, 8), nullable=True)
     status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
     deposit_address: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    tx_hash: Mapped[Optional[str]] = mapped_column(String(128), unique=True, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
