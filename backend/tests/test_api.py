@@ -248,7 +248,7 @@ def test_deposit_transaction_hash_is_bound_to_authenticated_intent():
     invalid = client.post(f"/v1/wallet/deposits/{deposit_id}/transaction",
         headers={"X-Aster-CSRF": csrf}, json={"tx_hash":"not-a-hash"})
     assert invalid.status_code == 422
-    tx_hash = "0x" + "a" * 64
+    tx_hash = "0x" + __import__("secrets").token_hex(32)
     submitted = client.post(f"/v1/wallet/deposits/{deposit_id}/transaction",
         headers={"X-Aster-CSRF": csrf}, json={"tx_hash":tx_hash})
     assert submitted.status_code == 200
