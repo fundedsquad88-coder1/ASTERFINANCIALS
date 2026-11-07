@@ -55,7 +55,7 @@ you are deliberately testing against a controlled chain environment.
 - A member-submitted transaction hash is a lookup hint, not proof of ownership. Shared-treasury deposits are never automatically credited from a hash claim alone.
 - If a transaction contains multiple USDT transfers to the shared treasury, every matching event is quarantined rather than guessing which member owns it.
 - A deposit remains quarantined until a unique payment address/reference, an independently verified wallet-ownership/allocation mechanism, or an auditable manual review establishes the member-to-transfer link. Amount-only matching is prohibited.
-- Identity/KYC verification is intentionally not enabled at the current account stage. Custody/provider adapters, push delivery, admin authorization and audit controls must be connected before handling real customer funds.
+- Identity/KYC verification is not yet integrated. Deposit intent creation, deposit credit, withdrawal requests/approval, and Auto-Invest activation are blocked for unverified accounts. A KYC provider and reviewed verification workflow must be connected before real customer funds can be accepted.
 
 ## Service boundaries
 
