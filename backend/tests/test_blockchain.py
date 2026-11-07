@@ -295,6 +295,7 @@ def test_tron_scan_follows_fingerprint_pages_without_skipping_timestamp(monkeypa
         return {"data": [row("trx-page-2")], "meta": {}}
 
     monkeypatch.setattr(blockchain, "http_json", fake_http)
+    monkeypatch.setenv("ASTER_TRON_ENABLED", "true")
     monkeypatch.setenv("ASTER_TRON_API_URL", "https://tron.example")
     monkeypatch.setenv("ASTER_TRON_START_MS", "0")
     monkeypatch.setenv("ASTER_TRON_PAGE_SIZE", "1")
@@ -404,3 +405,17 @@ def test_nine_level_referral_schedule_totals_21_percent_and_is_idempotent():
     ).all()
     assert len(pending_entries) == 9
     assert all(item.status == "pending" for item in pending_entries)
+
+
+def test_tron_scan_is_disabled_without_explicit_opt_in(monkeypatch):
+    dbs = session()
+    monkeypatch.delenv("ASTER_TRON_ENABLED", raising=False)
+
+    def unexpected_http(*args, **kwargs):
+        raise AssertionError("TRON network must not be called while disabled")
+
+    monkeypatch.setattr(blockchain, "http_json", unexpected_http)
+    result = blockchain.tron_scan(dbs)
+    assert result["status"] == "not_configured"
+    assert result["detected"] == 0
+    assert result["credited"] == 0
