@@ -62,6 +62,11 @@ class ProviderWebhookIn(BaseModel):
     currency: str = Field(default="USDT", pattern="^USDT$")
     network: str = Field(min_length=2, max_length=32)
 
+def require_verified_kyc(user: User) -> None:
+    if user.kyc_status != "verified":
+        raise HTTPException(403, "Identity verification must be completed before deposits or withdrawals.")
+
+
 def provider_name():
     # Aster's first custody rail is its own treasury wallet. An external
     # processor can still be selected later by setting ASTER_FUNDING_PROVIDER.
@@ -118,6 +123,7 @@ def create_deposit(
     )
     if existing:
         return json.loads(existing.response_body)
+    require_verified_kyc(user)
 
     provider_reference = "AST-DEP-" + secrets.token_hex(10).upper()
     intent = DepositIntent(
@@ -292,6 +298,9 @@ async def funding_webhook(request: Request, dbs: Session = Depends(db)):
     dbs.add(event)
 
     if body.status == "confirmed":
+        owner = dbs.scalar(select(User).where(User.id == intent.user_id))
+        if not owner or owner.kyc_status != "verified":
+            raise HTTPException(409, "Deposit cannot be credited until identity verification is complete")
         if intent.status not in {"pending", "confirmed"}:
             raise HTTPException(409, f"Deposit intent cannot be confirmed from {intent.status}")
         if intent.status != "confirmed":
@@ -371,6 +380,7 @@ def create_withdrawal(
     )
     if existing:
         return json.loads(existing.response_body)
+    require_verified_kyc(user)
 
     provider_reference = "AST-WD-" + secrets.token_hex(10).upper()
     ref = "WD-" + provider_reference
