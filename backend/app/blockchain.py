@@ -118,7 +118,25 @@ def bsc_scan(dbs: Session) -> dict:
         tx_hash = str(log["transactionHash"])
         log_index = int(log.get("logIndex", "0x0"), 16)
         unique = f"{tx_hash}:{log_index}"
-        if dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == unique)):
+        existing = dbs.scalar(
+            select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == unique)
+        )
+        if existing:
+            if event_counts[tx_hash] > 1:
+                was_credited = existing.status == "credited"
+                existing.status = "reconciliation_required" if was_credited else "quarantined"
+                dbs.add(AuditEvent(
+                    user_id=None,
+                    event_type="deposit_reconciliation_required" if was_credited else "deposit_quarantined",
+                    metadata_json=json.dumps({
+                        "network": BEP20,
+                        "tx_hash": tx_hash,
+                        "transfer_id": existing.id,
+                        "reason": "multiple_treasury_transfers_in_one_transaction",
+                        "matching_transfer_count": event_counts[tx_hash],
+                        "previously_credited": was_credited,
+                    }),
+                ))
             continue
 
         amount = Decimal(int(log.get("data", "0x0"), 16)) / Decimal(10**18)
@@ -285,10 +303,11 @@ def tron_scan(dbs: Session) -> dict:
             detected += 1
 
         if event_counts[tx_hash] > 1:
-            transfer.status = "quarantined"
+            was_credited = transfer.status == "credited"
+            transfer.status = "reconciliation_required" if was_credited else "quarantined"
             dbs.add(AuditEvent(
                 user_id=None,
-                event_type="deposit_quarantined",
+                event_type="deposit_reconciliation_required" if was_credited else "deposit_quarantined",
                 metadata_json=json.dumps({
                     "network": TRC20,
                     "tx_hash": tx_hash,
