@@ -453,6 +453,7 @@ function resetAccountUI(){
  const wealthValue=$('#v39WealthValue');if(wealthValue)wealthValue.textContent='— USDT';
  const wealthBar=$('#v39WealthBar');if(wealthBar)wealthBar.style.width='0%';
  teamRows=[];teamCode='';teamLevel='all';
+ renderTeam();
  const code=$('#teamReferralCode');if(code)code.textContent='Connect account';
  const hint=$('#teamCodeHint');if(hint)hint.textContent='Sign in to view your referral code.';
  const total=$('#teamTotal');if(total)total.textContent='0';
