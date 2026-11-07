@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from pwdlib import PasswordHash
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, create_engine, select, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, create_engine, select, func, or_
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./aster-dev.db")
@@ -1079,3 +1079,96 @@ def admin_pending_referral_rewards(
         "status": row.status,
         "created_at": row.created_at.isoformat(),
     } for row in rows]}
+
+
+class DepositAttributionApprovalIn(BaseModel):
+    deposit_intent_id: int = Field(gt=0)
+    review_reference: str = Field(min_length=6, max_length=160)
+
+
+@app.post("/v1/admin/blockchain/transfers/{transfer_id}/approve-attribution")
+def admin_approve_deposit_attribution(
+    transfer_id: int,
+    body: DepositAttributionApprovalIn,
+    x_aster_admin_key: Optional[str] = Header(default=None, alias="X-Aster-Admin-Key"),
+    dbs: Session = Depends(db),
+):
+    _require_admin(x_aster_admin_key)
+    from app.blockchain import credit_transfer
+    from app.treasury import treasury_address
+
+    transfer = dbs.scalar(
+        select(BlockchainTransfer)
+        .where(BlockchainTransfer.id == transfer_id)
+        .with_for_update()
+    )
+    if not transfer:
+        raise HTTPException(404, "Blockchain transfer not found")
+
+    intent = dbs.scalar(
+        select(DepositIntent)
+        .where(
+            DepositIntent.id == body.deposit_intent_id,
+            DepositIntent.status == "pending",
+        )
+        .with_for_update()
+    )
+    if not intent:
+        raise HTTPException(404, "Pending deposit intent not found")
+
+    if transfer.status == "credited" and transfer.deposit_intent_id == intent.id:
+        return {"id": transfer.id, "status": "credited", "duplicate": True}
+    if transfer.status not in {"quarantined", "confirmed"}:
+        raise HTTPException(409, f"Transfer cannot be approved from {transfer.status}")
+
+    tx_hash = transfer.tx_hash.split(":", 1)[0].lower()
+    if (
+        transfer.network != intent.network
+        or intent.currency != "USDT"
+        or intent.tx_hash != tx_hash
+        or intent.deposit_address != treasury_address(intent.network)
+        or transfer.to_address != treasury_address(intent.network)
+    ):
+        raise HTTPException(409, "Transfer does not match the selected deposit intent")
+
+    if intent.amount is not None and intent.amount != transfer.amount:
+        raise HTTPException(409, "Deposit amount mismatch")
+
+    matching_events = dbs.scalar(
+        select(func.count(BlockchainTransfer.id)).where(
+            BlockchainTransfer.network == transfer.network,
+            or_(
+                BlockchainTransfer.tx_hash.like(tx_hash + ":%"),
+                BlockchainTransfer.tx_hash == tx_hash,
+            ),
+        )
+    ) or 0
+    if int(matching_events) != 1:
+        raise HTTPException(409, "Transaction contains multiple treasury transfers and cannot be auto-attributed")
+
+    transfer.status = "confirmed"
+    if not credit_transfer(dbs, transfer, attribution_verified=True):
+        dbs.rollback()
+        raise HTTPException(409, "Deposit attribution could not be reconciled")
+
+    dbs.add(AuditEvent(
+        user_id=intent.user_id,
+        event_type="deposit_attribution_admin_approved",
+        metadata_json=json.dumps({
+            "transfer_id": transfer.id,
+            "deposit_intent_id": intent.id,
+            "review_reference": body.review_reference,
+            "network": transfer.network,
+            "tx_hash": transfer.tx_hash,
+            "amount": str(transfer.amount),
+        }),
+    ))
+    dbs.commit()
+    return {
+        "id": transfer.id,
+        "deposit_intent_id": intent.id,
+        "status": transfer.status,
+        "amount": str(transfer.amount),
+        "review_reference": body.review_reference,
+        "duplicate": False,
+    }
