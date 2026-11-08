@@ -119,7 +119,6 @@ def reserve_deposit_ticket_amount(dbs: Session, network: str, requested: Decimal
         raise HTTPException(422, "USDT deposit amounts support up to 6 decimal places on both networks.")
     active = dbs.scalars(select(DepositIntent.amount).where(
         DepositIntent.network == network,
-        DepositIntent.ticket_mode == "single_wallet_ticket_v1",
         DepositIntent.status.in_(["pending", "transaction_submitted", "review_required"]),
     )).all()
     reserved = {Decimal(value) for value in active if value is not None}
