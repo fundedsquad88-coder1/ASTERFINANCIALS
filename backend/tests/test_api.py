@@ -434,6 +434,7 @@ def test_shared_treasury_deposit_requires_admin_attribution_review(monkeypatch):
     )
     assert created.status_code == 201
     deposit_id = created.json()["id"]
+    exact_ticket_amount = Decimal(created.json()["expected_amount"])
     tx_hash = "0x" + "a" * 64
     submitted = client.post(
         f"/v1/wallet/deposits/{deposit_id}/transaction",
@@ -452,7 +453,7 @@ def test_shared_treasury_deposit_requires_admin_attribution_review(monkeypatch):
         token_contract=DEFAULT_BSC_USDT,
         from_address="0x" + "1" * 40,
         to_address=treasury_address(BEP20),
-        amount=25,
+        amount=exact_ticket_amount,
         confirmations=20,
         status="quarantined",
     )
@@ -476,7 +477,7 @@ def test_shared_treasury_deposit_requires_admin_attribution_review(monkeypatch):
     dbs = SessionLocal()
     wallet = dbs.query(Wallet).filter(Wallet.user_id == user_id).one()
     intent = dbs.query(DepositIntent).filter(DepositIntent.id == deposit_id).one()
-    assert wallet.available == 25
+    assert wallet.available == exact_ticket_amount
     assert intent.status == "confirmed"
     dbs.close()
 
