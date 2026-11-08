@@ -258,7 +258,7 @@ def test_bsc_scan_deduplicates_transfer_and_advances_cursor(monkeypatch):
     dbs.expire_all()
     observed = dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == "0xdeposit:0"))
     assert observed is not None
-    assert observed.status == "quarantined"
+    assert observed.status == "review_required"
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
     assert wallet.available == Decimal("0")
     assert dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == BEP20)).cursor == 112
@@ -545,9 +545,9 @@ def test_credit_transfer_quarantines_claimed_hash_without_independent_attributio
     dbs.flush()
 
     assert blockchain.credit_transfer(dbs, transfer) is False
-    assert transfer.status == "quarantined"
-    assert transfer.deposit_intent_id is None
-    assert intent.status == "pending"
+    assert transfer.status == "review_required"
+    assert transfer.deposit_intent_id == intent.id
+    assert intent.status == "review_required"
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
     assert wallet.available == Decimal("0")
     dbs.close()
