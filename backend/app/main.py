@@ -1071,7 +1071,7 @@ def admin_blockchain_quarantine(
         raise HTTPException(422, "limit must be between 1 and 500")
     rows = dbs.scalars(
         select(BlockchainTransfer)
-        .where(BlockchainTransfer.status.in_(["quarantined", "reconciliation_required"]))
+        .where(BlockchainTransfer.status.in_(["quarantined", "reconciliation_required", "review_required"]))
         .order_by(BlockchainTransfer.observed_at.asc())
         .limit(limit)
     ).all()
