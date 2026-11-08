@@ -179,3 +179,49 @@ def test_wrong_usdt_contract_never_becomes_a_deposit_candidate():
     wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
     assert wallet.available == Decimal("0")
     dbs.close()
+
+
+def test_historical_transfer_cannot_be_claimed_by_a_new_ticket():
+    dbs = make_session()
+    user = make_user(dbs)
+    now = datetime.now(timezone.utc)
+    tx_hash = "0x" + "c" * 64
+    intent = DepositIntent(
+        user_id=user.id,
+        provider="aster-treasury",
+        provider_reference="AST-DEP-HISTORICAL",
+        currency="USDT",
+        network=BEP20,
+        amount=Decimal("9.000001"),
+        requested_amount=Decimal("9"),
+        status="transaction_submitted",
+        deposit_address=treasury_address(BEP20),
+        tx_hash=tx_hash,
+        ticket_mode="single_wallet_ticket_v1",
+        created_at=now,
+        expires_at=now + timedelta(minutes=45),
+    )
+    dbs.add(intent)
+    dbs.flush()
+    transfer = BlockchainTransfer(
+        network=BEP20,
+        tx_hash=tx_hash + ":0",
+        log_index=0,
+        block_number=99,
+        token_contract=blockchain.DEFAULT_BSC_USDT,
+        from_address="0x" + "2" * 40,
+        to_address=treasury_address(BEP20),
+        amount=Decimal("9.000001"),
+        confirmations=20,
+        chain_timestamp=now - timedelta(days=1),
+        status="confirmed",
+    )
+    dbs.add(transfer)
+    dbs.flush()
+
+    assert blockchain.credit_transfer(dbs, transfer) is False
+    assert transfer.status == "review_required"
+    assert transfer.deposit_intent_id == intent.id
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == user.id))
+    assert wallet.available == Decimal("0")
+    dbs.close()
