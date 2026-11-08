@@ -341,15 +341,41 @@ def credit_transfer(
     if transfer.status != "confirmed":
         return False
 
-    # A shared treasury address cannot safely identify a member from amount alone.
-    # Credit only the exact transaction hash the authenticated member submitted.
+    network = transfer.network
+    if network == BEP20:
+        expected_contract = bsc_config()["usdt"].lower()
+        valid_recipient = transfer.to_address.lower() == treasury_address(BEP20).lower()
+    elif network == TRC20:
+        expected_contract = tron_config()["usdt"].lower()
+        valid_recipient = transfer.to_address == treasury_address(TRC20)
+    else:
+        transfer.status = "quarantined"
+        return False
+
+    # Never accept a transfer from a different token contract or recipient,
+    # even if an upstream indexer returns a similarly shaped event.
+    if transfer.token_contract.lower() != expected_contract or not valid_recipient:
+        transfer.status = "quarantined"
+        dbs.add(AuditEvent(
+            user_id=None,
+            event_type="deposit_quarantined",
+            metadata_json=json.dumps({
+                "transfer_id": transfer.id,
+                "network": network,
+                "tx_hash": transfer.tx_hash,
+                "reason": "token_contract_or_recipient_mismatch",
+            }),
+        ))
+        return False
+
+    base_hash = transfer.tx_hash.split(":", 1)[0].lower()
     intent = dbs.scalar(
         select(DepositIntent).where(
-            DepositIntent.network == transfer.network,
+            DepositIntent.network == network,
             DepositIntent.currency == "USDT",
-            DepositIntent.status == "pending",
-            DepositIntent.deposit_address == treasury_address(transfer.network),
-            DepositIntent.tx_hash == transfer.tx_hash.split(":", 1)[0].lower(),
+            DepositIntent.status.in_(["pending", "transaction_submitted", "review_required"]),
+            DepositIntent.deposit_address == treasury_address(network),
+            DepositIntent.tx_hash == base_hash,
         ).with_for_update()
     )
     if not intent:
@@ -359,7 +385,7 @@ def credit_transfer(
             event_type="deposit_quarantined",
             metadata_json=json.dumps({
                 "transfer_id": transfer.id,
-                "network": transfer.network,
+                "network": network,
                 "amount": str(transfer.amount),
                 "tx_hash": transfer.tx_hash,
                 "reason": "no_exact_member_transaction_claim",
@@ -368,37 +394,42 @@ def credit_transfer(
         return False
 
     if intent.amount is not None and intent.amount != transfer.amount:
-        transfer.status = "quarantined"
+        transfer.status = "review_required"
+        transfer.deposit_intent_id = intent.id
+        intent.status = "review_required"
         dbs.add(AuditEvent(
             user_id=intent.user_id,
-            event_type="deposit_quarantined",
+            event_type="deposit_amount_mismatch",
             metadata_json=json.dumps({
                 "transfer_id": transfer.id,
                 "deposit_intent_id": intent.id,
                 "expected_amount": str(intent.amount),
                 "observed_amount": str(transfer.amount),
                 "tx_hash": transfer.tx_hash,
-                "reason": "amount_mismatch",
+                "reason": "ticket_amount_mismatch",
             }),
         ))
         return False
 
-    # A member-submitted transaction hash proves that a transfer exists, but
-    # does not prove who owns it. Shared treasury deposits stay quarantined
-    # unless an independently verified gateway/address/wallet allocation has
-    # authorized this exact member-to-transfer association.
+    # A shared receiving address plus a publicly visible TXID is not proof
+    # that the authenticated member owns the sending wallet. A unique ticket
+    # amount narrows the candidate but is not an identity credential. Keep the
+    # candidate in review until an independent attribution process approves it.
     if not attribution_verified:
-        transfer.status = "quarantined"
+        transfer.status = "review_required"
+        transfer.deposit_intent_id = intent.id
+        intent.status = "review_required"
         dbs.add(AuditEvent(
             user_id=intent.user_id,
-            event_type="deposit_quarantined",
+            event_type="deposit_ticket_candidate_matched",
             metadata_json=json.dumps({
                 "transfer_id": transfer.id,
                 "deposit_intent_id": intent.id,
-                "network": transfer.network,
+                "network": network,
                 "tx_hash": transfer.tx_hash,
                 "amount": str(transfer.amount),
-                "reason": "member_transaction_claim_is_not_independent_attribution",
+                "from_address": transfer.from_address,
+                "reason": "shared_treasury_requires_independent_ownership_review",
             }),
         ))
         return False
@@ -437,7 +468,7 @@ def credit_transfer(
         user_id=intent.user_id,
         event_type="blockchain_deposit_credited",
         metadata_json=json.dumps({
-            "network": transfer.network, "tx_hash": transfer.tx_hash,
+            "network": network, "tx_hash": transfer.tx_hash,
             "amount": str(transfer.amount),
         }),
     ))
