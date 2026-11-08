@@ -27,8 +27,8 @@ def test_withdrawal_engine_submits_then_reconciles_idempotently():
         provider="aster-treasury",
         provider_reference="AST-WD-ENGINE-" + __import__("secrets").token_hex(4).upper(),
         currency="USDT",
-        network="TRC20",
-        address="T" + "1" * 33,
+        network="BEP20",
+        address="0x" + "1" * 40,
         amount=Decimal("5"),
         status="approved",
     )
@@ -153,4 +153,33 @@ def test_withdrawal_engine_failure_releases_pending_once():
     db.refresh(wallet)
     assert wallet.pending == Decimal("0.00000000")
     assert wallet.available == Decimal("3.00000000")
+    db.close()
+
+def test_withdrawal_engine_never_processes_legacy_trc20_requests():
+    db = SessionLocal()
+    email = "legacy-trc-" + __import__("secrets").token_hex(5) + "@example.com"
+    user = User(
+        email=email,
+        password_hash="test",
+        status="active",
+        referral_code="LEGACY-TRC-" + __import__("secrets").token_hex(4).upper(),
+    )
+    db.add(user)
+    db.flush()
+    row = WithdrawalRequest(
+        user_id=user.id,
+        provider="aster-treasury",
+        provider_reference="AST-WD-LEGACY-TRC-" + __import__("secrets").token_hex(4).upper(),
+        currency="USDT",
+        network="TRC20",
+        address="T" + "3" * 33,
+        amount=Decimal("2"),
+        status="approved",
+    )
+    db.add(row)
+    db.commit()
+
+    assert process_pending_withdrawals(db, DryRunWithdrawalProvider()) == []
+    db.refresh(row)
+    assert row.status == "approved"
     db.close()
