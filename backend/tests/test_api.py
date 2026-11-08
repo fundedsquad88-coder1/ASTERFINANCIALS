@@ -235,7 +235,7 @@ def test_deposit_uses_aster_treasury_and_withdrawal_stays_fail_closed_without_fu
     csrf = client.cookies.get("AsterCSRF")
     deposit = client.post("/v1/wallet/deposits",
         headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "fund-deposit-" + __import__("secrets").token_hex(8)},
-        json={"currency":"USDT","network":"TRC20"})
+        json={"currency":"USDT","network":"TRC20","expected_amount":"25"})
     assert deposit.status_code == 201
     deposit_body = deposit.json()
     assert deposit_body["custody"] == "Aster treasury"
