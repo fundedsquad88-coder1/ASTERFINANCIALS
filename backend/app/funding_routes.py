@@ -159,8 +159,6 @@ def create_deposit(
     network = normalize_network(body.network)
     if network not in NETWORKS:
         raise HTTPException(422, "Unsupported USDT network. Use BEP20 or TRC20.")
-    if body.expected_amount is None:
-        raise HTTPException(422, "Enter the amount you intend to deposit so Aster can reserve a unique ticket amount.")
     address = treasury_address(network)
 
     existing = dbs.scalar(
@@ -173,6 +171,8 @@ def create_deposit(
     if existing:
         return json.loads(existing.response_body)
     require_verified_kyc(user)
+    if body.expected_amount is None:
+        raise HTTPException(422, "Enter the amount you intend to deposit so Aster can reserve a unique ticket amount.")
     expire_unsubmitted_deposit_tickets(dbs)
 
     requested_amount = body.expected_amount
@@ -301,7 +301,7 @@ def submit_deposit_transaction(
     ))
     dbs.commit()
     return {"id": network_hint.id, "status": network_hint.status, "tx_hash": normalized_hash,
-            "message": "Transaction submitted. Aster will verify the on-chain transfer and match its ticket amount. Shared-wallet attribution is reviewed before funds are credited."}
+            "message": "Transaction submitted. Aster will verify the on-chain transfer and match its ticket amount. Funds remain uncredited until member ownership is independently confirmed through attribution review."}
 
 @router.get("/v1/wallet/deposits/{deposit_id}")
 def get_deposit(
