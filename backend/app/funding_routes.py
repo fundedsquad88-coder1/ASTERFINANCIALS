@@ -194,7 +194,11 @@ def create_deposit(
         ticket_mode="single_wallet_ticket_v1",
     )
     dbs.add(intent)
-    dbs.flush()
+    try:
+        dbs.flush()
+    except IntegrityError:
+        dbs.rollback()
+        raise HTTPException(409, "A concurrent deposit ticket reserved that amount. Please create a new ticket.")
 
     result = {
         "id": intent.id,
