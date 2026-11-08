@@ -259,7 +259,8 @@ def submit_deposit_transaction(
         raise HTTPException(409, "This deposit ticket is no longer active")
     if network_hint.tx_hash:
         if network_hint.tx_hash == raw_hash:
-            return {"id": network_hint.id, "status": network_hint.status, "tx_hash": raw_hash}
+            return {"id": network_hint.id, "status": network_hint.status, "tx_hash": raw_hash,
+                    "message": "This transaction ID is already attached to your deposit ticket."}
         raise HTTPException(409, "A transaction hash is already attached to this deposit")
     if network_hint.network == "BEP20":
         if not re.fullmatch(r"0x[a-fA-F0-9]{64}", raw_hash):
