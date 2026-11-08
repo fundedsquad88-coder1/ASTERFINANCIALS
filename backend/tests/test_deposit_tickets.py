@@ -116,6 +116,7 @@ def test_txid_and_exact_ticket_amount_create_review_candidate_not_automatic_cred
         to_address=treasury_address(BEP20),
         amount=Decimal("25.000001"),
         confirmations=20,
+        chain_timestamp=datetime.now(timezone.utc),
         status="confirmed",
     )
     dbs.add(transfer)
