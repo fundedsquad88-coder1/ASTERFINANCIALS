@@ -4,13 +4,14 @@ import json
 import os
 import re
 import secrets
-from datetime import datetime, timezone
-from decimal import Decimal
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal, ROUND_DOWN
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.funding import DepositIntent, ProviderEvent, WithdrawalRequest
@@ -37,7 +38,7 @@ router = APIRouter()
 class DepositCreateIn(BaseModel):
     currency: str = Field(default="USDT", pattern="^USDT$")
     network: str = Field(min_length=2, max_length=32)
-    expected_amount: Optional[Decimal] = Field(default=None, gt=0, max_digits=28, decimal_places=8)
+    expected_amount: Optional[Decimal] = Field(default=None, gt=0, max_digits=28, decimal_places=6)
 
 class WithdrawalCreateIn(BaseModel):
     currency: str = Field(default="USDT", pattern="^USDT$")
@@ -82,6 +83,52 @@ def verify_signature(raw: bytes, signature: Optional[str]):
     if not hmac.compare_digest(expected, signature):
         raise HTTPException(401, "Invalid provider signature")
 
+
+def expire_unsubmitted_deposit_tickets(dbs: Session) -> int:
+    """Release expired tickets only when no TXID was submitted."""
+    now = datetime.now(timezone.utc)
+    rows = dbs.scalars(select(DepositIntent).where(
+        DepositIntent.ticket_mode == "single_wallet_ticket_v1",
+        DepositIntent.status == "pending",
+        DepositIntent.tx_hash.is_(None),
+        DepositIntent.expires_at.is_not(None),
+        DepositIntent.expires_at < now,
+    )).all()
+    for row in rows:
+        row.status = "expired"
+        row.updated_at = now
+        dbs.add(AuditEvent(
+            user_id=row.user_id,
+            event_type="deposit_ticket_expired",
+            metadata_json=json.dumps({"deposit_id": row.id, "ticket_id": row.provider_reference, "network": row.network}),
+        ))
+    if rows:
+        dbs.flush()
+    return len(rows)
+
+
+def reserve_deposit_ticket_amount(dbs: Session, network: str, requested: Decimal) -> Decimal:
+    """Reserve a unique six-decimal amount for active tickets on this network.
+
+    The unique partial database index is the final concurrency guard. The
+    returned amount is a routing hint, not proof of customer identity.
+    """
+    quantum = Decimal("0.000001")
+    base = requested.quantize(quantum, rounding=ROUND_DOWN)
+    if base != requested:
+        raise HTTPException(422, "USDT deposit amounts support up to 6 decimal places on both networks.")
+    active = dbs.scalars(select(DepositIntent.amount).where(
+        DepositIntent.network == network,
+        DepositIntent.ticket_mode == "single_wallet_ticket_v1",
+        DepositIntent.status.in_(["pending", "transaction_submitted", "review_required"]),
+    )).all()
+    reserved = {Decimal(value) for value in active if value is not None}
+    for offset in range(100000):
+        candidate = base + (quantum * offset)
+        if candidate not in reserved:
+            return candidate
+    raise HTTPException(503, "Unable to reserve a unique deposit amount. Please try again later.")
+
 @router.get("/v1/wallet/deposit-addresses")
 def deposit_addresses():
     return {
@@ -112,6 +159,8 @@ def create_deposit(
     network = normalize_network(body.network)
     if network not in NETWORKS:
         raise HTTPException(422, "Unsupported USDT network. Use BEP20 or TRC20.")
+    if body.expected_amount is None:
+        raise HTTPException(422, "Enter the amount you intend to deposit so Aster can reserve a unique ticket amount.")
     address = treasury_address(network)
 
     existing = dbs.scalar(
@@ -124,7 +173,12 @@ def create_deposit(
     if existing:
         return json.loads(existing.response_body)
     require_verified_kyc(user)
+    expire_unsubmitted_deposit_tickets(dbs)
 
+    requested_amount = body.expected_amount
+    reserved_amount = reserve_deposit_ticket_amount(dbs, network, requested_amount)
+    ttl_minutes = max(30, min(60, int(os.getenv("ASTER_DEPOSIT_TICKET_TTL_MINUTES", "45"))))
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)
     provider_reference = "AST-DEP-" + secrets.token_hex(10).upper()
     intent = DepositIntent(
         user_id=user.id,
@@ -134,7 +188,10 @@ def create_deposit(
         network=network,
         status="pending",
         deposit_address=address,
-        amount=body.expected_amount,
+        amount=reserved_amount,
+        requested_amount=requested_amount,
+        expires_at=expires_at,
+        ticket_mode="single_wallet_ticket_v1",
     )
     dbs.add(intent)
     dbs.flush()
@@ -149,8 +206,12 @@ def create_deposit(
         "network_name": NETWORKS[network]["name"],
         "deposit_address": intent.deposit_address,
         "provider_reference": intent.provider_reference,
+        "ticket_id": intent.provider_reference,
+        "requested_amount": str(intent.requested_amount),
         "expected_amount": str(intent.amount) if intent.amount is not None else None,
-        "credit_rule": "Credit only after both the transfer and the member's ownership of that transfer are independently verified.",
+        "expires_at": intent.expires_at.isoformat() if intent.expires_at else None,
+        "ticket_ttl_minutes": ttl_minutes,
+        "credit_rule": "Submit the TXID before expiry. Aster independently verifies the chain transfer; shared-wallet ownership matches remain subject to review before credit.",
     }
     dbs.add(
         IdempotencyKey(
@@ -161,7 +222,11 @@ def create_deposit(
             response_body=json.dumps(result),
         )
     )
-    dbs.commit()
+    try:
+        dbs.commit()
+    except IntegrityError:
+        dbs.rollback()
+        raise HTTPException(409, "A concurrent deposit ticket reserved that amount. Please create a new ticket.")
     return result
 
 @router.post("/v1/wallet/deposits/{deposit_id}/transaction")
@@ -178,11 +243,19 @@ def submit_deposit_transaction(
     ))
     if not network_hint:
         raise HTTPException(404, "Deposit not found")
-    if network_hint.status != "pending":
-        raise HTTPException(409, "This deposit intent is no longer pending")
+    if network_hint.status == "pending" and network_hint.expires_at:
+        expiry = network_hint.expires_at
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expiry:
+            network_hint.status = "expired"
+            dbs.commit()
+            raise HTTPException(410, "This deposit ticket has expired. Create a new ticket before sending funds.")
+    if network_hint.status not in {"pending", "transaction_submitted", "review_required"}:
+        raise HTTPException(409, "This deposit ticket is no longer active")
     if network_hint.tx_hash:
         if network_hint.tx_hash == raw_hash:
-            return {"id": network_hint.id, "status": "transaction_submitted", "tx_hash": raw_hash}
+            return {"id": network_hint.id, "status": network_hint.status, "tx_hash": raw_hash}
         raise HTTPException(409, "A transaction hash is already attached to this deposit")
     if network_hint.network == "BEP20":
         if not re.fullmatch(r"0x[a-fA-F0-9]{64}", raw_hash):
@@ -196,6 +269,7 @@ def submit_deposit_transaction(
     if duplicate:
         raise HTTPException(409, "This transaction hash is already linked to a deposit")
     network_hint.tx_hash = normalized_hash
+    network_hint.status = "transaction_submitted"
     network_hint.updated_at = datetime.now(timezone.utc)
 
     # Reconcile a transfer the chain worker may have observed before the user submitted its hash.
@@ -211,7 +285,7 @@ def submit_deposit_transaction(
             BlockchainTransfer.tx_hash == normalized_hash,  # legacy single-event rows
         ),
     )).all()
-    if len(observed) == 1 and observed[0].status in {"quarantined", "confirmed"}:
+    if len(observed) == 1 and observed[0].status in {"quarantined", "confirmed", "review_required"}:
         observed[0].status = "confirmed"
         credit_transfer(dbs, observed[0])
 
@@ -221,8 +295,8 @@ def submit_deposit_transaction(
         metadata_json=json.dumps({"deposit_id": deposit_id, "network": network_hint.network, "tx_hash": normalized_hash}),
     ))
     dbs.commit()
-    return {"id": network_hint.id, "status": "transaction_submitted", "tx_hash": normalized_hash,
-            "message": "Transaction submitted. Because this is a shared treasury address, funds remain uncredited until member ownership is independently confirmed."}
+    return {"id": network_hint.id, "status": network_hint.status, "tx_hash": normalized_hash,
+            "message": "Transaction submitted. Aster will verify the on-chain transfer and match its ticket amount. Shared-wallet attribution is reviewed before funds are credited."}
 
 @router.get("/v1/wallet/deposits/{deposit_id}")
 def get_deposit(
@@ -248,6 +322,9 @@ def get_deposit(
         "tx_hash": intent.tx_hash,
         "amount": str(intent.amount) if intent.amount is not None else None,
         "expected_amount": str(intent.amount) if intent.amount is not None else None,
+        "requested_amount": str(intent.requested_amount) if intent.requested_amount is not None else None,
+        "ticket_id": intent.provider_reference,
+        "expires_at": intent.expires_at.isoformat() if intent.expires_at else None,
         "created_at": intent.created_at.isoformat(),
         "updated_at": intent.updated_at.isoformat(),
     }
