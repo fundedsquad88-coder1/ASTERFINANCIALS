@@ -111,6 +111,7 @@ def bsc_scan(dbs: Session) -> dict:
     )
 
     detected = credited = 0
+    block_timestamps = {}
     for log in logs:
         topics = log.get("topics", [])
         if len(topics) < 3 or not log.get("transactionHash") or not log.get("blockNumber"):
@@ -141,6 +142,17 @@ def bsc_scan(dbs: Session) -> dict:
 
         amount = Decimal(int(log.get("data", "0x0"), 16)) / Decimal(10**18)
         block_number = int(log["blockNumber"], 16)
+        if block_number not in block_timestamps:
+            block_payload = http_json(
+                cfg["rpc"],
+                {"jsonrpc": "2.0", "id": 4, "method": "eth_getBlockByNumber", "params": [_hex_block(block_number), False]},
+            )
+            block_row = block_payload.get("result") or {}
+            block_timestamp_hex = block_row.get("timestamp")
+            block_timestamps[block_number] = (
+                datetime.fromtimestamp(int(block_timestamp_hex, 16), timezone.utc)
+                if block_timestamp_hex else None
+            )
         transfer = BlockchainTransfer(
             network=BEP20,
             tx_hash=unique,
@@ -151,6 +163,7 @@ def bsc_scan(dbs: Session) -> dict:
             to_address="0x" + topics[2][-40:],
             amount=amount,
             confirmations=max(0, safe_head - block_number + 1),
+            chain_timestamp=block_timestamps[block_number],
             status=(
                 "quarantined" if event_counts[tx_hash] > 1
                 else ("confirmed" if block_number <= safe_head else "detected")
@@ -296,6 +309,10 @@ def tron_scan(dbs: Session) -> dict:
                 to_address=str(row.get("to", "")),
                 amount=amount,
                 confirmations=cfg["confirmations"],
+                chain_timestamp=(
+                    datetime.fromtimestamp(int(row["block_timestamp"]) / 1000, timezone.utc)
+                    if row.get("block_timestamp") else None
+                ),
                 status="quarantined" if event_counts[tx_hash] > 1 else "confirmed",
             )
             dbs.add(transfer)
@@ -410,6 +427,40 @@ def credit_transfer(
             }),
         ))
         return False
+
+    if intent.ticket_mode == "single_wallet_ticket_v1":
+        chain_time = transfer.chain_timestamp
+        created_time = intent.created_at
+        expiry_time = intent.expires_at
+        if chain_time and chain_time.tzinfo is None:
+            chain_time = chain_time.replace(tzinfo=timezone.utc)
+        if created_time and created_time.tzinfo is None:
+            created_time = created_time.replace(tzinfo=timezone.utc)
+        if expiry_time and expiry_time.tzinfo is None:
+            expiry_time = expiry_time.replace(tzinfo=timezone.utc)
+        if (
+            chain_time is None
+            or created_time is None
+            or chain_time < created_time
+            or (expiry_time is not None and chain_time > expiry_time)
+        ):
+            transfer.status = "review_required"
+            transfer.deposit_intent_id = intent.id
+            intent.status = "review_required"
+            dbs.add(AuditEvent(
+                user_id=intent.user_id,
+                event_type="deposit_ticket_timestamp_mismatch",
+                metadata_json=json.dumps({
+                    "transfer_id": transfer.id,
+                    "deposit_intent_id": intent.id,
+                    "tx_hash": transfer.tx_hash,
+                    "chain_timestamp": chain_time.isoformat() if chain_time else None,
+                    "ticket_created_at": created_time.isoformat() if created_time else None,
+                    "ticket_expires_at": expiry_time.isoformat() if expiry_time else None,
+                    "reason": "transaction_outside_ticket_validity_window_or_timestamp_unavailable",
+                }),
+            ))
+            return False
 
     # A shared receiving address plus a publicly visible TXID is not proof
     # that the authenticated member owns the sending wallet. A unique ticket
