@@ -64,7 +64,10 @@ def process_pending_withdrawals(
     provider = provider or DryRunWithdrawalProvider()
     rows = dbs.scalars(
         select(WithdrawalRequest)
-        .where(WithdrawalRequest.status == "approved")
+        .where(
+            WithdrawalRequest.status == "approved",
+            WithdrawalRequest.network == "BEP20",
+        )
         .order_by(WithdrawalRequest.id.asc())
         .limit(limit)
         .with_for_update()
