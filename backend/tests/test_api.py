@@ -242,11 +242,17 @@ def test_deposit_uses_aster_treasury_and_withdrawal_stays_fail_closed_without_fu
     assert deposit_body["custody"] == "Aster treasury"
     assert deposit_body["network"] == "TRC20"
     assert deposit_body["deposit_address"].startswith("T")
-    withdrawal = client.post("/v1/wallet/withdrawals",
-        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "fund-withdraw-" + __import__("secrets").token_hex(8)},
+    trc20_withdrawal = client.post("/v1/wallet/withdrawals",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "fund-withdraw-trc-" + __import__("secrets").token_hex(8)},
         json={"currency":"USDT","network":"TRC20","address":"T" + "1"*33,"amount":"1"})
-    assert withdrawal.status_code == 409
-    assert withdrawal.json()["detail"] == "Insufficient available balance"
+    assert trc20_withdrawal.status_code == 422
+    assert "only on BNB Smart Chain" in trc20_withdrawal.json()["detail"]
+
+    bep20_withdrawal = client.post("/v1/wallet/withdrawals",
+        headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "fund-withdraw-bsc-" + __import__("secrets").token_hex(8)},
+        json={"currency":"USDT","network":"BEP20","address":"0x" + "1"*40,"amount":"1"})
+    assert bep20_withdrawal.status_code == 409
+    assert bep20_withdrawal.json()["detail"] == "Insufficient available balance"
 
 
 def test_deposit_transaction_hash_is_bound_to_authenticated_intent():
@@ -310,7 +316,7 @@ def test_withdrawal_rejects_invalid_network_address_and_is_idempotent():
     missing = client.post(
         "/v1/wallet/withdrawals",
         headers={"X-Aster-CSRF": csrf, "Idempotency-Key": "wd-empty-" + __import__("secrets").token_hex(8)},
-        json={"currency":"USDT","network":"TRC20","address":"T" + "1"*33,"amount":"1"},
+        json={"currency":"USDT","network":"BEP20","address":"0x" + "1"*40,"amount":"1"},
     )
     assert missing.status_code == 409
     assert missing.json()["detail"] == "Insufficient available balance"

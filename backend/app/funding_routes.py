@@ -447,10 +447,10 @@ def create_withdrawal(
 ):
     provider = provider_name()
     network = normalize_network(body.network)
-    if network not in NETWORKS:
-        raise HTTPException(422, "Unsupported USDT network. Use BEP20 or TRC20.")
+    if network != "BEP20":
+        raise HTTPException(422, "Withdrawals are currently available only on BNB Smart Chain (USDT-BEP20).")
     if not valid_address(network, body.address):
-        raise HTTPException(422, "Invalid destination address for the selected network.")
+        raise HTTPException(422, "Invalid BEP20 destination address. Use a valid 0x address.")
 
     existing = dbs.scalar(
         select(IdempotencyKey).where(
@@ -573,6 +573,8 @@ async def withdrawal_webhook(request: Request, dbs: Session = Depends(db)):
     )
     if not row or row.provider != provider:
         raise HTTPException(404, "Withdrawal request not found")
+    if body.status == "confirmed" and row.network != "BEP20":
+        raise HTTPException(409, "Only USDT-BEP20 withdrawals can be confirmed for processing.")
 
     event = ProviderEvent(
         provider=provider,

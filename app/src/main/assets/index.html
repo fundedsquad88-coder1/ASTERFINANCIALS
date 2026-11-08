@@ -302,7 +302,7 @@ body.theme-dark .top-actions .icon:active{background:#211d2b!important;border-co
 <div class="card" id="teamMembers"><div class="small muted">Connect your account to load your team.</div></div>
 </section>
 <section id="wallet" class="screen">
-<div class="art-banner mint"><div class="art-copy"><b>Aster Treasury</b><span>USDT rails across BEP20 and TRC20. Secure deposits and withdrawals.</span></div><svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><rect x="150" y="38" width="116" height="86" rx="18" fill="#172424" stroke="#56e0c1" stroke-width="2"/><rect x="177" y="65" width="112" height="62" rx="16" fill="#0d1416" stroke="#56e0c1"/><circle cx="216" cy="95" r="19" fill="#56e0c1" opacity=".2"/><text x="216" y="102" text-anchor="middle" font-size="23" font-weight="800" fill="#56e0c1">₮</text><path d="M115 77 Q145 42 170 55" fill="none" stroke="#56e0c1" stroke-width="3"/><path d="M111 94 Q143 60 168 73" fill="none" stroke="#f5c95a" stroke-width="3"/></svg></div>
+<div class="art-banner mint"><div class="art-copy"><b>Aster Treasury</b><span>Deposits on BEP20 and TRC20. Withdrawals on BEP20 only.</span></div><svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><rect x="150" y="38" width="116" height="86" rx="18" fill="#172424" stroke="#56e0c1" stroke-width="2"/><rect x="177" y="65" width="112" height="62" rx="16" fill="#0d1416" stroke="#56e0c1"/><circle cx="216" cy="95" r="19" fill="#56e0c1" opacity=".2"/><text x="216" y="102" text-anchor="middle" font-size="23" font-weight="800" fill="#56e0c1">₮</text><path d="M115 77 Q145 42 170 55" fill="none" stroke="#56e0c1" stroke-width="3"/><path d="M111 94 Q143 60 168 73" fill="none" stroke="#f5c95a" stroke-width="3"/></svg></div>
   <div class="eyebrow">Wallet</div><div class="title">Your money, clearly.</div><p class="sub">Balances, deposits, withdrawals and transaction history will come from your authenticated Aster account.</p>
   <div class="wallet-card wallet-hero"><div class="wallet-glow"></div><div class="wallet-head"><div class="eyebrow" style="color:#c8c4d7">AVAILABLE BALANCE</div><span class="wallet-status"><i></i> Account not connected</span></div><div class="balance" style="margin-top:8px">$0.00</div><div class="wallet-currency">USDT · Tether USD</div><div class="wallet-actions"><button id="deposit"><span>＋</span> Deposit</button><button id="withdraw"><span>↗</span> Withdraw</button></div></div>
   <div class="wallet-shortcuts"><div class="wallet-shortcut"><span class="shortcut-icon">⇩</span><b>Deposit USDT</b><small>Choose a network</small></div><div class="wallet-shortcut"><span class="shortcut-icon">⇧</span><b>Withdraw</b><small>Request a transfer</small></div><div class="wallet-shortcut"><span class="shortcut-icon">◷</span><b>Activity</b><small>Verified history</small></div></div>
@@ -610,34 +610,24 @@ async function treasuryDepositSheet(){
 }
 $('#deposit').onclick=treasuryDepositSheet;
 async function withdrawSheet(){
- let network='BEP20',withdrawalKey='ui-withdraw-'+idem();
- openSheet('Withdraw USDT','<div class="sim-badge">Server-controlled withdrawal</div><p>Funds are reserved immediately by the backend. Final settlement requires the configured provider and confirmation webhook.</p><div class="withdraw-network" id="withdrawNetwork"><button type="button" class="on" data-net="BEP20" aria-pressed="true">BEP20</button><button type="button" data-net="TRC20" aria-pressed="false">TRC20</button></div><div class="small muted" id="withdrawNetworkHint">BNB Smart Chain · destination must be a 0x address.</div><input class="input" id="withdrawAddress" autocomplete="off" spellcheck="false" placeholder="BEP20 destination (0x…)"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" inputmode="decimal" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit withdrawal</button><div class="notice">Never submit a withdrawal to an address you have not verified. Aster will not pretend a transaction was broadcast unless a provider confirms it.</div><div class="small muted" id="withdrawState" style="margin-top:9px" aria-live="polite"></div><div class="divider"></div><div class="row"><b>Recent withdrawals</b><button class="link" id="refreshWithdrawals">Refresh</button></div><div id="withdrawHistory" class="small muted">Connect your account to load withdrawal history.</div>');
- const networkButtons=$('#withdrawNetwork button');
- networkButtons.forEach(button=>button.addEventListener('click',()=>{
-   network=button.dataset.net;
-   networkButtons.forEach(item=>{const active=item===button;item.classList.toggle('on',active);item.setAttribute('aria-pressed',String(active))});
-   const trc=network==='TRC20';
-   $('#withdrawAddress').placeholder=trc?'TRC20 destination (T…)':'BEP20 destination (0x…)';
-   $('#withdrawNetworkHint').textContent=trc?'Tron · destination must be a valid T-prefixed TRC20 address.':'BNB Smart Chain · destination must be a 0x address.';
-   $('#withdrawState').textContent='';
- }));
+ const network='BEP20',withdrawalKey='ui-withdraw-'+idem();
+ openSheet('Withdraw USDT','<div class="sim-badge">USDT · BEP20 only</div><p>Withdrawals are currently supported exclusively on BNB Smart Chain. Enter a BEP20-compatible destination address. Your request reserves the amount and remains subject to identity checks and administrator approval. Submission does not mean funds have been broadcast.</p><div class="withdraw-network" id="withdrawNetwork"><button type="button" class="on" data-net="BEP20" aria-pressed="true" disabled>BNB Smart Chain · BEP20</button></div><div class="small muted" id="withdrawNetworkHint">USDT on BNB Smart Chain · destination must be a 0x address.</div><input class="input" id="withdrawAddress" autocomplete="off" spellcheck="false" placeholder="BEP20 destination (0x…)"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" inputmode="decimal" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit BEP20 withdrawal</button><div class="notice">Check the destination network carefully. Sending to an incompatible network may result in permanent loss. Withdrawals require account verification and administrator approval. No blockchain transfer is broadcast by this request.</div><div class="small muted" id="withdrawState" style="margin-top:9px" aria-live="polite"></div><div class="divider"></div><div class="row"><b>Recent withdrawals</b><button class="link" id="refreshWithdrawals">Refresh</button></div><div id="withdrawHistory" class="small muted">Connect your account to load withdrawal history.</div>');
  async function refreshWithdrawalHistory(){try{const rows=await apiCall('/v1/wallet/withdrawals');const host=$('#withdrawHistory');host.innerHTML='';if(!rows.length){host.textContent='No withdrawal requests yet.';return;}rows.slice(0,8).forEach(row=>{const line=document.createElement('div');line.className='list-row';const label=document.createElement('span');label.textContent='#'+row.id+' · '+row.network+' · '+row.status;const amount=document.createElement('b');amount.textContent=Number(row.amount).toFixed(2)+' USDT';line.append(label,amount);host.appendChild(line)});}catch(e){$('#withdrawHistory').textContent=e.message||'Could not load withdrawals.'}}
  $('#refreshWithdrawals').onclick=refreshWithdrawalHistory;
  refreshWithdrawalHistory();
  $('#submitWithdrawal').onclick=async()=>{
    try{
      const address=$('#withdrawAddress').value.trim(),amount=$('#withdrawAmount').value.trim(),amountNumber=Number(amount);
-     const valid=network==='TRC20'?/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address):/^0x[a-fA-F0-9]{40}$/.test(address);
-     if(!valid)throw new Error(network==='TRC20'?'Enter a valid 34-character TRC20 address beginning with T.':'Enter a valid 42-character BEP20 address beginning with 0x.');
+     if(!/^0x[a-fA-F0-9]{40}$/.test(address))throw new Error('Enter a valid 42-character BEP20 address beginning with 0x.');
      if(!Number.isFinite(amountNumber)||amountNumber<=0)throw new Error('Enter a valid withdrawal amount greater than zero.');
      const d=await apiCall('/v1/wallet/withdrawals',{method:'POST',headers:{'Idempotency-Key':withdrawalKey},body:JSON.stringify({currency:'USDT',network,address,amount})});
-     $('#withdrawState').textContent='Withdrawal #'+d.id+' created · '+d.status+' · awaiting administrator review. No blockchain transfer has been broadcast.';
+     $('#withdrawState').textContent='BEP20 withdrawal request #'+d.id+' created · '+d.status+' · awaiting administrator review. No blockchain transfer has been broadcast.';
      $('#submitWithdrawal').disabled=true;
      await refreshWithdrawalHistory();
      await refreshAccountData();
-     showToast('Withdrawal request created');
+     showToast('BEP20 withdrawal request created');
    }catch(e){$('#withdrawState').textContent=e.message;showToast(e.message)}
- };
+ }
 }
 $('#withdraw').onclick=withdrawSheet;
 

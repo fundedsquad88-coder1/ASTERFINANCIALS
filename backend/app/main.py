@@ -434,7 +434,7 @@ def admin_treasury_summary(x_aster_admin_key: Optional[str] = Header(default=Non
     deposits = dbs.execute(select(DepositIntent.status, func.count(DepositIntent.id)).group_by(DepositIntent.status)).all()
     withdrawals = dbs.execute(select(WithdrawalRequest.status, func.count(WithdrawalRequest.id)).group_by(WithdrawalRequest.status)).all()
     events = dbs.execute(select(ProviderEvent.status, func.count(ProviderEvent.id)).group_by(ProviderEvent.status)).all()
-    return {"deposits": {s:int(n) for s,n in deposits}, "withdrawals": {s:int(n) for s,n in withdrawals}, "provider_events": {s:int(n) for s,n in events}, "treasury_networks": ["BEP20","TRC20"]}
+    return {"deposits": {s:int(n) for s,n in deposits}, "withdrawals": {s:int(n) for s,n in withdrawals}, "provider_events": {s:int(n) for s,n in events}, "treasury_networks": ["BEP20","TRC20"], "withdrawal_networks": ["BEP20"]}
 
 
 @app.post("/v1/auth/register", status_code=201)
@@ -953,6 +953,8 @@ def admin_approve_withdrawal(
         raise HTTPException(404, "Withdrawal not found")
     if row.status != "pending":
         raise HTTPException(409, f"Cannot approve withdrawal in {row.status} status")
+    if row.network != "BEP20":
+        raise HTTPException(422, "Only USDT-BEP20 withdrawals can be approved. Reject legacy requests on other networks to release their reserved balances.")
     owner = dbs.scalar(select(User).where(User.id == row.user_id))
     if not owner or owner.kyc_status != "verified":
         raise HTTPException(403, "Identity verification is required before withdrawal approval")
