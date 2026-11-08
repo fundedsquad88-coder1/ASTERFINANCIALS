@@ -1130,9 +1130,9 @@ def admin_approve_deposit_attribution(
     dbs: Session = Depends(db),
 ):
     _require_admin(x_aster_admin_key)
-    from app.blockchain import credit_transfer
+    from app.blockchain import credit_transfer, bsc_config, tron_config
     from app.funding import BlockchainTransfer
-    from app.treasury import treasury_address
+    from app.treasury import BEP20, TRC20, treasury_address
 
     transfer = dbs.scalar(
         select(BlockchainTransfer)
@@ -1155,20 +1155,30 @@ def admin_approve_deposit_attribution(
     owner = dbs.scalar(select(User).where(User.id == intent.user_id))
     if not owner or owner.kyc_status != "verified":
         raise HTTPException(403, "Identity verification is required before deposit attribution can be approved")
-    if intent.status != "pending":
+    if intent.status not in {"pending", "transaction_submitted", "review_required"}:
         raise HTTPException(409, f"Deposit intent cannot be approved from {intent.status}")
-    if transfer.status not in {"quarantined", "confirmed"}:
+    if transfer.status not in {"quarantined", "confirmed", "review_required"}:
         raise HTTPException(409, f"Transfer cannot be approved from {transfer.status}")
 
     tx_hash = transfer.tx_hash.split(":", 1)[0].lower()
+    if intent.network == BEP20:
+        expected_contract = bsc_config()["usdt"].lower()
+        recipient_matches = transfer.to_address.lower() == treasury_address(BEP20).lower()
+    elif intent.network == TRC20:
+        expected_contract = tron_config()["usdt"].lower()
+        recipient_matches = transfer.to_address == treasury_address(TRC20)
+    else:
+        raise HTTPException(422, "Unsupported deposit network")
+
     if (
         transfer.network != intent.network
         or intent.currency != "USDT"
         or intent.tx_hash != tx_hash
         or intent.deposit_address != treasury_address(intent.network)
-        or transfer.to_address != treasury_address(intent.network)
+        or not recipient_matches
+        or transfer.token_contract.lower() != expected_contract
     ):
-        raise HTTPException(409, "Transfer does not match the selected deposit intent")
+        raise HTTPException(409, "Transfer does not match the selected deposit intent, token contract or recipient")
 
     if intent.amount is not None and intent.amount != transfer.amount:
         raise HTTPException(409, "Deposit amount mismatch")
