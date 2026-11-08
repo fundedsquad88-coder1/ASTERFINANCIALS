@@ -54,6 +54,7 @@ def downgrade():
         table_name="deposit_intents",
     )
     op.drop_index("ix_deposit_intents_expires_at", table_name="deposit_intents")
+    op.drop_column("blockchain_transfers", "chain_timestamp")
     op.drop_column("deposit_intents", "ticket_mode")
     op.drop_column("deposit_intents", "expires_at")
     op.drop_column("deposit_intents", "requested_amount")
