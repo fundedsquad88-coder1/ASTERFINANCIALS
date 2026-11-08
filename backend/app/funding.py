@@ -2,25 +2,49 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.main import Base
 
+
 class DepositIntent(Base):
     __tablename__ = "deposit_intents"
+    __table_args__ = (
+        Index(
+            "uq_deposit_ticket_network_amount_active",
+            "network",
+            "amount",
+            unique=True,
+            postgresql_where=text(
+                "ticket_mode = 'single_wallet_ticket_v1' AND status IN "
+                "('pending', 'transaction_submitted', 'review_required')"
+            ),
+            sqlite_where=text(
+                "ticket_mode = 'single_wallet_ticket_v1' AND status IN "
+                "('pending', 'transaction_submitted', 'review_required')"
+            ),
+        ),
+    )
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     provider: Mapped[str] = mapped_column(String(80))
     provider_reference: Mapped[Optional[str]] = mapped_column(String(160), unique=True, nullable=True, index=True)
     currency: Mapped[str] = mapped_column(String(16), default="USDT")
     network: Mapped[str] = mapped_column(String(32))
+    # amount is the exact amount the customer must send; requested_amount is
+    # the round amount selected in the UI before the unique ticket suffix.
     amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(28, 8), nullable=True)
+    requested_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(28, 8), nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    ticket_mode: Mapped[str] = mapped_column(String(40), default="legacy", server_default="legacy")
     status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
     deposit_address: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     tx_hash: Mapped[Optional[str]] = mapped_column(String(128), unique=True, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
 
 class WithdrawalRequest(Base):
     __tablename__ = "withdrawal_requests"
@@ -36,12 +60,14 @@ class WithdrawalRequest(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
+
 class BlockchainCursor(Base):
     __tablename__ = "blockchain_cursors"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     network: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     cursor: Mapped[int] = mapped_column(BigInteger, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
 
 class BlockchainTransfer(Base):
     __tablename__ = "blockchain_transfers"
@@ -55,10 +81,12 @@ class BlockchainTransfer(Base):
     to_address: Mapped[str] = mapped_column(String(256))
     amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
     confirmations: Mapped[int] = mapped_column(Integer, default=0)
+    chain_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="detected", index=True)
     deposit_intent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("deposit_intents.id"), nullable=True, index=True)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     credited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
 
 class ProviderEvent(Base):
     __tablename__ = "provider_events"

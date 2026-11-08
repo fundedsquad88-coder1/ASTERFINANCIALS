@@ -45,15 +45,28 @@ paths:
   /v1/wallet/deposits:
     post:
       security: [{session: []}]
-      summary: Create an idempotent USDT deposit intent using an Aster treasury address
+      summary: Create an expiring USDT deposit ticket with a unique active amount reservation
+      description: expected_amount is required (maximum 6 decimal places). The response includes the exact reserved amount, ticket ID and expiry. A unique amount is a matching hint, not proof of sender identity.
       parameters:
         - in: header
           name: Idempotency-Key
           required: true
           schema: {type: string, minLength: 16, maxLength: 128}
       responses:
-        '201': {description: Deposit intent with treasury address}
-        '422': {description: Unsupported network}
+        '201': {description: Deposit ticket with exact amount, shared treasury address and expiry}
+        '409': {description: Concurrent ticket amount collision; create a new ticket}
+        '422': {description: Unsupported network or invalid amount}
+  /v1/wallet/deposits/{id}/transaction:
+    post:
+      security: [{session: []}]
+      summary: Submit a transaction ID for independent on-chain verification
+      description: TXID submission does not prove ownership. The transfer is verified against the selected chain, official USDT contract, Aster treasury address, exact ticket amount and duplicate checks; shared-wallet attribution remains subject to review before credit.
+      responses:
+        '200': {description: TXID attached or matching transfer queued for attribution review}
+        '404': {description: Deposit ticket not found}
+        '409': {description: Ticket inactive or TXID already used}
+        '410': {description: Ticket expired before TXID submission}
+        '422': {description: Invalid transaction ID format}
   /v1/wallet/deposits/{id}:
     get:
       security: [{session: []}]
