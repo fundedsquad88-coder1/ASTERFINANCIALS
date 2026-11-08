@@ -81,6 +81,7 @@ class BlockchainTransfer(Base):
     to_address: Mapped[str] = mapped_column(String(256))
     amount: Mapped[Decimal] = mapped_column(Numeric(28, 8))
     confirmations: Mapped[int] = mapped_column(Integer, default=0)
+    chain_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="detected", index=True)
     deposit_intent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("deposit_intents.id"), nullable=True, index=True)
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
