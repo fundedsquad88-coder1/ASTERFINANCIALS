@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from decimal import Decimal
+from datetime import datetime, timezone
 from app.main import app, SessionLocal, AutoInvest, Wallet, User
 from app.funding import BlockchainTransfer, DepositIntent, WithdrawalRequest
 from app.blockchain import DEFAULT_BSC_USDT
@@ -455,6 +456,7 @@ def test_shared_treasury_deposit_requires_admin_attribution_review(monkeypatch):
         to_address=treasury_address(BEP20),
         amount=exact_ticket_amount,
         confirmations=20,
+        chain_timestamp=datetime.now(timezone.utc),
         status="quarantined",
     )
     dbs.add(transfer)
