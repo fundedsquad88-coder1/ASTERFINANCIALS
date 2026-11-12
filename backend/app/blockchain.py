@@ -1,13 +1,6 @@
 """Aster blockchain deposit watcher.
 
 Sandbox-first watcher for USDT on BSC BEP20 and TRON TRC20.
-It only credits a user after:
-1) the transfer is observed on the configured chain,
-2) it targets Aster's configured treasury address,
-3) the token contract matches the configured USDT contract,
-4) the transaction reaches the configured confirmation threshold,
-5) exactly one pending deposit intent matches network + expected amount.
-
 No private keys are used by this service.
 """
 import json
@@ -15,118 +8,522 @@ import os
 import urllib.request
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent, LedgerEntry
-from app.main import AuditEvent, Wallet, post_double_entry
-from app.treasury import BEP20, TRC20, NETWORKS, treasury_address
+from app.funding import BlockchainCursor, BlockchainTransfer, DepositIntent
+from app.main import AuditEvent, LedgerEntry, Wallet, post_double_entry, accrue_referral_commissions
+from app.treasury import BEP20, TRC20, treasury_address
 
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a6e0c22e2c"
 DEFAULT_BSC_USDT = "0x55d398326f99059fF775485246999027B3197955"
 DEFAULT_TRON_USDT = "TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj"
 
-def env_bool(name: str, default=False):
-    return os.getenv(name, str(default)).lower() in ("1","true","yes","on")
-
 def http_json(url: str, payload: dict | None = None, headers: dict | None = None) -> dict:
     data = None if payload is None else json.dumps(payload).encode()
-    req = urllib.request.Request(url, data=data, headers={"Content-Type":"application/json", **(headers or {})}, method="POST" if payload is not None else "GET")
-    with urllib.request.urlopen(req, timeout=int(os.getenv("ASTER_CHAIN_HTTP_TIMEOUT","15"))) as r:
-        return json.loads(r.read().decode())
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json", **(headers or {})},
+        method="POST" if payload is not None else "GET",
+    )
+    with urllib.request.urlopen(req, timeout=int(os.getenv("ASTER_CHAIN_HTTP_TIMEOUT", "15"))) as response:
+        return json.loads(response.read().decode())
 
-def bsc_config():
+def bsc_config() -> dict:
     return {
-        "rpc": os.getenv("ASTER_BSC_RPC_URL","").strip(),
+        "rpc": os.getenv("ASTER_BSC_RPC_URL", "").strip(),
         "usdt": os.getenv("ASTER_BSC_USDT_CONTRACT", DEFAULT_BSC_USDT).strip(),
-        "confirmations": int(os.getenv("ASTER_BSC_CONFIRMATIONS","12")),
-        "batch": int(os.getenv("ASTER_BSC_LOG_BATCH","2000")),
+        "confirmations": max(1, int(os.getenv("ASTER_BSC_CONFIRMATIONS", "12"))),
+        "batch": max(1, int(os.getenv("ASTER_BSC_LOG_BATCH", "2000"))),
+        "start_block": max(0, int(os.getenv("ASTER_BSC_START_BLOCK", "0"))),
     }
 
-def tron_config():
+def tron_config() -> dict:
     return {
-        "api": os.getenv("ASTER_TRON_API_URL","https://api.trongrid.io").rstrip("/"),
-        "api_key": os.getenv("ASTER_TRON_API_KEY","").strip(),
+        "enabled": os.getenv("ASTER_TRON_ENABLED", "false").strip().lower() == "true",
+        "api": os.getenv("ASTER_TRON_API_URL", "https://api.trongrid.io").rstrip("/"),
+        "api_key": os.getenv("ASTER_TRON_API_KEY", "").strip(),
         "usdt": os.getenv("ASTER_TRON_USDT_CONTRACT", DEFAULT_TRON_USDT).strip(),
-        "confirmations": int(os.getenv("ASTER_TRON_CONFIRMATIONS","1")),
+        "confirmations": max(1, int(os.getenv("ASTER_TRON_CONFIRMATIONS", "1"))),
+        "start_ms": max(0, int(os.getenv("ASTER_TRON_START_MS", "0"))),
+        "limit": max(1, min(200, int(os.getenv("ASTER_TRON_PAGE_SIZE", "200")))),
     }
 
-def _hex_block(v: int) -> str: return hex(v)
+def _hex_block(value: int) -> str:
+    return hex(value)
+
+def _topic_address(address: str) -> str:
+    return "0x" + ("0" * 24) + address[2:].lower()
 
 def bsc_scan(dbs: Session) -> dict:
-    cfg=bsc_config()
+    cfg = bsc_config()
     if not cfg["rpc"]:
-        return {"network":BEP20,"status":"not_configured","message":"ASTER_BSC_RPC_URL is not configured."}
-    treasury=treasury_address(BEP20).lower()
-    cursor=dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network==BEP20))
+        return {"network": BEP20, "status": "not_configured", "message": "ASTER_BSC_RPC_URL is not configured."}
+
+    treasury = treasury_address(BEP20).lower()
+    cursor = dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == BEP20))
     if not cursor:
-        cursor=BlockchainCursor(network=BEP20,cursor=int(os.getenv("ASTER_BSC_START_BLOCK","0"))); dbs.add(cursor); dbs.flush()
-    latest=int(http_json(cfg["rpc"],{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]})["result"],16)
-    finalized_res=http_json(cfg["rpc"],{"jsonrpc":"2.0","id":2,"method":"eth_getBlockByNumber","params":["finalized",False]})
-    finalized=int(finalized_res.get("result",{}).get("number","0x0"),16)
-    safe_head=max(0, finalized if finalized else latest-cfg["confirmations"])
-    if cursor.cursor>=safe_head: return {"network":BEP20,"status":"idle","cursor":cursor.cursor,"safe_head":safe_head,"detected":0,"credited":0}
-    end=min(safe_head,cursor.cursor+cfg["batch"])
-    padded_to="0x"+"0"*24+treasury[2:]
-    logs=http_json(cfg["rpc"],{"jsonrpc":"2.0","id":3,"method":"eth_getLogs","params":[{"fromBlock":_hex_block(cursor.cursor+1),"toBlock":_hex_block(end),"address":cfg["usdt"],"topics":[TRANSFER_TOPIC,None,padded_to]}]})["result"]
-    detected=credited=0
+        cursor = BlockchainCursor(network=BEP20, cursor=cfg["start_block"])
+        dbs.add(cursor)
+        dbs.flush()
+
+    latest = int(http_json(cfg["rpc"], {"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []})["result"], 16)
+    finalized_result = http_json(
+        cfg["rpc"],
+        {"jsonrpc": "2.0", "id": 2, "method": "eth_getBlockByNumber", "params": ["finalized", False]},
+    )
+    finalized_hex = (finalized_result.get("result") or {}).get("number")
+    finalized = int(finalized_hex, 16) if finalized_hex else 0
+    safe_head = finalized if finalized else max(0, latest - cfg["confirmations"])
+
+    if cursor.cursor >= safe_head:
+        return {"network": BEP20, "status": "idle", "cursor": cursor.cursor, "safe_head": safe_head, "detected": 0, "credited": 0}
+
+    start = cursor.cursor + 1
+    end = min(safe_head, cursor.cursor + cfg["batch"])
+    logs_result = http_json(
+        cfg["rpc"],
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "eth_getLogs",
+            "params": [{
+                "fromBlock": _hex_block(start),
+                "toBlock": _hex_block(end),
+                "address": cfg["usdt"],
+                "topics": [TRANSFER_TOPIC, None, _topic_address(treasury)],
+            }],
+        },
+    )
+    logs = logs_result.get("result", [])
+    if not isinstance(logs, list):
+        raise RuntimeError("BSC RPC returned an invalid log response")
+
+    from collections import Counter
+    event_counts = Counter(
+        str(log.get("transactionHash"))
+        for log in logs
+        if len(log.get("topics", [])) >= 3
+        and log.get("transactionHash")
+        and log.get("blockNumber")
+    )
+
+    detected = credited = 0
+    block_timestamps = {}
     for log in logs:
-        tx=str(log["transactionHash"]); idx=int(log.get("logIndex","0x0"),16); unique=f"{tx}:{idx}"
-        if dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash==unique)): continue
-        data=log.get("data","0x")
-        amount=Decimal(int(data,16))/Decimal(10**18)
-        from_addr="0x"+log["topics"][1][-40:]
-        to_addr="0x"+log["topics"][2][-40:]
-        transfer=BlockchainTransfer(network=BEP20,tx_hash=unique,log_index=idx,block_number=int(log["blockNumber"],16),token_contract=cfg["usdt"],from_address=from_addr,to_address=to_addr,amount=amount,confirmations=max(0,safe_head-int(log["blockNumber"],16)+1),status="confirmed" if int(log["blockNumber"],16)<=safe_head else "detected")
-        dbs.add(transfer); dbs.flush(); detected+=1
-        if transfer.status=="confirmed":
-            if credit_transfer(dbs,transfer): credited+=1
-    cursor.cursor=end; cursor.updated_at=datetime.now(timezone.utc); dbs.commit()
-    return {"network":BEP20,"status":"scanned","from_block":end-(end-(cursor.cursor if False else 0)) if False else None,"to_block":end,"cursor":cursor.cursor,"safe_head":safe_head,"detected":detected,"credited":credited}
+        topics = log.get("topics", [])
+        if len(topics) < 3 or not log.get("transactionHash") or not log.get("blockNumber"):
+            continue
+        tx_hash = str(log["transactionHash"])
+        log_index = int(log.get("logIndex", "0x0"), 16)
+        unique = f"{tx_hash}:{log_index}"
+        existing = dbs.scalar(
+            select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == unique)
+        )
+        if existing:
+            if event_counts[tx_hash] > 1:
+                was_credited = existing.status == "credited"
+                existing.status = "reconciliation_required" if was_credited else "quarantined"
+                dbs.add(AuditEvent(
+                    user_id=None,
+                    event_type="deposit_reconciliation_required" if was_credited else "deposit_quarantined",
+                    metadata_json=json.dumps({
+                        "network": BEP20,
+                        "tx_hash": tx_hash,
+                        "transfer_id": existing.id,
+                        "reason": "multiple_treasury_transfers_in_one_transaction",
+                        "matching_transfer_count": event_counts[tx_hash],
+                        "previously_credited": was_credited,
+                    }),
+                ))
+            continue
+
+        amount = Decimal(int(log.get("data", "0x0"), 16)) / Decimal(10**18)
+        block_number = int(log["blockNumber"], 16)
+        if block_number not in block_timestamps:
+            block_payload = http_json(
+                cfg["rpc"],
+                {"jsonrpc": "2.0", "id": 4, "method": "eth_getBlockByNumber", "params": [_hex_block(block_number), False]},
+            )
+            block_row = block_payload.get("result") or {}
+            block_timestamp_hex = block_row.get("timestamp")
+            block_timestamps[block_number] = (
+                datetime.fromtimestamp(int(block_timestamp_hex, 16), timezone.utc)
+                if block_timestamp_hex else None
+            )
+        transfer = BlockchainTransfer(
+            network=BEP20,
+            tx_hash=unique,
+            log_index=log_index,
+            block_number=block_number,
+            token_contract=cfg["usdt"],
+            from_address="0x" + topics[1][-40:],
+            to_address="0x" + topics[2][-40:],
+            amount=amount,
+            confirmations=max(0, safe_head - block_number + 1),
+            chain_timestamp=block_timestamps[block_number],
+            status=(
+                "quarantined" if event_counts[tx_hash] > 1
+                else ("confirmed" if block_number <= safe_head else "detected")
+            ),
+        )
+        dbs.add(transfer)
+        dbs.flush()
+        detected += 1
+        if event_counts[tx_hash] > 1:
+            dbs.add(AuditEvent(
+                user_id=None,
+                event_type="deposit_quarantined",
+                metadata_json=json.dumps({
+                    "network": BEP20,
+                    "tx_hash": tx_hash,
+                    "transfer_id": transfer.id,
+                    "reason": "multiple_treasury_transfers_in_one_transaction",
+                    "matching_transfer_count": event_counts[tx_hash],
+                }),
+            ))
+            continue
+        if transfer.status == "confirmed" and credit_transfer(dbs, transfer):
+            credited += 1
+
+    cursor.cursor = end
+    cursor.updated_at = datetime.now(timezone.utc)
+    dbs.commit()
+    return {
+        "network": BEP20, "status": "scanned", "from_block": start,
+        "to_block": end, "cursor": cursor.cursor, "safe_head": safe_head,
+        "detected": detected, "credited": credited,
+    }
 
 def tron_scan(dbs: Session) -> dict:
-    cfg=tron_config(); treasury=treasury_address(TRC20)
-    headers={"TRON-PRO-API-KEY":cfg["api_key"]} if cfg["api_key"] else {}
-    cursor=dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network==TRC20))
+    cfg = tron_config()
+    if not cfg["enabled"]:
+        return {
+            "network": TRC20, "status": "not_configured",
+            "message": "Set ASTER_TRON_ENABLED=true to enable TRON scanning.",
+            "detected": 0, "credited": 0,
+        }
+    treasury = treasury_address(TRC20)
+    headers = {"TRON-PRO-API-KEY": cfg["api_key"]} if cfg["api_key"] else {}
+    cursor = dbs.scalar(select(BlockchainCursor).where(BlockchainCursor.network == TRC20))
     if not cursor:
-        cursor=BlockchainCursor(network=TRC20,cursor=int(os.getenv("ASTER_TRON_START_MS","0"))); dbs.add(cursor); dbs.flush()
-    url=f"{cfg['api']}/v1/accounts/{treasury}/transactions/trc20?only_confirmed=true&only_to=true&limit=200&order_by=block_timestamp,asc&contract_address={cfg['usdt']}"
-    if cursor.cursor: url += f"&min_timestamp={cursor.cursor+1}"
-    payload=http_json(url,headers=headers)
-    rows=payload.get("data",[])
-    detected=credited=0
-    newest=cursor.cursor
-    for row in rows:
-        ts=int(row.get("block_timestamp",0)); newest=max(newest,ts)
-        tx=str(row.get("transaction_id","")); unique=tx
-        if not tx or dbs.scalar(select(BlockchainTransfer).where(BlockchainTransfer.tx_hash==unique)): continue
-        amount=Decimal(str(row.get("value","0")))/Decimal(10**6)
-        transfer=BlockchainTransfer(network=TRC20,tx_hash=unique,log_index=None,block_number=int(row.get("block",0) or 0),token_contract=str(row.get("token_info",{}).get("address",cfg["usdt"])),from_address=str(row.get("from","")),to_address=str(row.get("to","")),amount=amount,confirmations=1,status="confirmed")
-        dbs.add(transfer); dbs.flush(); detected+=1
-        if credit_transfer(dbs,transfer): credited+=1
-    cursor.cursor=newest; cursor.updated_at=datetime.now(timezone.utc); dbs.commit()
-    return {"network":TRC20,"status":"scanned","cursor_ms":cursor.cursor,"detected":detected,"credited":credited}
+        cursor = BlockchainCursor(network=TRC20, cursor=cfg["start_ms"])
+        dbs.add(cursor)
+        dbs.flush()
 
-def credit_transfer(dbs: Session, transfer: BlockchainTransfer) -> bool:
-    if transfer.status != "confirmed": return False
-    pending=dbs.scalars(select(DepositIntent).where(DepositIntent.network==transfer.network,DepositIntent.status=="pending",DepositIntent.deposit_address==treasury_address(transfer.network),DepositIntent.amount==transfer.amount)).all()
-    if len(pending)!=1:
-        transfer.status="quarantined"
-        dbs.add(AuditEvent(user_id=None,event_type="deposit_quarantined",metadata_json=json.dumps({"transfer_id":transfer.id,"network":transfer.network,"amount":str(transfer.amount),"reason":"no_unique_matching_intent"})))
+    base_url = (
+        f"{cfg['api']}/v1/accounts/{treasury}/transactions/trc20"
+        f"?only_confirmed=true&only_to=true&limit={cfg['limit']}"
+        f"&order_by=block_timestamp,asc&contract_address={cfg['usdt']}"
+    )
+    if cursor.cursor:
+        base_url += f"&min_timestamp={cursor.cursor + 1}"
+
+    newest = cursor.cursor
+    fingerprint = None
+    max_pages = max(1, min(50, int(os.getenv("ASTER_TRON_MAX_PAGES", "10"))))
+    pages = 0
+    has_more = False
+    all_rows = []
+
+    # Consume every fingerprint page before crediting. A transaction can emit
+    # multiple USDT Transfer events to the treasury; seeing only its first page
+    # must never make that transaction look uniquely attributable.
+    while pages < max_pages:
+        url = base_url
+        if fingerprint:
+            from urllib.parse import quote
+            url += f"&fingerprint={quote(fingerprint, safe='')}"
+        payload = http_json(url, headers=headers)
+        rows = payload.get("data", [])
+        if not isinstance(rows, list):
+            raise RuntimeError("TRON API returned an invalid transaction response")
+
+        for row in rows:
+            tx_hash = str(row.get("transaction_id", ""))
+            if not tx_hash:
+                continue
+            token_contract = str(row.get("token_info", {}).get("address", ""))
+            if token_contract.lower() != cfg["usdt"].lower():
+                continue
+            if str(row.get("to", "")) != treasury:
+                continue
+            newest = max(newest, int(row.get("block_timestamp", 0)))
+            all_rows.append(row)
+
+        pages += 1
+        fingerprint = (payload.get("meta") or {}).get("fingerprint")
+        has_more = bool(fingerprint)
+        if not has_more:
+            break
+
+    # A bounded/incomplete pagination cycle is not safe to reconcile. Keep the
+    # cursor unchanged so the complete page set is retried on the next cycle.
+    if has_more:
+        dbs.commit()
+        return {
+            "network": TRC20, "status": "page_limit_reached", "pages": pages,
+            "cursor_ms": cursor.cursor, "detected": 0, "credited": 0,
+            "has_more": True,
+        }
+
+    from collections import Counter, defaultdict
+    event_counts = Counter(str(row["transaction_id"]) for row in all_rows)
+    fallback_indexes = defaultdict(int)
+    detected = credited = 0
+
+    for row in all_rows:
+        tx_hash = str(row["transaction_id"])
+        if row.get("event_index") is not None:
+            event_index = int(row["event_index"])
+        else:
+            # Some compatible indexers omit event_index. A stable ordinal from
+            # the fully collected page set keeps distinct events separate.
+            event_index = fallback_indexes[tx_hash]
+            fallback_indexes[tx_hash] += 1
+        transfer_key = f"{tx_hash}:{event_index}"
+
+        transfer = dbs.scalar(
+            select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == transfer_key)
+        )
+        if not transfer and event_index == 0:
+            # Upgrade a legacy single-event row written before event indexes
+            # were part of the transfer identity.
+            transfer = dbs.scalar(
+                select(BlockchainTransfer).where(BlockchainTransfer.tx_hash == tx_hash)
+            )
+            if transfer:
+                transfer.tx_hash = transfer_key
+
+        if not transfer:
+            amount = Decimal(str(row.get("value", "0"))) / Decimal(10**6)
+            transfer = BlockchainTransfer(
+                network=TRC20,
+                tx_hash=transfer_key,
+                log_index=event_index,
+                block_number=int(row.get("block", 0) or 0),
+                token_contract=str(row.get("token_info", {}).get("address", "")),
+                from_address=str(row.get("from", "")),
+                to_address=str(row.get("to", "")),
+                amount=amount,
+                confirmations=cfg["confirmations"],
+                chain_timestamp=(
+                    datetime.fromtimestamp(int(row["block_timestamp"]) / 1000, timezone.utc)
+                    if row.get("block_timestamp") else None
+                ),
+                status="quarantined" if event_counts[tx_hash] > 1 else "confirmed",
+            )
+            dbs.add(transfer)
+            dbs.flush()
+            detected += 1
+
+        if event_counts[tx_hash] > 1:
+            was_credited = transfer.status == "credited"
+            transfer.status = "reconciliation_required" if was_credited else "quarantined"
+            dbs.add(AuditEvent(
+                user_id=None,
+                event_type="deposit_reconciliation_required" if was_credited else "deposit_quarantined",
+                metadata_json=json.dumps({
+                    "network": TRC20,
+                    "tx_hash": tx_hash,
+                    "transfer_id": transfer.id,
+                    "reason": "multiple_treasury_transfers_in_one_transaction",
+                    "matching_transfer_count": event_counts[tx_hash],
+                }),
+            ))
+            continue
+
+        if transfer.status != "credited":
+            transfer.status = "confirmed"
+            if credit_transfer(dbs, transfer):
+                credited += 1
+
+    cursor.cursor = newest
+    cursor.updated_at = datetime.now(timezone.utc)
+    dbs.commit()
+    return {
+        "network": TRC20, "status": "scanned", "pages": pages,
+        "cursor_ms": cursor.cursor, "detected": detected,
+        "credited": credited, "has_more": False,
+    }
+
+def credit_transfer(
+    dbs: Session,
+    transfer: BlockchainTransfer,
+    *,
+    attribution_verified: bool = False,
+) -> bool:
+    if transfer.status != "confirmed":
         return False
-    intent=pending[0]
-    w=dbs.scalar(select(Wallet).where(Wallet.user_id==intent.user_id).with_for_update())
-    if not w: raise RuntimeError("Wallet not found for deposit intent")
-    ref="DEP-CHAIN-"+transfer.tx_hash.replace(":","-")
-    post_double_entry(dbs,user_id=intent.user_id,reference=ref,amount=transfer.amount,debit_account="user.available",credit_account="platform.funding")
-    w.available += transfer.amount
-    intent.amount=transfer.amount; intent.status="confirmed"
-    transfer.deposit_intent_id=intent.id; transfer.status="credited"; transfer.credited_at=datetime.now(timezone.utc)
-    dbs.add(LedgerEntry(user_id=intent.user_id,kind="deposit",amount=transfer.amount,reference=ref,currency="USDT",status="posted"))
-    dbs.add(AuditEvent(user_id=intent.user_id,event_type="blockchain_deposit_credited",metadata_json=json.dumps({"network":transfer.network,"tx_hash":transfer.tx_hash,"amount":str(transfer.amount)})))
+
+    network = transfer.network
+    if network == BEP20:
+        expected_contract = bsc_config()["usdt"].lower()
+        valid_recipient = transfer.to_address.lower() == treasury_address(BEP20).lower()
+    elif network == TRC20:
+        expected_contract = tron_config()["usdt"].lower()
+        valid_recipient = transfer.to_address == treasury_address(TRC20)
+    else:
+        transfer.status = "quarantined"
+        return False
+
+    # Never accept a transfer from a different token contract or recipient,
+    # even if an upstream indexer returns a similarly shaped event.
+    if transfer.token_contract.lower() != expected_contract or not valid_recipient:
+        transfer.status = "quarantined"
+        dbs.add(AuditEvent(
+            user_id=None,
+            event_type="deposit_quarantined",
+            metadata_json=json.dumps({
+                "transfer_id": transfer.id,
+                "network": network,
+                "tx_hash": transfer.tx_hash,
+                "reason": "token_contract_or_recipient_mismatch",
+            }),
+        ))
+        return False
+
+    base_hash = transfer.tx_hash.split(":", 1)[0].lower()
+    intent = dbs.scalar(
+        select(DepositIntent).where(
+            DepositIntent.network == network,
+            DepositIntent.currency == "USDT",
+            DepositIntent.status.in_(["pending", "transaction_submitted", "review_required"]),
+            DepositIntent.deposit_address == treasury_address(network),
+            DepositIntent.tx_hash == base_hash,
+        ).with_for_update()
+    )
+    if not intent:
+        transfer.status = "quarantined"
+        dbs.add(AuditEvent(
+            user_id=None,
+            event_type="deposit_quarantined",
+            metadata_json=json.dumps({
+                "transfer_id": transfer.id,
+                "network": network,
+                "amount": str(transfer.amount),
+                "tx_hash": transfer.tx_hash,
+                "reason": "no_exact_member_transaction_claim",
+            }),
+        ))
+        return False
+
+    if intent.amount is not None and intent.amount != transfer.amount:
+        transfer.status = "review_required"
+        transfer.deposit_intent_id = intent.id
+        intent.status = "review_required"
+        dbs.add(AuditEvent(
+            user_id=intent.user_id,
+            event_type="deposit_amount_mismatch",
+            metadata_json=json.dumps({
+                "transfer_id": transfer.id,
+                "deposit_intent_id": intent.id,
+                "expected_amount": str(intent.amount),
+                "observed_amount": str(transfer.amount),
+                "tx_hash": transfer.tx_hash,
+                "reason": "ticket_amount_mismatch",
+            }),
+        ))
+        return False
+
+    if intent.ticket_mode == "single_wallet_ticket_v1":
+        chain_time = transfer.chain_timestamp
+        created_time = intent.created_at
+        expiry_time = intent.expires_at
+        if chain_time and chain_time.tzinfo is None:
+            chain_time = chain_time.replace(tzinfo=timezone.utc)
+        if created_time and created_time.tzinfo is None:
+            created_time = created_time.replace(tzinfo=timezone.utc)
+        if expiry_time and expiry_time.tzinfo is None:
+            expiry_time = expiry_time.replace(tzinfo=timezone.utc)
+        if (
+            chain_time is None
+            or created_time is None
+            or chain_time < created_time
+            or (expiry_time is not None and chain_time > expiry_time)
+        ):
+            transfer.status = "review_required"
+            transfer.deposit_intent_id = intent.id
+            intent.status = "review_required"
+            dbs.add(AuditEvent(
+                user_id=intent.user_id,
+                event_type="deposit_ticket_timestamp_mismatch",
+                metadata_json=json.dumps({
+                    "transfer_id": transfer.id,
+                    "deposit_intent_id": intent.id,
+                    "tx_hash": transfer.tx_hash,
+                    "chain_timestamp": chain_time.isoformat() if chain_time else None,
+                    "ticket_created_at": created_time.isoformat() if created_time else None,
+                    "ticket_expires_at": expiry_time.isoformat() if expiry_time else None,
+                    "reason": "transaction_outside_ticket_validity_window_or_timestamp_unavailable",
+                }),
+            ))
+            return False
+
+    # A shared receiving address plus a publicly visible TXID is not proof
+    # that the authenticated member owns the sending wallet. A unique ticket
+    # amount narrows the candidate but is not an identity credential. Keep the
+    # candidate in review until an independent attribution process approves it.
+    if not attribution_verified:
+        transfer.status = "review_required"
+        transfer.deposit_intent_id = intent.id
+        intent.status = "review_required"
+        dbs.add(AuditEvent(
+            user_id=intent.user_id,
+            event_type="deposit_ticket_candidate_matched",
+            metadata_json=json.dumps({
+                "transfer_id": transfer.id,
+                "deposit_intent_id": intent.id,
+                "network": network,
+                "tx_hash": transfer.tx_hash,
+                "amount": str(transfer.amount),
+                "from_address": transfer.from_address,
+                "reason": "shared_treasury_requires_independent_ownership_review",
+            }),
+        ))
+        return False
+
+    if intent.amount is None:
+        intent.amount = transfer.amount
+    wallet = dbs.scalar(select(Wallet).where(Wallet.user_id == intent.user_id).with_for_update())
+    if not wallet:
+        raise RuntimeError("Wallet not found for deposit intent")
+
+    reference = "DEP-CHAIN-" + transfer.tx_hash.replace(":", "-")
+    post_double_entry(
+        dbs,
+        user_id=intent.user_id,
+        reference=reference,
+        amount=transfer.amount,
+        debit_account="user.available",
+        credit_account="platform.funding",
+    )
+    wallet.available += transfer.amount
+    intent.status = "confirmed"
+    transfer.deposit_intent_id = intent.id
+    transfer.status = "credited"
+    transfer.credited_at = datetime.now(timezone.utc)
+    dbs.add(LedgerEntry(
+        user_id=intent.user_id, kind="deposit", amount=transfer.amount,
+        reference=reference, currency="USDT", status="posted",
+    ))
+    accrue_referral_commissions(
+        dbs,
+        depositing_user_id=intent.user_id,
+        deposit_amount=transfer.amount,
+        source_reference=reference,
+    )
+    dbs.add(AuditEvent(
+        user_id=intent.user_id,
+        event_type="blockchain_deposit_credited",
+        metadata_json=json.dumps({
+            "network": network, "tx_hash": transfer.tx_hash,
+            "amount": str(transfer.amount),
+        }),
+    ))
     return True
 
 def scan_once(dbs: Session) -> dict:
-    return {"bep20":bsc_scan(dbs),"trc20":tron_scan(dbs)}
+    return {"bep20": bsc_scan(dbs), "trc20": tron_scan(dbs)}

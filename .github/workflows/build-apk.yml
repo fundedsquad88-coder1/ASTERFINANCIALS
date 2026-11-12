@@ -3,22 +3,38 @@ name: Build Aster APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, claude-ui-v1, v24-premium-upgrade, v27-account-foundation, v39-auto-invest-wealth, v39-deposit-ledger-hardening ]
+  pull_request:
+    branches: [ main, v39-auto-invest-wealth ]
 
 jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: aster_test
+          POSTGRES_USER: aster
+          POSTGRES_PASSWORD: aster_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aster -d aster_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
       - name: Set up Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -28,30 +44,117 @@ jobs:
         run: |
           set -e
           echo "ANDROID_HOME=$ANDROID_HOME"
-
           SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -1 || true)
-
           if [ -z "$SDKMANAGER" ]; then
             echo "ERROR: sdkmanager was not found"
             find "$ANDROID_HOME" -maxdepth 4 -type f -name sdkmanager -print || true
             exit 1
           fi
-
           SDK_BIN=$(dirname "$SDKMANAGER")
           echo "$SDK_BIN" >> "$GITHUB_PATH"
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-
-          "$SDKMANAGER" \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.9'
+
+      - name: Verify backend Python syntax
+        shell: bash
+        run: |
+          set -e
+          python -m compileall -q backend/app
+          python - <<'PY'
+          import pathlib
+          required = ['backend/requirements.txt','backend/Dockerfile','backend/docker-compose.yml','backend/app/main.py']
+          missing=[p for p in required if not pathlib.Path(p).is_file()]
+          if missing: raise SystemExit('Missing backend files: '+', '.join(missing))
+          print('Backend foundation checks passed')
+          PY
+
+      - name: Run backend blockchain and ledger tests
+        shell: bash
+        run: |
+          set -e
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements-dev.txt
+          PYTHONPATH=backend pytest -q backend/tests
+
+      - name: Validate PostgreSQL migrations
+        shell: bash
+        run: |
+          set -e
+          cd backend
+          alembic heads
+          alembic history --verbose
+          DATABASE_URL=postgresql+psycopg://aster:aster_test_password@localhost:5432/aster_test alembic upgrade head
+          DATABASE_URL=postgresql+psycopg://aster:aster_test_password@localhost:5432/aster_test alembic current
+
+      - name: Build backend container
+        run: docker build -t aster-backend-ci backend
+
+      - name: Static source checks
+        shell: bash
+        run: |
+          set -e
+          test -s app/src/main/assets/index.html
+          test -s app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q 'WebViewAssetLoader' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q '0xd7F76be1a1c4aC25dAf2DDAbFd51E15AB736012c' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q 'TLkgCEs6zFk49FuEhMPzMbPfNjZ5UEGV3b' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          ! grep -q '0xAf37c145EE58C0C0bD281BF454Ee92beC93F13d5' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          ! grep -q 'TMrK4d1r2cGye2TwX3JfjCaUDWwZybaoxD' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.VIBRATE' app/src/main/AndroidManifest.xml
+          ! grep -qiE 'api\.binance\.com|api[1-4]\.binance' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          ! grep -qiE 'api\.binance\.com|data-api\.binance|api[1-4]\.binance' app/src/main/java/com/asterfinancials/app/MainActivity.java
+          test -s app/src/main/assets/v39-auto-invest.js
+          test -s app/src/main/assets/v39-auto-invest.css
+          test -s app/src/main/assets/v24-upgrade.js
+          test -s app/src/main/assets/v24-upgrade.css
+          test -s app/src/main/assets/v25-max.js
+          test -s app/src/main/assets/v25-max.css
+          test -s app/src/main/assets/v26-production.js
+          test -s app/src/main/assets/v26-production.css
+          test -s backend/alembic/versions/0003_production_core.py
+          test -s backend/alembic/versions/0004_email_verification.py
+          test -s backend/alembic/versions/0005_account_profile.py
+          test -s backend/alembic/versions/0006_blockchain_monitoring.py
+          test -s backend/alembic/versions/0007_deposit_tx_claim.py
+          test -s backend/app/blockchain.py
+          test -s backend/app/blockchain_worker.py
+          grep -q 'BlockchainTransfer' backend/app/funding.py
+          grep -q '/v1/admin/blockchain/scan' backend/app/main.py
+          grep -q '/v1/profile' backend/app/main.py
+          grep -q 'email_verified' backend/app/main.py
+          grep -q 'withdrawals/webhook' backend/app/funding_routes.py
+          grep -q 'password-reset' backend/app/main.py
+          grep -q 'autoinvest/{autoinvest_id}/pause' backend/app/main.py
+          grep -q '/v1/production/status' backend/app/main.py
+          grep -q '/v1/admin/treasury/summary' backend/app/main.py
+          grep -q 'provider_reference=provider_reference' backend/app/funding_routes.py
+
+      - name: Validate frontend JavaScript
+        shell: bash
+        run: |
+          set -e
+          python - <<'PY'
+          import re, pathlib
+          html=pathlib.Path('app/src/main/assets/index.html').read_text()
+          scripts=re.findall(r'<script(?![^>]*src=)[^>]*>(.*?)</script>', html, re.S|re.I)
+          pathlib.Path('/tmp/aster-inline.js').write_text('\n'.join(scripts))
+          print(f'Extracted {len(scripts)} inline script block(s)')
+          PY
+          node --check /tmp/aster-inline.js
+          node --check app/src/main/assets/v24-upgrade.js
+          node --check app/src/main/assets/v25-max.js
+          node --check app/src/main/assets/v26-production.js
+          node --check app/src/main/assets/v39-auto-invest.js
+          grep -q "versionCode 3" app/build.gradle
+          grep -q "versionName '1.2'" app/build.gradle
+          if grep -RniE 'Binary Terminal|Higher or Lower|data-go="trade"|id="trade"' app/src/main/assets/index.html; then echo "ERROR: trading terminal remnants detected"; exit 1; fi
 
       - name: Build Android APK
         run: gradle assembleDebug --stacktrace

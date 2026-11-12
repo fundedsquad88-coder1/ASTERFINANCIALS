@@ -1,6 +1,899 @@
-<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#050606"><style>
-*{box-sizing:border-box}body{margin:0;background:#050606;color:#f7f7f4;font-family:Arial,sans-serif;-webkit-user-select:none;user-select:none}.app{min-height:100vh;padding-bottom:84px;background:radial-gradient(circle at 80% 0,#d6a93412,transparent 28%)}.top{padding:18px 18px 8px;display:flex;align-items:center;justify-content:space-between}.brand{height:45px;width:145px;object-fit:contain;object-position:left}.bell{color:#f1c85c;font-size:25px}.balance{margin:10px 16px;border:1px solid #d6a93499;border-radius:14px;padding:20px;background:linear-gradient(135deg,#0d0e0e,#080909);position:relative;overflow:hidden}.balance:after{content:'✦';position:absolute;right:15px;bottom:-15px;font-size:120px;color:#d6a93412}.small{color:#aaa;font-size:12px}.amount{font-size:31px;margin-top:7px}.gold{color:#f1c85c}.quick{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 14px}.q{text-align:center;font-size:10px;color:#ddd}.qi{height:52px;border:1px solid #d6a93466;border-radius:12px;display:grid;place-items:center;color:#f1c85c;font-size:22px;margin-bottom:5px;background:#090a0a}.promo{margin:18px 16px;border:1px solid #d6a93477;border-radius:13px;padding:17px;background:linear-gradient(120deg,#0b0c0c,#11100a)}.promo b{font-size:20px}.promo p{color:#aaa;font-size:12px;margin:5px 0 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px}.card{border:1px solid #ffffff14;border-radius:13px;background:#090a0a;padding:14px}.card h3{font-size:14px;margin:0 0 8px}.green{color:#18d779}.chart{height:105px}.chart svg{width:100%;height:100%}.stats{color:#bbb;font-size:11px;line-height:1.9}.section{padding:18px 16px 0}.section-head{display:flex;justify-content:space-between;margin-bottom:10px}.section-head b{font-size:17px}.section-head span{color:#f1c85c;font-size:11px}.tx{border-top:1px solid #222;padding:12px 0;display:flex;justify-content:space-between;font-size:12px}.tx small{display:block;color:#777;margin-top:3px}.nav{position:fixed;bottom:0;left:0;right:0;height:76px;background:#080909f2;border-top:1px solid #d6a93455;display:grid;grid-template-columns:repeat(5,1fr);z-index:10;padding-bottom:env(safe-area-inset-bottom)}.nav button{background:none;border:0;color:#aaa;font-size:10px}.nav i{display:block;font-style:normal;font-size:22px;margin-bottom:3px}.nav .active{color:#f1c85c}.screen{display:none}.screen.active{display:block}.back{padding:14px 16px;color:#f1c85c}.trade{padding:0 16px}.selector{border:1px solid #d6a93499;border-radius:12px;padding:15px;display:flex;justify-content:space-between}.price{font-size:30px;margin:17px 0 2px}.chartbig{height:235px;border:1px solid #ffffff12;border-radius:12px;margin:12px 0;padding:10px}.chartbig svg{width:100%;height:100%}.time{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.time button,.stepper button{border:1px solid #333;background:#0b0c0c;color:#eee;border-radius:8px;padding:11px}.time .sel{border-color:#d6a934;background:#2a220e;color:#f1c85c}.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.field{border:1px solid #333;border-radius:10px;padding:12px}.field label{display:block;color:#888;font-size:10px;margin-bottom:6px}.stepper{display:flex;justify-content:space-between;align-items:center}.stepper button{padding:4px 12px}.ret{text-align:right;margin:10px 0;color:#18d779}.tradebtn{border:0;border-radius:10px;padding:16px;color:white;font-weight:800;font-size:16px}.higher{background:#08b954}.lower{background:#ed3030}.tabs{display:flex;border-bottom:1px solid #333;margin-top:20px}.tabs button{flex:1;background:none;border:0;color:#aaa;padding:12px}.tabs .on{color:#f1c85c;border-bottom:2px solid #f1c85c}.position{border:1px solid #252525;border-radius:10px;padding:13px;margin-top:10px;font-size:12px;display:flex;justify-content:space-between}.note{color:#777;font-size:10px;line-height:1.5;margin:14px 0}
-</style></head><body><div class="app">
-<div id="home" class="screen active"><div class="top"><img class="brand" src="file:///android_asset/aster-logo-reference.png"><div class="bell">♧</div></div><div class="balance"><div class="small">Total Balance　◉</div><div class="amount">125,430.68 <span class="small">USDT</span></div><div class="small">≈ $125,430.68</div></div><div class="quick"><button class="q" onclick="show('trade')"><div class="qi">⌁</div>Trade</button><button class="q"><div class="qi">₮</div>Staking</button><button class="q"><div class="qi">▣</div>Rewards</button><button class="q"><div class="qi">♧</div>Referral</button><button class="q"><div class="qi">▢</div>Wallet</button></div><div class="promo"><b>Trade. Stake. <span class="gold">Earn. Repeat.</span></b><p>Your financial freedom starts here.</p></div><div class="grid"><div class="card"><h3>24H Performance <span class="green">+2.14%</span></h3><div class="chart"><svg viewBox="0 0 300 100" preserveAspectRatio="none"><polyline points="0,85 25,76 50,79 75,61 100,67 125,43 150,54 175,35 200,50 225,25 250,38 275,15 300,7" fill="none" stroke="#d8ad37" stroke-width="3"/></svg></div></div><div class="card stats"><b>Active Traders</b><br>12,480<hr style="border:0;border-top:1px solid #242424"><b>Total Volume</b><br>8.42M USDT<hr style="border:0;border-top:1px solid #242424"><b>Total Payouts</b><br>3.18M USDT</div></div><div class="section"><div class="section-head"><b>Recent Transactions</b><span>View All ›</span></div><div class="tx"><div>USDT Deposit<small>Today, 14:32</small></div><span class="green">+1,000.00 USDT</span></div><div class="tx"><div>Binary Trade<small>Today, 12:21</small></div><span class="green">+850.00 USDT</span></div><div class="tx"><div>Staking Reward<small>Today, 09:14</small></div><span class="green">+12.50 USDT</span></div><div class="tx"><div>Withdrawal<small>Yesterday, 18:45</small></div><span>-500.00 USDT</span></div></div></div>
-<div id="trade" class="screen"><div class="back" onclick="show('home')">‹　Aster</div><div class="trade"><div class="selector"><span>▥　Binary</span><span>⌄</span></div><div class="price">71,235.6 <span class="green" style="font-size:14px">▲ +0.42%</span></div><div class="chartbig"><svg viewBox="0 0 600 240" preserveAspectRatio="none"><g stroke="#222"><line x1="0" y1="50" x2="600" y2="50"/><line x1="0" y1="100" x2="600" y2="100"/><line x1="0" y1="150" x2="600" y2="150"/><line x1="0" y1="200" x2="600" y2="200"/></g><polyline points="0,185 30,155 60,170 90,125 120,145 150,105 180,130 210,92 240,118 270,70 300,96 330,55 360,85 390,48 420,78 450,34 480,70 510,48 540,66 570,42 600,58" fill="none" stroke="#e0b33d" stroke-width="4"/></svg></div><div class="time"><button class="sel">1m</button><button>5m</button><button>15m</button><button>30m</button></div><div class="controls"><div class="field"><label>Amount (USDT)</label><div class="stepper"><button>−</button><b>100</b><button>+</button></div></div><div class="field"><label>Expiry Time</label><b>◷　1 Min　⌄</b></div></div><div class="ret">Potential Return　<b>+82%</b><br><span style="color:#aaa;font-size:11px">≈ 182.00 USDT</span></div><div class="controls"><button class="tradebtn higher">↗　HIGHER</button><button class="tradebtn lower">↘　LOWER</button></div><div class="tabs"><button class="on">Open Trades (1)</button><button>Trade History</button></div><div class="position"><span>▥　Binary<br><small>71,230.4　·　100 USDT</small></span><span>00:38<br><b class="green">+82.00 USDT</b></span></div><p class="note">Demo interface values shown for product design. Live prices, returns, balances and trade execution require a connected backend and appropriate regulatory/compliance controls.</p></div></div>
-<div class="nav"><button class="active" onclick="show('home')"><i>⌂</i>Home</button><button onclick="show('trade')"><i>⌁</i>Trade</button><button><i>₮</i>Staking</button><button><i>▣</i>Rewards</button><button><i>♙</i>Profile</button></div></div><script>function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach((b,i)=>b.classList.toggle('active',(id==='home'&&i===0)||(id==='trade'&&i===1)));window.scrollTo(0,0)}</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0a10">
+<script id="ASTER_FORCE_DARK_STARTUP">try{localStorage.setItem("aster-theme","dark")}catch(e){}</script>
+<title>Aster Financials</title>
+<style>
+:root{--bg:#f7f7fb;--card:rgba(255,255,255,.78);--card2:#fff;--text:#11111a;--muted:#727382;--line:rgba(17,17,26,.09);--gold:#d6a52f;--gold2:#f4d47a;--violet:#7b61ff;--cyan:#39c6c9;--green:#16a878;--red:#e45c73;--shadow:0 18px 55px rgba(27,22,56,.10);--r:24px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:ui-rounded,"SF Pro Rounded",Inter,system-ui,-apple-system,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;overflow-x:hidden}
+button,input{font:inherit}button{border:0;background:none;color:inherit;cursor:pointer;touch-action:manipulation}
+.bg{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.22}
+.b1{width:55vmax;height:55vmax;background:#f2c85b;left:-28vmax;top:-25vmax}.b2{width:52vmax;height:52vmax;background:#9b84ff;right:-28vmax;top:25vmax}.b3{width:38vmax;height:38vmax;background:#5bd6d1;left:25vmax;bottom:-28vmax}
+.app{position:relative;z-index:1;max-width:560px;margin:auto;padding-bottom:112px}
+.top{position:sticky;top:0;z-index:20;padding:calc(env(safe-area-inset-top) + 12px) 18px 10px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(var(--bg) 55%,transparent);backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:900;font-size:20px;letter-spacing:-.04em}.brand svg{width:28px;height:28px}
+.top-actions{display:flex;gap:8px}.icon{width:40px;height:40px;border:1px solid var(--line);background:var(--card);border-radius:14px;display:grid;place-items:center;box-shadow:0 8px 22px rgba(0,0,0,.04)}.icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+main{padding:8px 16px 0}.screen{display:none}.screen.on{display:block;animation:up .28s ease}@keyframes up{from{opacity:0;transform:translateY(8px)}}
+.eyebrow{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.09em}.title{font-size:31px;line-height:1.05;letter-spacing:-.045em;margin:6px 0 4px;font-weight:900}.sub{font-size:14px;color:var(--muted);line-height:1.5;margin:0 0 16px}
+.hero{border-radius:31px;padding:21px;overflow:hidden;position:relative;color:#17131c;background:linear-gradient(135deg,#f6d777 0%,#e8ad43 42%,#9b7bff 100%);box-shadow:0 24px 55px rgba(110,78,185,.18)}
+.hero:after{content:"";position:absolute;width:190px;height:190px;border-radius:50%;right:-50px;top:-70px;background:rgba(255,255,255,.27);filter:blur(4px)}.hero>*{position:relative;z-index:1}
+.hero-label{font-size:12px;font-weight:800;opacity:.68}.balance{font-size:42px;font-weight:950;letter-spacing:-.055em;margin:5px 0}.delta{font-size:13px;font-weight:850}.chart{height:70px;margin:12px -3px}.chart svg{width:100%;height:100%}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.action{padding:12px 7px;border-radius:15px;background:rgba(255,255,255,.36);font-size:12px;font-weight:850}.action.primary{background:#17131c;color:#fff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);backdrop-filter:blur(18px);margin:11px 0}.stat{font-size:24px;font-weight:900;letter-spacing:-.03em;margin-top:4px}.muted{color:var(--muted)}.small{font-size:12px;line-height:1.45}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.divider{height:1px;background:var(--line);margin:13px 0}
+.section-head{display:flex;align-items:end;justify-content:space-between;margin:24px 2px 9px}.section-head h2{font-size:19px;margin:0;letter-spacing:-.03em}.link{font-size:12px;font-weight:850;color:#6550d9}
+.market-row{display:grid;grid-template-columns:40px 1fr auto;gap:11px;align-items:center;padding:12px 0}.market-row+.market-row{border-top:1px solid var(--line)}.coin{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;font-weight:950;background:linear-gradient(135deg,#f6d777,#9b7bff)}.market-row b{font-size:14px}.price{text-align:right;font-weight:900;font-size:14px}.change{font-size:11px;font-weight:800;margin-top:2px}.up{color:var(--green)}.down{color:var(--red)}
+.tabs{display:flex;gap:6px;padding:5px;background:rgba(120,120,140,.08);border-radius:16px;margin:14px 0}.tabs button{flex:1;padding:10px 6px;border-radius:12px;font-size:13px;font-weight:850;color:var(--muted)}.tabs button.on{background:#fff;box-shadow:0 5px 15px rgba(0,0,0,.07);color:var(--text)}
+.invest-cards{display:grid;grid-template-columns:1fr 1fr;gap:11px}.invest-card{position:relative;min-height:170px;padding:17px;border-radius:26px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden}.invest-card.on{border:1.5px solid var(--gold)}.orb{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;font-weight:950;font-size:19px;background:linear-gradient(135deg,#f6d777,#8e72ff);box-shadow:0 10px 25px rgba(100,75,180,.16)}.invest-card b{display:block;margin-top:12px;font-size:17px}.invest-card p{font-size:12px;color:var(--muted);margin:4px 0;line-height:1.4}.check{position:absolute;right:12px;top:12px;width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:var(--text);color:#fff;font-size:12px;opacity:0}.invest-card.on .check{opacity:1}
+.range{width:100%;accent-color:var(--gold);margin:10px 0}.amount{font-size:38px;font-weight:950;letter-spacing:-.05em}.chips{display:flex;gap:7px;flex-wrap:wrap}.chip{padding:8px 12px;border-radius:999px;border:1px solid var(--line);font-size:12px;font-weight:800;background:#fff}.chip.on{background:linear-gradient(135deg,#f5d16b,#b99bff);border-color:transparent}
+.primary{width:100%;padding:15px;border-radius:17px;background:#17131c;color:#fff;font-weight:900}.secondary{width:100%;padding:14px;border-radius:17px;border:1px solid var(--line);background:#fff;font-weight:850}.notice{padding:13px;border-radius:16px;background:rgba(214,165,47,.11);border:1px solid rgba(214,165,47,.28);font-size:12px;line-height:1.5;color:#5e4d23}
+.projection{height:145px}.projection svg{width:100%;height:100%}.big-proj{font-size:35px;font-weight:950;letter-spacing:-.05em}
+.wallet-card{padding:19px;border-radius:26px;background:linear-gradient(135deg,#17131c,#3a3152);color:#fff;box-shadow:0 25px 55px rgba(23,19,28,.22)}.wallet-card .muted{color:#bbb5ca}.wallet-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}.wallet-actions button{padding:13px;border-radius:15px;background:rgba(255,255,255,.12);font-weight:850}
+.list-row{display:flex;align-items:center;gap:12px;padding:14px 0}.list-row+.list-row{border-top:1px solid var(--line)}.list-icon{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:rgba(123,97,255,.1)}
+.profile{display:flex;align-items:center;gap:13px}.avatar{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,#f4d47a,#8e72ff);font-weight:950;font-size:20px}
+.news{display:block;padding:13px 0;text-decoration:none;color:inherit}.news+.news{border-top:1px solid var(--line)}.news b{font-size:13px;line-height:1.35;display:block}.news span{font-size:11px;color:var(--muted);display:block;margin-top:5px}
+.bottom{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:30;max-width:540px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);padding:6px;border-radius:25px;background:rgba(255,255,255,.82);border:1px solid var(--line);box-shadow:0 18px 45px rgba(22,18,42,.14);backdrop-filter:blur(22px)}.bottom button{padding:8px 2px;border-radius:19px;font-size:10px;font-weight:850;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}.bottom button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.bottom button.on{background:linear-gradient(135deg,#f2cc65,#b39bff);color:#17131c}
+.sheet-back{position:fixed;inset:0;background:rgba(13,10,22,.42);z-index:60;display:none;align-items:end}.sheet-back.on{display:flex}.sheet{width:100%;max-width:560px;margin:auto;background:var(--bg);border-radius:28px 28px 0 0;padding:18px 18px calc(env(safe-area-inset-bottom) + 24px);box-shadow:0 -20px 60px rgba(0,0,0,.18)}.grab{width:42px;height:5px;border-radius:5px;background:#bbb;margin:0 auto 16px}.sheet h3{font-size:23px;margin:0 0 6px;letter-spacing:-.04em}.sheet p{font-size:13px;color:var(--muted);line-height:1.55}
+.input{width:100%;padding:13px 14px;border:1px solid var(--line);background:#fff;border-radius:14px;margin:7px 0 12px;outline:none}.input:focus{border-color:var(--gold)}
+.badge{font-size:10px;font-weight:900;padding:5px 8px;border-radius:99px;background:rgba(22,168,120,.1);color:var(--green)}.lock{font-size:10px;font-weight:900;padding:5px 8px;border-radius:99px;background:rgba(17,17,26,.08);color:var(--muted)}
+@media(max-width:370px){.invest-cards{grid-template-columns:1fr}.actions{grid-template-columns:1fr 1fr}.actions .action:last-child{grid-column:1/-1}}
+/* Aster 4-theme system */
+body.theme-dark{--bg:#0b0a10;--card:rgba(24,22,34,.82);--card2:#171520;--text:#f7f5fb;--muted:#a9a5b5;--line:rgba(255,255,255,.10);--gold:#e8b84c;--gold2:#f6d77b;--violet:#9b84ff;--cyan:#55e0dc;--green:#2bd39a;--red:#ff7189;--shadow:0 18px 55px rgba(0,0,0,.34)}
+body.theme-dark .top{background:linear-gradient(var(--bg) 55%,transparent)}body.theme-dark .tabs{background:rgba(255,255,255,.07)}body.theme-dark .tabs button.on,body.theme-dark .chip,body.theme-dark .secondary{background:rgba(255,255,255,.10);color:var(--text)}body.theme-dark .primary{background:#f5f1ff;color:#17131c}body.theme-dark .bottom{background:rgba(20,18,29,.86)}body.theme-dark .input{background:#171520;color:var(--text)}
+body.theme-aurora{--bg:#eefcff;--card:rgba(255,255,255,.76);--card2:#fff;--text:#10202a;--muted:#5d7480;--line:rgba(16,32,42,.10);--gold:#13b8b0;--gold2:#62eee7;--violet:#665cff;--cyan:#14cbd0;--shadow:0 18px 55px rgba(37,123,150,.14)}
+body.theme-aurora .b1{background:#6de7df}.theme-aurora .b2{background:#8d7dff}.theme-aurora .b3{background:#65d6ff}body.theme-aurora .hero{background:linear-gradient(135deg,#69e5d8,#6e7dff)}body.theme-aurora .orb,body.theme-aurora .avatar{background:linear-gradient(135deg,#62eee7,#746cff)}body.theme-aurora .chip.on,body.theme-aurora .bottom button.on{background:linear-gradient(135deg,#5fe8de,#a19aff)}body.theme-aurora .primary{background:#13232d}body.theme-aurora .link{color:#5148d9}
+body.theme-sunset{--bg:#fff7f3;--card:rgba(255,255,255,.80);--card2:#fff;--text:#24151a;--muted:#856c72;--line:rgba(36,21,26,.09);--gold:#ff8b63;--gold2:#ffc06e;--violet:#e86aa8;--cyan:#ffb45c;--shadow:0 18px 55px rgba(177,72,99,.13)}
+body.theme-sunset .b1{background:#ffc36e}.theme-sunset .b2{background:#f18ab7}.theme-sunset .b3{background:#ff9c7b}body.theme-sunset .hero{background:linear-gradient(135deg,#ffc56f,#ff906e 45%,#e86aa8)}body.theme-sunset .orb,body.theme-sunset .avatar{background:linear-gradient(135deg,#ffc56f,#e86aa8)}body.theme-sunset .chip.on,body.theme-sunset .bottom button.on{background:linear-gradient(135deg,#ffc56f,#ee8bb7)}body.theme-sunset .primary{background:#24151a}body.theme-sunset .link{color:#c24d7d}
+.theme-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.theme-option{padding:15px;border:1px solid var(--line);border-radius:18px;text-align:left;background:var(--card);font-weight:900}.theme-option small{display:block;color:var(--muted);font-weight:700;margin-top:4px}.theme-option.active{border:2px solid var(--gold);box-shadow:0 8px 25px rgba(0,0,0,.08)}.theme-dot{display:block;width:30px;height:30px;border-radius:10px;margin-bottom:9px;background:linear-gradient(135deg,#f2cc65,#b39bff)}.theme-dot.dark{background:linear-gradient(135deg,#17131c,#9b84ff)}.theme-dot.aurora{background:linear-gradient(135deg,#62eee7,#746cff)}.theme-dot.sunset{background:linear-gradient(135deg,#ffc56f,#e86aa8)}body{--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.16,1,.3,1)}body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:2;opacity:.055;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");mix-blend-mode:soft-light}.bg .blob{animation:blobFloat 16s ease-in-out infinite alternate;will-change:transform}.bg .b2{animation-delay:-6s}.bg .b3{animation-delay:-11s}@keyframes blobFloat{0%{transform:translate3d(-3%,-2%,0) scale(1)}50%{transform:translate3d(5%,4%,0) scale(1.08)}100%{transform:translate3d(-2%,7%,0) scale(.94)}}.card,.hero,.invest-card,.wallet-card,.icon,.action,.bottom,.chip,.primary,.secondary,.list-row,.market-row{transition:transform .22s var(--spring),box-shadow .22s var(--ease),border-color .22s ease,background .22s ease}.card{position:relative;overflow:hidden}.card:after,.invest-card:after,.hero:before,.wallet-card:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.18),transparent 28%,transparent 70%,rgba(255,255,255,.08));opacity:.7}.card:hover,.invest-card:hover{transform:translateY(-2px);box-shadow:0 24px 65px rgba(27,22,56,.14)}button:active,.list-row:active,.market-row:active{transform:scale(.965)}.icon:active,.chip:active,.bottom button:active{transform:scale(.92)}.hero,.invest-card{transform-style:preserve-3d;perspective:900px}.tilt{transition:transform .12s ease-out}.market-row{position:relative;overflow:hidden}.market-row .coin{box-shadow:0 8px 24px rgba(123,97,255,.18);transition:transform .35s var(--spring)}.market-row:hover .coin{transform:rotate(-7deg) scale(1.06)}.market-row.flash .price{transform:scale(1.08)}.spark{width:64px;height:25px;margin-left:auto;opacity:.9}.spark svg{width:100%;height:100%}.market-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(22,168,120,.5);animation:pulseDot 1.8s infinite}@keyframes pulseDot{70%{box-shadow:0 0 0 8px rgba(22,168,120,0)}100%{box-shadow:0 0 0 0 rgba(22,168,120,0)}}.confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:90;overflow:hidden}.confetti-piece{position:absolute;width:7px;height:12px;border-radius:2px;animation:confettiFall 900ms var(--ease) forwards}@keyframes confettiFall{0%{transform:translate3d(0,0,0) rotate(0);opacity:1}100%{transform:translate3d(var(--dx),var(--dy),0) rotate(var(--rot));opacity:0}}.splash{position:fixed;inset:0;z-index:100;background:#0b0a12;color:#fff;display:grid;place-items:center;overflow:hidden;transition:opacity .55s ease,visibility .55s ease}.splash.hide{opacity:0;visibility:hidden}.splash:before{content:"";position:absolute;width:80vmax;height:80vmax;border-radius:50%;background:radial-gradient(circle,rgba(141,114,255
+,.32),transparent 62%);animation:splashGlow 3s ease-in-out infinite}.splash-orbit{position:absolute;width:340px;height:340px;border:1px solid rgba(232,184,76,.24);border-radius:50%;animation:orbit 8s linear infinite}.splash-orbit:after{content:"";position:absolute;width:10px;height:10px;border-radius:50%;background:#e8b84c;top:12%;left:9%;box-shadow:0 0 22px #e8b84c}.splash-inner{position:relative;text-align:center;animation:splashIn 900ms var(--spring)}.splash-logo{width:86px;height:86px;margin:auto;filter:drop-shadow(0 0 28px rgba(232,184,76,.35));animation:logoBreath 2.2s ease-in-out infinite}.splash-name{margin-top:17px;font-size:29px;font-weight:950;letter-spacing:.25em}.splash-sub{margin-top:8px;font-size:9px;letter-spacing:.38em;color:#aaa6b6}.splash-line{width:120px;height:3px;border-radius:9px;margin:30px auto 0;background:linear-gradient(90deg,#e8b84c,#8d72ff,#55e0dc);background-size:200% 100%;animation:gradientMove 1.8s linear infinite}@keyframes splashIn{from{opacity:0;transform:translateY(24px) scale(.92)}to{opacity:1;transform:none}}@keyframes logoBreath{50%{transform:scale(1.06) rotate(2deg)}}@keyframes splashGlow{50%{transform:scale(1.15);opacity:.7}}@keyframes orbit{to{transform:rotate(360deg)}}@keyframes gradientMove{to{background-position:200% 0}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+.art-banner{position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.10);border-radius:24px;min-height:150px;margin:14px 0;background:radial-gradient(circle at 78% 50%,rgba(244,190,72,.28),transparent 38%),linear-gradient(135deg,#15131c,#08090f 70%);box-shadow:0 18px 50px rgba(0,0,0,.24)}
+.art-banner.blue{background:radial-gradient(circle at 78% 50%,rgba(45,145,255,.30),transparent 40%),linear-gradient(135deg,#111522,#08090f 72%);border-color:rgba(72,157,255,.28)}
+.art-banner.mint{background:radial-gradient(circle at 80% 45%,rgba(61,225,190,.22),transparent 40%),linear-gradient(135deg,#10191a,#08090f 72%)}
+.art-banner .art-copy{position:absolute;z-index:2;left:20px;top:20px;max-width:55%}
+.art-banner .art-copy b{font-size:22px;display:block;margin-bottom:6px}
+.art-banner .art-copy span{font-size:12px;color:#aaa;line-height:1.4}
+.art-banner svg{position:absolute;right:-4px;top:0;width:58%;height:100%;opacity:.98}
+.strategy-art{min-height:185px;margin-top:12px}
+.strategy-art .art-copy{left:18px;top:18px}
+.strategy-art svg{width:54%;right:2%}
+
+.art-banner{
+ background-image:linear-gradient(90deg,rgba(5,6,12,.97) 0%,rgba(5,6,12,.78) 42%,rgba(5,6,12,.20) 100%),url("https://images.unsplash.com/photo-1777047023742-1607aeb1a5bb?auto=format&fit=crop&fm=jpg&q=82&w=1200");
+ background-size:cover;background-position:center;
+}
+.art-banner.strategy-art{
+ background-image:linear-gradient(90deg,rgba(5,6,12,.98) 0%,rgba(5,6,12,.72) 48%,rgba(5,6,12,.12) 100%),url("https://images.unsplash.com/photo-1749492795606-51d9898710ca?auto=format&fit=crop&fm=jpg&q=82&w=1200");
+ background-size:cover;background-position:center;
+}
+.art-banner.blue{
+ background-image:linear-gradient(90deg,rgba(4,8,18,.98) 0%,rgba(4,8,18,.72) 48%,rgba(4,8,18,.10) 100%),url("https://images.unsplash.com/photo-1702070114450-94d981d72233?auto=format&fit=crop&fm=jpg&q=82&w=1200");
+ background-size:cover;background-position:center;
+}
+.art-banner.mint{
+ background-image:linear-gradient(90deg,rgba(4,12,13,.98) 0%,rgba(4,12,13,.72) 48%,rgba(4,12,13,.10) 100%),url("https://images.unsplash.com/photo-1777047023742-1607aeb1a5bb?auto=format&fit=crop&fm=jpg&q=82&w=1200");
+ background-size:cover;background-position:center;
+}
+.art-banner svg{opacity:.42;mix-blend-mode:screen}
+.art-banner:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.38));pointer-events:none}
+
+/* SIX REAL FINANCE PHOTOGRAPHIC ASSETS */
+.art-banner{background-size:cover!important;background-position:center!important;min-height:190px!important}
+.art-banner svg{display:none!important}
+.art-banner .art-copy{max-width:62%;padding:2px 0}
+.art-banner .art-copy b,.art-banner .art-copy span{color:#fff!important;text-shadow:0 2px 18px rgba(0,0,0,.9)}
+/* 1 Home — Earth / global finance */
+#home .art-banner{background-image:linear-gradient(90deg,rgba(5,6,12,.90),rgba(5,6,12,.48) 50%,rgba(5,6,12,.12)),url("https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=1400&q=82")}
+/* 2 Auto-Invest Crypto — Bitcoin */
+#invest .art-banner.strategy-art{background-image:linear-gradient(90deg,rgba(5,6,12,.94),rgba(5,6,12,.55) 52%,rgba(5,6,12,.10)),url("https://images.unsplash.com/photo-1744473119469-905016183836?auto=format&fit=crop&w=1400&q=82")}
+/* 3 Auto-Invest Forex — currency */
+#invest .art-banner.blue{background-image:linear-gradient(90deg,rgba(4,8,18,.94),rgba(4,8,18,.55) 52%,rgba(4,8,18,.10)),url("https://images.unsplash.com/photo-1559526324-593bc073d938?auto=format&fit=crop&w=1400&q=82")}
+/* 4 Markets — live candlesticks */
+#markets .art-banner{background-image:linear-gradient(90deg,rgba(4,8,18,.94),rgba(4,8,18,.52) 52%,rgba(4,8,18,.08)),url("https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1400&q=82")}
+/* 5 Wallet — money / payments */
+#wallet .art-banner{background-image:linear-gradient(90deg,rgba(4,9,12,.94),rgba(4,9,12,.55) 52%,rgba(4,9,12,.10)),url("https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1400&q=82")}
+/* 6 Profile — premium finance / city */
+#profile .art-banner{background-image:linear-gradient(90deg,rgba(5,6,12,.94),rgba(5,6,12,.56) 52%,rgba(5,6,12,.10)),url("https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1400&q=82")}
+.art-banner:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 48%,rgba(0,0,0,.42));pointer-events:none}
+
+.live-ticker{display:flex;gap:9px;overflow:hidden;margin:13px 0 2px;padding:2px 0;scrollbar-width:none}.live-ticker::-webkit-scrollbar{display:none}.ticker-item{min-width:128px;padding:11px 12px;border:1px solid var(--line);border-radius:17px;background:var(--card);box-shadow:0 10px 28px rgba(27,22,56,.07);backdrop-filter:blur(18px)}.ticker-top{display:flex;align-items:center;justify-content:space-between;gap:7px}.ticker-symbol{font-size:12px;font-weight:950}.ticker-price{font-size:15px;font-weight:950;margin-top:4px;letter-spacing:-.02em}.ticker-change{font-size:10px;font-weight:900;margin-top:2px}.ticker-live{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(22,168,120,.08)}
+.news-card{display:grid;grid-template-columns:82px 1fr;gap:12px;align-items:center;padding:11px 0}.news-thumb{width:82px;height:64px;border-radius:16px;object-fit:cover;display:block;box-shadow:0 8px 20px rgba(0,0,0,.10)}.news-copy{min-width:0}.news-copy b{font-size:13px;line-height:1.32;display:block}.news-copy span{font-size:10px;color:var(--muted);display:block;margin-top:5px}.news+.news{border-top:1px solid var(--line)}
+
+/* V35 premium interaction layer */
+:root{--glass-blur:24px;--spring:cubic-bezier(.16,1,.3,1)}
+.card,.invest-card,.wallet-card,.hero,.icon,.bottom,.art-banner{will-change:transform}
+.card:active,.invest-card:active,.wallet-card:active,.hero:active{transform:scale(.992)}
+button,.action,.chip,.market-row,.invest-card,.icon{transition:transform .18s var(--spring),box-shadow .22s ease,filter .22s ease}
+button:hover,.action:hover,.chip:hover{filter:brightness(1.025)}
+.bottom button.on{box-shadow:0 8px 24px rgba(123,97,255,.18)}
+
+.team-policy .row{border-bottom:1px solid var(--line)}#teamLevelTabs{overflow-x:auto;scrollbar-width:none;justify-content:flex-start}#teamLevelTabs::-webkit-scrollbar{display:none}#teamLevelTabs button{flex:0 0 auto;min-width:38px;padding-left:9px;padding-right:9px}
+
+.pyr{position:relative;margin-top:14px;padding:1.5px;border-radius:28px;background:linear-gradient(120deg,#ff5cc8,#7b61ff,#39c6c9,#f4d47a,#ff5cc8);background-size:300% 300%;animation:pyrBorder 7s linear infinite;box-shadow:0 20px 50px rgba(123,97,255,.35)}
+.pyr-in{position:relative;overflow:hidden;border-radius:27px;padding:14px 12px 14px;color:#fff;background:radial-gradient(120% 90% at 0% 0%,#2a1163 0%,#140a33 55%,#0a1a2b 100%)}
+.pyr-in>*{position:relative;z-index:2}
+.orb{position:absolute!important;z-index:1!important;border-radius:50%;filter:blur(34px);pointer-events:none}
+.orb.o1{width:150px;height:150px;left:-50px;top:-40px;background:#ff3fb4;opacity:.5;animation:pyrOrb 7s ease-in-out infinite}
+.orb.o2{width:140px;height:140px;right:-40px;top:40%;background:#39c6c9;opacity:.4;animation:pyrOrb 9s ease-in-out infinite reverse}
+.orb.o3{width:120px;height:120px;left:30%;bottom:-60px;background:#7b61ff;opacity:.5;animation:pyrOrb 8s ease-in-out infinite}
+.spk{position:absolute!important;z-index:1!important;font-size:12px;color:#fff;opacity:.2;animation:pyrTwinkle 2.4s ease-in-out infinite}
+.pyr-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.pyr-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.pyr-title{font-size:19px;font-weight:900;margin-top:2px;background:linear-gradient(90deg,#fff,#ffb3ea 60%,#9be9ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pyr-total{display:flex;align-items:baseline;gap:2px;padding:7px 13px;border-radius:99px;font-weight:900;color:#1a1040;background:linear-gradient(90deg,#f4d47a,#ff8fd8,#9be9ff);background-size:200% 100%;animation:pyrGlow 2.6s ease-in-out infinite,pyrBorder 4s linear infinite}
+.pyr-total b{font-size:20px;line-height:1}.pyr-total small{font-size:10px;font-weight:800;letter-spacing:.06em}
+.pyr-body{position:relative;padding-top:2px}
+.pyr-body::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;border-radius:2px;background:repeating-linear-gradient(180deg,rgba(255,255,255,.65) 0 6px,transparent 6px 14px);opacity:.35}
+.live .pyr-body::before{animation:pyrFlow 1.4s linear infinite}
+.pyr-row{display:flex;justify-content:center;gap:8px;margin-top:9px}
+.lv{all:unset;box-sizing:border-box;cursor:pointer;flex:0 1 98px;position:relative;-webkit-tap-highlight-color:transparent;transition:transform .2s cubic-bezier(.16,1,.3,1)}
+.lv:active{transform:scale(.92)}
+.live .lv{animation:pyrPop .7s cubic-bezier(.34,1.56,.64,1) backwards;animation-delay:calc(var(--i)*85ms)}
+.lvi{display:block;position:relative;overflow:hidden;padding:8px 6px 7px;border-radius:18px;text-align:center;background:linear-gradient(150deg,hsla(var(--h),95%,68%,.34),hsla(var(--h),95%,55%,.1));border:1px solid hsla(var(--h),95%,78%,.5);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 6px 18px hsla(var(--h),95%,55%,.28),inset 0 1px 0 rgba(255,255,255,.25)}
+.live .lvi{animation:pyrFloat 3.6s ease-in-out infinite;animation-delay:calc(var(--i)*-.45s)}
+.lvi small{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;opacity:.85}
+.lvi b{display:block;font-size:18px;font-weight:900;line-height:1.1;text-shadow:0 0 14px hsla(var(--h),100%,70%,.9)}
+.lv.big{flex:0 1 158px}
+.lv.big .lvi{padding:10px 8px 9px;border-radius:22px;animation-name:pyrFloat,pyrGlow2;animation-duration:3.6s,2.2s;animation-iteration-count:infinite}
+.lv.big .lvi b{font-size:26px}
+.lv.big .lvi::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-120%) skewX(-20deg)}
+.live .lv.big .lvi::after{animation:pyrShine 3.2s ease-in-out infinite}
+.lv.sel .lvi{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.9),0 0 24px hsla(var(--h),100%,65%,.95)}
+.lv em{position:absolute;z-index:3;top:-7px;right:-3px;min-width:20px;padding:2px 6px;border-radius:99px;font-style:normal;font-size:11px;font-weight:900;text-align:center;color:#06222a;background:#7dfbe6;box-shadow:0 0 12px rgba(125,251,230,.9)}
+.live .lv em{animation:pyrBadge 2s ease-in-out infinite}
+.pyr-hint{margin-top:11px;text-align:center;font-size:11px;font-weight:700;opacity:.65;letter-spacing:.02em}
+.pyr-note{margin-top:4px;text-align:center;font-size:9.5px;line-height:1.35;opacity:.45}
+@keyframes pyrBorder{to{background-position:300% 50%}}
+@keyframes pyrFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes pyrPop{0%{opacity:0;transform:translateY(16px) scale(.4) rotate(-6deg)}100%{opacity:1;transform:none}}
+@keyframes pyrOrb{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(22px,-16px) scale(1.25)}}
+@keyframes pyrGlow{0%,100%{box-shadow:0 0 14px rgba(255,143,216,.5)}50%{box-shadow:0 0 30px rgba(255,143,216,.95)}}
+@keyframes pyrGlow2{0%,100%{box-shadow:0 6px 18px hsla(var(--h),95%,55%,.3),0 0 16px hsla(var(--h),95%,65%,.4)}50%{box-shadow:0 6px 18px hsla(var(--h),95%,55%,.3),0 0 34px hsla(var(--h),95%,65%,.95)}}
+@keyframes pyrShine{0%{transform:translateX(-120%) skewX(-20deg)}55%,100%{transform:translateX(380%) skewX(-20deg)}}
+@keyframes pyrFlow{to{background-position:0 28px}}
+@keyframes pyrTwinkle{0%,100%{opacity:.1;transform:scale(.6)}50%{opacity:.95;transform:scale(1.25)}}
+@keyframes pyrBadge{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+@media (prefers-reduced-motion:reduce){.pyr,.pyr *{animation:none!important}}
+
+/* ASTER 2026 — clean Gen-Z visual refresh */
+:root{--bg:#f5f5f8;--card:#fff;--card2:#fff;--text:#17151d;--muted:#85818f;--line:rgba(25,20,35,.08);--gold:#c99b36;--gold2:#f1d58c;--violet:#7865f5;--cyan:#42c9c1;--green:#159b70;--red:#df6277;--shadow:0 8px 28px rgba(32,25,55,.055);--r:22px}
+html,body{background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.012em}
+body{background:radial-gradient(ellipse at 5% 0%,rgba(211,198,255,.22),transparent 34%),radial-gradient(ellipse at 100% 24%,rgba(255,222,160,.16),transparent 30%),var(--bg)}
+.bg{opacity:.22}.blob{filter:blur(95px);opacity:.12}
+.app{max-width:520px;padding:0 16px 112px}
+.top{padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;margin:0 -16px;background:rgba(245,245,248,.82);backdrop-filter:blur(22px);border-bottom:1px solid rgba(25,20,35,.045)}
+.brand{font-size:19px;font-weight:850;letter-spacing:-.055em}.brand svg{width:27px;height:27px}
+.icon{width:38px;height:38px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.8)}
+.screen{padding-top:8px}
+.eyebrow{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:850;color:#9a7a35}
+.title{font-size:clamp(27px,7vw,34px);line-height:1.04;font-weight:850;letter-spacing:-.065em;margin:5px 0 7px}
+.sub{font-size:12px;line-height:1.55;color:var(--muted);max-width:38em}
+.section-head{margin:22px 2px 10px;align-items:center}
+.section-head h2{font-size:17px;letter-spacing:-.045em;font-weight:820}
+.card,.wallet-card,.art-banner,.v26-card{border-radius:23px;box-shadow:var(--shadow)}
+.card{background:rgba(255,255,255,.92);border:1px solid rgba(25,20,35,.055);padding:15px}
+.grid2{gap:9px}
+.stat{font-size:25px;letter-spacing:-.055em;font-weight:850}
+.small,.muted{color:var(--muted)}
+.art-banner{min-height:148px;margin:9px 0 18px;border:1px solid rgba(255,255,255,.5);background:linear-gradient(118deg,#171521 0%,#29233d 56%,#51427b 100%);box-shadow:0 14px 34px rgba(48,35,80,.13)}
+.art-banner:before{opacity:.4}
+.art-copy{padding:19px 20px;max-width:72%}
+.art-copy b{font-size:20px;line-height:1.04;letter-spacing:-.055em;font-weight:850}
+.art-copy span{font-size:10.5px;line-height:1.5;color:rgba(255,255,255,.72);margin-top:7px}
+.art-banner svg{max-width:48%;opacity:.92}
+.art-banner.blue{background:linear-gradient(120deg,#17202c,#263f50 65%,#3d777c)}
+.art-banner.mint{background:linear-gradient(120deg,#152b2b,#1d4943 65%,#397f6e)}
+button{transition:transform .18s ease,filter .18s ease,background .18s ease}
+button:active{transform:scale(.97)}
+.primary,.btn-primary,.cta{border-radius:15px;background:linear-gradient(115deg,#24212e,#51436e);color:#fff;font-weight:800;box-shadow:0 7px 18px rgba(46,36,72,.15)}
+.secondary,.btn-secondary{border-radius:14px;background:#f0eef7;color:#393347;border:1px solid rgba(70,55,105,.07);font-weight:750}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{min-height:42px;min-width:58px;padding:10px 15px;border-radius:14px;background:#f3f1f8;border:1px solid transparent;color:#514b60;font-size:13px;font-weight:800}
+.chip.on,.chip.active{background:#211d2b;color:#fff;border-color:#211d2b;box-shadow:0 6px 16px rgba(35,29,48,.14)}
+input,select,textarea,.input{border-radius:14px!important;border:1px solid var(--line)!important;background:#faf9fc!important;color:var(--text)!important}
+.wallet-card{background:linear-gradient(135deg,#1b1925,#302744 70%,#4b3b67);border:1px solid rgba(255,255,255,.12);box-shadow:0 16px 35px rgba(35,26,53,.17)}
+.bottom{left:50%;transform:translateX(-50%);width:min(100%,520px);bottom:0;padding:9px 9px calc(env(safe-area-inset-bottom) + 8px);border:1px solid rgba(35,28,50,.07);border-bottom:0;border-radius:22px 22px 0 0;background:rgba(255,255,255,.91);backdrop-filter:blur(24px);box-shadow:0 -8px 28px rgba(35,28,50,.06);gap:3px}
+.bottom button{min-width:0;gap:4px;border-radius:14px;padding:8px 3px;color:#96919f;font-size:9px;font-weight:750}
+.bottom button svg{width:19px;height:19px;stroke:currentColor}
+.bottom button.on{color:#6d58df;background:rgba(120,101,245,.09)}
+.sheet-back{background:rgba(17,14,24,.42);backdrop-filter:blur(7px)}
+.sheet{border-radius:26px 26px 0 0;background:#fff;box-shadow:0 -14px 50px rgba(20,15,35,.15)}
+.grab{width:38px;height:4px;border-radius:9px;background:#dedbe5;margin:8px auto 17px}
+.v26-card{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);padding:15px}
+.v26-title{font-size:16px;letter-spacing:-.04em}.v26-btn{border-radius:14px;background:#24212e}.v26-btn.secondary{background:#f1eff7;color:#393347}
+.pyr{border-radius:22px;overflow:hidden}
+@media(min-width:600px){.app{padding-left:18px;padding-right:18px}.top{padding-left:18px;padding-right:18px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+body.theme-dark{--bg:#101016;--card:#191820;--card2:#1d1b25;--text:#f5f2fa;--muted:#a19aaa;--line:rgba(255,255,255,.09);--shadow:0 10px 28px rgba(0,0,0,.2);background:radial-gradient(ellipse at 5% 0%,rgba(111,87,190,.12),transparent 36%),#101016}
+body.theme-dark .top{background:rgba(16,16,22,.86);border-color:rgba(255,255,255,.06)}
+body.theme-dark .card,body.theme-dark .v26-card{background:#191820;border-color:rgba(255,255,255,.07)}
+body.theme-dark .bottom{background:rgba(25,24,32,.94);border-color:rgba(255,255,255,.08)}
+body.theme-dark .bottom button.on{color:#c1b4ff;background:rgba(135,112,255,.16)}
+body.theme-dark .chip{background:#25232e;color:#d8d3e2}
+body.theme-dark .chip.on,body.theme-dark .chip.active{background:#e8d9a7;color:#241e13;border-color:#e8d9a7}
+body.theme-dark input,body.theme-dark select,body.theme-dark textarea,body.theme-dark .input,body.theme-dark .v26-input{background:#201e28!important;color:#f5f2fa!important;border-color:rgba(255,255,255,.1)!important}
+body.theme-dark .secondary,body.theme-dark .btn-secondary,body.theme-dark .v26-btn.secondary{background:#292632;color:#eee9f8}
+body.theme-dark .sheet{background:#191820;color:#f5f2fa}
+
+
+/* ASTER_DARK_TOP_ACTIONS: OLED header controls */
+body.theme-dark .top-actions .icon{background:rgba(18,17,26,.96)!important;border:1px solid rgba(232,184,76,.24)!important;color:#e8b84c!important;box-shadow:0 8px 22px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.045)!important}
+body.theme-dark .top-actions .icon svg{stroke:#e8b84c!important;filter:drop-shadow(0 0 5px rgba(232,184,76,.16))}
+body.theme-dark .top-actions .icon:active{background:#211d2b!important;border-color:rgba(232,184,76,.42)!important}
+</style>
+<link rel="stylesheet" href="v26-production.css"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="theme-dark">
+<div class="bg"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div><div class="splash" id="splash"><div class="splash-orbit"></div><div class="splash-inner"><svg class="splash-logo" viewBox="0 0 100 100"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6d77b"/><stop offset=".5" stop-color="#e8b84c"/><stop offset="1" stop-color="#8d72ff"/></linearGradient></defs><path fill="url(#sg)" d="M50 5C54 33 67 46 95 50C67 54 54 67 50 95C46 67 33 54 5 50C33 46 46 33 50 5Z"/></svg><div class="splash-name">ASTER</div><div class="splash-sub">FINANCIALS · WEALTH ON AUTOPILOT</div><div class="splash-line"></div></div></div><script>window.setTimeout(function(){var s=document.getElementById("splash");if(s)s.classList.add("hide")},2600);</script><div class="confetti-layer" id="confetti"></div>
+<div class="app">
+<header class="top">
+  <div class="brand"><svg viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e8b84c"/><stop offset="1" stop-color="#8d72ff"/></linearGradient></defs><path fill="url(#g)" d="M50 5C54 33 67 46 95 50C67 54 54 67 50 95C46 67 33 54 5 50C33 46 46 33 50 5Z"/></svg>Aster</div>
+  <div class="top-actions"><button class="icon" id="theme"><svg viewBox="0 0 24 24"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5z"/></svg></button><button class="icon" id="bell"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button></div>
+</header>
+<main>
+<section id="home" class="screen on">
+
+  <div class="eyebrow">Aster Financials</div><div class="title">Build wealth on autopilot.</div><p class="sub">A Gen-Z Auto-Invest platform built around simple strategies, transparent projections and live market context.</p>
+  <section class="quickstart" id="asterQuickStart" aria-label="Quick start planner">
+    <div class="qs-top"><div><span class="qs-kicker">YOUR NEXT MOVE</span><h2>Make it yours.</h2><p>Pick a starting amount and strategy. Review everything before taking action.</p></div><div class="qs-orbit" aria-hidden="true"><span class="qs-orbit-core">✦</span><i></i><b></b><em></em></div></div>
+    <div class="qs-label">START WITH</div><div class="qs-amounts" role="group" aria-label="Choose a starting amount"><button type="button" class="qs-amount" data-qs-amount="25">$25</button><button type="button" class="qs-amount active" data-qs-amount="50">$50</button><button type="button" class="qs-amount" data-qs-amount="100">$100</button><button type="button" class="qs-amount" data-qs-amount="250">$250</button><button type="button" class="qs-amount" data-qs-amount="500">$500</button></div>
+    <div class="qs-label">CHOOSE YOUR VIBE</div><div class="qs-strategies" role="group" aria-label="Choose a strategy"><button type="button" class="qs-strategy active" data-qs-strategy="Core Crypto"><span>₿</span><span><b>Core Crypto</b><small>Digital assets</small></span></button><button type="button" class="qs-strategy" data-qs-strategy="Global FX"><span>◎</span><span><b>Global FX</b><small>Major currencies</small></span></button></div>
+    <button type="button" class="qs-cta" id="qsBuild">Build my plan <span>↗</span></button><div class="qs-foot"><span>01 Choose</span><i></i><span>02 Review</span><i></i><span>03 Confirm securely</span></div>
+  </section>
+  <div class="hero"><div class="hero-label">Available balance</div><div class="balance">$0.00</div><div class="delta">Account not connected</div><div class="chart" id="homeChart"></div><div class="actions home-actions"><button class="action" id="homeDeposit" type="button">＋ Deposit</button><button class="action primary" data-go="invest" type="button">✦ Auto-Invest</button><button class="action" data-go="markets" type="button">↗ Markets</button></div></div>
+  <div class="live-ticker" id="homeTicker" aria-label="Live markets"></div>
+  <div class="card"><div class="eyebrow">Active strategies</div><div class="stat">0</div><div class="small muted">Connect your Aster account to see live positions.</div></div><div class="card" style="margin-top:14px"><div class="row"><div><div class="eyebrow">Plan your capital</div><b>ROI Calculator</b><div class="small muted">Explore illustrative 20–25% weekly compounding.</div></div><button class="primary" data-go="roiCalc" style="width:auto;padding:11px 15px">Calculate</button></div></div>
+  <div class="section-head"><h2>Market pulse</h2><button class="link" data-go="markets">View all</button></div>
+  <div class="card" id="homeMarkets"><div class="small muted">Loading live market data…</div></div>
+  <div class="section-head"><h2>Latest market news</h2></div>
+  <div class="card" id="news"><div class="small muted">Loading news…</div></div>
+</section>
+
+<section id="invest" class="screen">
+  <div class="eyebrow">Auto-Invest</div><div class="title">Your money. On autopilot.</div>
+  <div class="invest-package-toggle" role="group" aria-label="Choose investment package"><button type="button" class="invest-package on" data-strategy="Core Crypto"><span>₿</span> Core Crypto</button><button type="button" class="invest-package" data-strategy="Global FX"><span>◎</span> Global FX</button></div>
+  <div class="card"><div class="row"><div><div class="eyebrow">Investment amount</div><div class="amount" id="amtLabel">$10</div></div><span class="lock">USDT</span></div><div class="chips" id="amtChips"><button class="chip on" data-a="10">$10</button><button class="chip" data-a="25">$25</button><button class="chip" data-a="50">$50</button><button class="chip" data-a="100">$100</button><button class="chip" data-a="250">$250</button><button class="chip" data-a="500">$500</button></div></div>
+  
+  <div class="card"><div class="row"><div><div class="eyebrow">Illustrative daily gain · 2.85%</div><div class="big-proj" id="projValue">$0.29 / day</div></div><span class="badge">Not guaranteed</span></div><div class="projection" id="projChart"></div><p class="small muted" id="projNote">The graph compares your starting amount with the illustrative value after 1 day and 7 days. The 7-day figure is simple, non-compounding arithmetic—not a promise or forecast. Actual returns can be negative.</p></div>
+  <div class="notice">Real deposits, withdrawals and Auto-Invest activation are account actions. This build will never manufacture a balance or pretend a strategy was executed without a connected Aster backend.</div>
+  <button class="primary" id="review" style="margin-top:12px">Review Auto-Invest</button>
+  <div class="section-head"><h2>Active strategies</h2></div><div class="card"><div class="small muted">No connected strategies yet.</div></div>
+</section>
+
+<section id="roiCalc" class="screen"><div class="eyebrow">ROI Calculator</div><div class="title">See the math before you invest.</div><p class="sub">Illustrative weekly compounding from 20% to 25%. Adjust capital and time to explore the mathematics.</p>
+<div class="card"><div class="eyebrow">Initial capital</div><div class="amount" id="roiAmtLabel">$1,000</div><input class="range" id="roiAmt" type="range" min="100" max="100000" step="100" value="1000"><div class="chips" id="roiAmtChips"><button class="chip" data-v="500">$500</button><button class="chip on" data-v="1000">$1k</button><button class="chip" data-v="5000">$5k</button><button class="chip" data-v="10000">$10k</button></div></div>
+<div class="card"><div class="eyebrow">Illustrative weekly ROI</div><div class="amount" id="roiRateLabel">20%</div><input class="range" id="roiRate" type="range" min="20" max="25" step="0.5" value="20"><div class="chips" id="roiRateChips"><button class="chip on" data-v="20">20%</button><button class="chip" data-v="22.5">22.5%</button><button class="chip" data-v="25">25%</button></div></div>
+<div class="card"><div class="row"><div><div class="eyebrow">Time period</div><b id="roiWeeksLabel">12 weeks</b></div><span class="badge">Compounded</span></div><input class="range" id="roiWeeks" type="range" min="1" max="52" step="1" value="12"><div class="chips" id="roiWeekChips"><button class="chip" data-v="4">4w</button><button class="chip on" data-v="12">12w</button><button class="chip" data-v="24">24w</button><button class="chip" data-v="52">52w</button></div></div>
+<div class="card"><div class="eyebrow">Projected value</div><div class="big-proj" id="roiOut">$8,916</div><div class="row"><span class="small muted">Illustrative profit</span><b id="roiProfit">$7,916</b></div><div class="row"><span class="small muted">Capital multiplier</span><b id="roiMultiple">8.92×</b></div><div class="projection" id="roiChart"></div><div class="notice"><b>Important:</b> This calculator is mathematical only. A 20–25% weekly return is an extremely aggressive scenario; real investment returns can be negative. Nothing here is a promise, forecast or guarantee.</div></div></section>
+
+<section id="markets" class="screen">
+<div class="art-banner blue"><div class="art-copy"><b>Market Pulse</b><span>Live crypto data and global market context, updated automatically.</span></div><svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><path d="M90 125 L125 104 L151 113 L178 78 L205 91 L235 49 L285 61" fill="none" stroke="#5ed5ff" stroke-width="4"/><path d="M90 125 L125 104 L151 113 L178 78 L205 91 L235 49 L285 61 V150 H90Z" fill="#3dbfff" opacity=".08"/><g fill="#68d9ff"><circle cx="125" cy="104" r="4"/><circle cx="178" cy="78" r="4"/><circle cx="235" cy="49" r="4"/></g><circle cx="235" cy="49" r="28" fill="#4fcaff" opacity=".13"/></svg></div>
+  <div class="eyebrow">Markets</div><div class="title">Live market context.</div><p class="sub">Informational market data for your Auto-Invest decisions. No trading terminal, no order execution.</p>
+  <div class="tabs" id="marketTabs"><button class="on" data-filter="all">All</button><button data-filter="crypto">Crypto</button><button data-filter="forex">Forex</button></div><div class="market-context"><span class="market-pulse-dot"></span><div><b>Stay in the loop</b><small>Explore market movements and headlines. Information only — no trade execution.</small></div><span class="context-spark">✦</span></div>
+  <div class="card" id="marketList"><div class="small muted">Loading live data…</div></div>
+  <div class="section-head"><h2>Market news</h2><span class="small muted" id="newsStatus">Live feed</span></div>
+  <div class="card" id="news2"><div class="small muted">Loading…</div></div>
+</section>
+
+<section id="team" class="screen">
+<div class="eyebrow">Your network</div><div class="title">Team overview.</div><p class="sub">Your personal Aster referral code and every member connected through your referral network.</p>
+
+<div class="grid2 team-metrics" style="margin-top:10px">
+ <div class="card team-metric"><div class="metric-icon">✦</div><div class="eyebrow">Total team members</div><div class="stat" id="teamTotal">—</div><div class="metric-foot">Across your network</div></div>
+ <div class="card team-metric"><div class="metric-icon">⌁</div><div class="eyebrow">Active levels</div><div class="stat" id="teamLevels">—</div><div class="metric-foot">Up to nine levels</div></div>
+</div>
+<div class="team-nudge"><span class="nudge-spark">✧</span><div><b>Your network, at a glance</b><small>Explore a level below to see connected members and referral depth.</small></div><span class="nudge-arrow">↓</span></div>
+<div class="pyr" id="teamPolicy" aria-label="Referral levels"><div class="pyr-in">
+ <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
+ <span class="spk" style="left:14%;top:30%">✦</span><span class="spk" style="right:12%;top:20%;animation-delay:-.8s">✦</span><span class="spk" style="left:8%;bottom:22%;animation-delay:-1.4s">✧</span><span class="spk" style="right:9%;bottom:16%;animation-delay:-.4s">✦</span>
+ <div class="pyr-top"><div><div class="pyr-eyebrow">Your referral levels</div><div class="pyr-title">9 levels deep</div></div><div class="pyr-total"><b id="pyrTotal">21</b><small>% TOTAL</small></div></div>
+ <div class="pyr-body" id="teamPyr"></div>
+ <div class="pyr-hint">👆 Tap a level to see who's in it</div>
+ <div class="pyr-note">Policy allocation by level. Rewards subject to Aster eligibility &amp; backend verification; not marked as paid here.</div>
+</div></div>
+<div class="section-head"><h2>Team members</h2><span class="small muted" id="teamMemberCount">0 members</span></div>
+<div class="tabs" id="teamLevelTabs">
+ <button class="on" data-level="all">All</button><button data-level="1">L1</button><button data-level="2">L2</button><button data-level="3">L3</button><button data-level="4">L4</button><button data-level="5">L5</button><button data-level="6">L6</button><button data-level="7">L7</button><button data-level="8">L8</button><button data-level="9">L9</button>
+</div>
+<div class="card" id="teamMembers"><div class="small muted">Connect your account to load your team.</div></div>
+</section>
+<section id="wallet" class="screen">
+<div class="art-banner mint"><div class="art-copy"><b>Aster Treasury</b><span>Deposits on BEP20 and TRC20. Withdrawals on BEP20 only.</span></div><svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><rect x="150" y="38" width="116" height="86" rx="18" fill="#172424" stroke="#56e0c1" stroke-width="2"/><rect x="177" y="65" width="112" height="62" rx="16" fill="#0d1416" stroke="#56e0c1"/><circle cx="216" cy="95" r="19" fill="#56e0c1" opacity=".2"/><text x="216" y="102" text-anchor="middle" font-size="23" font-weight="800" fill="#56e0c1">₮</text><path d="M115 77 Q145 42 170 55" fill="none" stroke="#56e0c1" stroke-width="3"/><path d="M111 94 Q143 60 168 73" fill="none" stroke="#f5c95a" stroke-width="3"/></svg></div>
+  <div class="eyebrow">Wallet</div><div class="title">Your money, clearly.</div><p class="sub">Balances, deposits, withdrawals and transaction history will come from your authenticated Aster account.</p>
+  <div class="wallet-card wallet-hero"><div class="wallet-glow"></div><div class="wallet-head"><div class="eyebrow" style="color:#c8c4d7">AVAILABLE BALANCE</div><span class="wallet-status"><i></i> Account not connected</span></div><div class="balance" style="margin-top:8px">$0.00</div><div class="wallet-currency">USDT · Tether USD</div><div class="wallet-actions"><button id="deposit"><span>＋</span> Deposit</button><button id="withdraw"><span>↗</span> Withdraw</button></div></div>
+  <div class="wallet-shortcuts"><div class="wallet-shortcut"><span class="shortcut-icon">⇩</span><b>Deposit USDT</b><small>Choose a network</small></div><div class="wallet-shortcut"><span class="shortcut-icon">⇧</span><b>Withdraw</b><small>Request a transfer</small></div><div class="wallet-shortcut"><span class="shortcut-icon">◷</span><b>Activity</b><small>Verified history</small></div></div>
+  <div class="card wallet-history"><div class="row"><div><div class="eyebrow">Your activity</div><b>Transaction history</b></div><span class="lock">0 transactions</span></div><div class="empty-activity"><div class="empty-orbit">◷</div><b>Your money story starts here</b><p>Deposits, withdrawals and verified account activity will appear here once your account is connected.</p></div></div>
+  <div class="wallet-security"><span class="security-mark">⌑</span><div><b>Built around account security</b><small>Balances and transactions are shown only from authenticated, verified Aster records.</small></div><span class="security-check">✓</span></div>
+</section>
+
+<section id="profile" class="screen">
+<div class="art-banner"><div class="art-copy"><b>Welcome to Aster</b><span>Your account, preferences and security in one place.</span></div><svg viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"><circle cx="225" cy="83" r="60" fill="#8b5cf6" opacity=".16"/><circle cx="225" cy="68" r="24" fill="#f1c65c"/><path d="M181 137 Q225 92 269 137" fill="#f1c65c" opacity=".85"/><path d="M145 136 Q177 106 194 109" fill="none" stroke="#f1c65c" stroke-width="3" opacity=".7"/><path d="M255 109 Q276 104 300 136" fill="none" stroke="#8b5cf6" stroke-width="3" opacity=".7"/><circle cx="225" cy="83" r="70" fill="none" stroke="#f1c65c" stroke-opacity=".3"/></svg></div>
+  <div class="eyebrow">Profile</div><div class="title">Your Aster.</div>
+  <div class="profile-identity"><div class="profile-avatar-wrap"><div class="avatar">A</div><span class="online-dot"></span></div><div class="profile-identity-copy"><b id="profileName">Aster member</b><div class="small muted">Account not connected</div><span class="member-pill">✦ ASTER MEMBER</span></div><span class="profile-chevron">›</span></div>
+  <div class="profile-section-label">YOUR ACCOUNT</div>
+  <div class="card profile-menu"><div class="list-row" id="connect"><div class="list-icon">↗</div><div><b>Connect account</b><div class="small muted">Sign in to unlock your real balance and Auto-Invest.</div></div><span class="row-chevron">›</span></div><div class="list-row" id="prefs"><div class="list-icon">✧</div><div><b>Preferences & appearance</b><div class="small muted">Choose the look and feel of Aster.</div></div><span class="row-chevron">›</span></div></div>
+  <div class="profile-section-label">TRUST & TRANSPARENCY</div>
+  <div class="card profile-menu"><div class="list-row" id="terms"><div class="list-icon">▤</div><div><b>Terms & Conditions</b><div class="small muted">How Aster works.</div></div><span class="row-chevron">›</span></div><div class="list-row" id="risk"><div class="list-icon">!</div><div><b>Risk Disclosure</b><div class="small muted">Understand investment risks.</div></div><span class="row-chevron">›</span></div><div class="list-row" id="privacy"><div class="list-icon">⌁</div><div><b>Privacy Policy</b><div class="small muted">How your information is handled.</div></div><span class="row-chevron">›</span></div></div>
+  <div class="profile-footer"><span>ASTER FINANCIALS</span><span>Designed for a smarter wealth journey ✦</span></div>
+</section>
+</main>
+<nav class="bottom" id="nav"><button class="on" data-go="home"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button><button data-go="team"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.5 2.5-5.5 6-5.5s6 2 6 5.5M15 15c3.5-.2 6 1.4 6 4.5"/></svg>Team</button><button data-go="invest"><svg viewBox="0 0 24 24"><path d="M12 3l2.5 6 6.5 3-6.5 3L12 21l-2.5-6L3 12l6.5-3z"/></svg>Auto-Invest</button><button data-go="wallet"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M16 12h5M17 12a1 1 0 1 0 0 .01"/></svg>Wallet</button><button data-go="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>You</button></nav>
+<div class="sheet-back" id="sheetBack"><div class="sheet" id="sheet"><div class="grab"></div></div></div>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const fmt=(n,d=2)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const nativeFetch=url=>new Promise((resolve,reject)=>{const id='a'+Date.now()+Math.random();window.__asterCallbacks=window.__asterCallbacks||{};window.__asterCallbacks[id]={resolve,reject};if(window.AsterNative)AsterNative.fetch(url,id);else fetch(url).then(r=>r.text()).then(resolve).catch(reject)});
+window.__asterNativeResult=(id,body,ok)=>{const c=window.__asterCallbacks?.[id];if(!c)return;delete window.__asterCallbacks[id];ok?c.resolve(body):c.reject(body)};
+function line(vals,color='#17131c'){if(!vals.length)return '';let min=Math.min(...vals),max=Math.max(...vals),r=max-min||1,w=320,h=70;let d=vals.map((v,i)=>(i?'L':'M')+(i/(vals.length-1)*w).toFixed(1)+' '+(h-5-(v-min)/r*(h-10)).toFixed(1)).join('');return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
+let quotes={};let marketFilter='all';
+function miniSpark(seed){let vals=[1],x=seed||1;for(let i=0;i<8;i++){x=(x*9301+49297)%233280;vals.push(vals.at(-1)*(1+((x/233280)-.46)*.035))}return line(vals,'#7b61ff')}function renderTicker(){const el=$('#homeTicker');if(!el)return;const keys=Object.keys(quotes).slice(0,5);el.innerHTML=keys.map(k=>{const q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="ticker-item"><div class="ticker-top"><span class="ticker-symbol">'+q.symbol.replace('/USDT','')+'</span><span class="ticker-live"></span></div><div class="ticker-price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'</div><div class="ticker-change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'% 24h</div></div>'}).join('')||'<div class="small muted">Live markets loading…</div>'}
+function renderMarkets(){let keys=Object.keys(quotes).filter(k=>marketFilter==='all'||quotes[k].type===marketFilter);$('#marketList').innerHTML=keys.length?keys.map(k=>{let q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(Math.abs(q.price)%97+1)+'</div></div>'}).join(''):'<div class="small muted">No live quotes available right now.</div>';let top=keys.slice(0,5);$('#homeMarkets').innerHTML=top.length?'<div class="market-card-head"><span class="small muted">Live data</span><span class="live-dot"></span></div>'+top.map(k=>{let q=quotes[k],pct=((q.price-q.open)/q.open)*100;return '<div class="market-row" data-market="'+k+'"><div class="coin">'+q.symbol[0]+'</div><div><b>'+q.symbol+'</b><div class="small muted">'+q.type+'</div></div><div class="price">'+(q.price<2?q.price.toFixed(4):fmt(q.price,2))+'<div class="change '+(pct>=0?'up':'down')+'">'+(pct>=0?'+':'')+pct.toFixed(2)+'%</div></div><div class="spark">'+miniSpark(Math.abs(q.price)%97+1)+'</div></div>'}).join(''):'<div class="small muted">Waiting for live market data…</div>'}
+async function loadMarkets(){
+  const cryptoSymbols=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
+  const cryptoEndpoint='https://data-api.binance.vision/api/v3/ticker/24hr?symbols='+encodeURIComponent(JSON.stringify(cryptoSymbols));
+  const forexEndpoint='https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,GBP,JPY,CHF,AUD';
+  try{
+    const [cryptoRaw,forexRaw]=await Promise.all([nativeFetch(cryptoEndpoint),nativeFetch(forexEndpoint)]);
+    const crypto=JSON.parse(cryptoRaw), forex=JSON.parse(forexRaw);
+    quotes={};
+    if(Array.isArray(crypto)) crypto.forEach(x=>{
+      if(!x.symbol||x.lastPrice==null||x.openPrice==null)return;
+      const symbol=x.symbol.replace('USDT','/USDT');
+      quotes[symbol]={symbol,type:'crypto',price:+x.lastPrice,open:+x.openPrice};
+    });
+    const usdRates=forex&&forex.rates?forex.rates:{};
+    const pairs=[['EUR','EUR/USD'],['GBP','GBP/USD'],['JPY','USD/JPY'],['CHF','USD/CHF'],['AUD','AUD/USD']];
+    pairs.forEach(([ccy,label])=>{
+      const r=Number(usdRates[ccy]);
+      if(!Number.isFinite(r)||r<=0)return;
+      const price=label==='EUR/USD'||label==='GBP/USD'||label==='AUD/USD'?r:1/r;
+      quotes[label]={symbol:label,type:'forex',price,open:price};
+    });
+    renderMarkets(); renderTicker();
+    $('#homeMarkets').setAttribute('data-aster-discovery','readonly');
+  }catch(e){
+    console.warn('Aster read-only market discovery unavailable',e);
+    $('#marketList').innerHTML='<div class="small muted">Market pulse temporarily unavailable. Retrying automatically…</div>';
+    $('#homeMarkets').innerHTML='<div class="small muted">Market pulse temporarily unavailable.</div>';
+  }
+}
+async function loadNews(target){try{const q=encodeURIComponent('(crypto OR bitcoin OR ethereum OR forex OR currency markets)');let raw=await nativeFetch('https://news.google.com/rss/search?q='+q+'&hl=en-US&gl=US&ceid=US:en');let xml=new DOMParser().parseFromString(raw,'text/xml');let items=[...xml.querySelectorAll('item')].slice(0,16);const escNews=v=>String(v||'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));const classify=t=>/forex|currency|dollar|euro|yen|pound|sterling|central bank|rate decision|fx /i.test(t)?'FOREX':'CRYPTO';$(target).innerHTML=items.length?items.map((i,n)=>{const title=i.querySelector('title')?.textContent||'Market headline';const link=i.querySelector('link')?.textContent||'#';const date=i.querySelector('pubDate')?.textContent||'';return '<a class="news news-scroll-item" href="'+escNews(link)+'" target="_blank" rel="noopener noreferrer"><span class="news-scroll-index">'+String(n+1).padStart(2,'0')+'</span><div class="news-scroll-copy"><span class="news-scroll-tag '+classify(title).toLowerCase()+'">'+classify(title)+'</span><b>'+escNews(title)+'</b><span class="news-scroll-time">'+escNews(date)+'</span></div><span class="news-scroll-arrow">↗</span></a>'}).join(''):'<div class="small muted">No headlines returned.</div>'}catch(e){$(target).innerHTML='<div class="small muted">News feed unavailable right now.</div>'}}
+async function loadWealth(){try{const base=window.ASTER_API_BASE||localStorage.getItem('aster_api_base')||'';if(!base)return;const r=await fetch(base.replace(/\/$/,'')+'/v1/portfolio',{credentials:'include'});if(!r.ok)return;const d=await r.json();const total=Number(d.total||0),available=Number(d.available||0),invested=Math.max(0,total-available);$('#insightTotal').innerHTML=fmt(total,2)+' <span class="small">USDT</span>';$('#insightAvailable').textContent=fmt(available,2)+' USDT';$('#insightInvested').innerHTML=fmt(invested,2)+' <span class="small">USDT</span>';$('#insightInvestedRow').textContent=fmt(invested,2)+' USDT';$('#insightBar').style.width=(total?Math.min(100,invested/total*100):0)+'%';const rr=await fetch(base.replace(/\/$/,'')+'/v1/autoinvest/active',{credentials:'include'});if(rr.ok){const rows=await rr.json();$('#insightStrategies').innerHTML=rows.length?rows.map(x=>'<div class="trade-history-row"><div><b>'+esc(x.strategy||'Auto-Invest')+'</b><div class="trade-meta">'+esc(x.amount)+' USDT · '+esc(x.duration_weeks)+' weeks</div></div><span class="sim-badge">'+esc(x.status)+'</span></div>').join(''):'<div class="small muted">No active strategies.</div>'}}catch(e){}}function projection(){const selected=$('#amtChips .chip.on');const amount=selected?Number(selected.dataset.a):10;const dailyGain=amount*0.0285;const weeklyGain=dailyGain*7;const afterDay=amount+dailyGain;const afterWeek=amount+weeklyGain;$('#amtLabel').textContent='$'+fmt(amount,0);$('#projValue').textContent='$'+fmt(dailyGain,2)+' / day';$('#projChart').innerHTML=line([amount,afterDay,afterWeek],'#8d72ff');$('#projNote').textContent='7-day illustrative gain: '+fmt(weeklyGain,2)+' USDT · projected value after 7 days: '+fmt(afterWeek,2)+' USDT. Graph: starting amount → after 1 day → after 7 days (simple estimate, no compounding). Not guaranteed; actual returns can be negative.'}function roiCalc(){const a=+$('#roiAmt').value,r=+$('#roiRate').value/100,w=+$('#roiWeeks').value;$('#roiAmtLabel').textContent='$'+fmt(a,0);$('#roiRateLabel').textContent=(r*100)+'%';$('#roiWeeksLabel').textContent=w+' weeks';$$( '#roiAmtChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===a));$$( '#roiRateChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===r*100));$$( '#roiWeekChips .chip' ).forEach(x=>x.classList.toggle('on',+x.dataset.v===w));let vals=[a];for(let i=1;i<=w;i++)vals.push(vals[i-1]*(1+r));const end=vals[vals.length-1];$('#roiOut').textContent='$'+fmt(end,0);$('#roiProfit').textContent='$'+fmt(end-a,0);$('#roiMultiple').textContent=(end/a).toFixed(2)+'×';$('#roiChart').innerHTML=line(vals,'#8d72ff')}['roiAmt','roiRate','roiWeeks'].forEach(id=>$('#'+id).oninput=roiCalc);$('#roiAmtChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiAmt').value=b.dataset.v;roiCalc()}};$('#roiRateChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiRate').value=b.dataset.v;roiCalc()}};$('#roiWeekChips').onclick=e=>{const b=e.target.closest('[data-v]');if(b){$('#roiWeeks').value=b.dataset.v;roiCalc()}};function go(id){const target=document.getElementById(id);if(!target||!target.classList.contains('screen')||target.classList.contains('v39-hide'))return false;document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));$$( '#nav button' ).forEach(b=>b.classList.toggle('on',b.dataset.go===id));scrollTo(0,0);if(id==='markets'){loadMarkets()}if(id==='team'){setTimeout(loadTeam,80)}return true}window.asterNavigate=go;
+$$( '[data-go]' ).forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+$('#homeDeposit').addEventListener('click',()=>{go('wallet');setTimeout(()=>$('#deposit')?.click(),80)});
+$$( '.invest-package' ).forEach(c=>c.addEventListener('click',()=>{$$( '.invest-package' ).forEach(x=>x.classList.remove('on'));c.classList.add('on');projection()}));
+$('#amtChips').addEventListener('click',e=>{let b=e.target.closest('[data-a]');if(b){$$( '#amtChips .chip' ).forEach(x=>x.classList.toggle('on',x===b));projection()}});
+$('#marketTabs').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;$$('button',e.currentTarget).forEach(x=>x.classList.remove('on'));b.classList.add('on');marketFilter=b.dataset.filter;renderMarkets()});
+
+const TEAM_RATES=[10,3,2,1,1,1,1,1,1];
+let teamRows=[],teamLevel='all',teamCode='';
+function teamEsc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const PYR_ICON=['🔥','⚡','💎','🚀','🌙','✨','🌈','🪩','👑'],PYR_HUE=[330,300,270,235,205,180,150,50,28];
+function renderPolicy(){
+ const cnt={};teamRows.forEach(x=>{cnt[x.level]=(cnt[x.level]||0)+1});
+ const rows=[[0],[1,2],[3,4,5],[6,7,8]];
+ $('#teamPyr').innerHTML=rows.map(r=>'<div class="pyr-row">'+r.map(i=>'<button class="lv'+(i===0?' big':'')+'" data-l="'+(i+1)+'" style="--h:'+PYR_HUE[i]+';--i:'+i+'" aria-label="Level '+(i+1)+', '+TEAM_RATES[i]+' percent"><span class="lvi"><small>'+PYR_ICON[i]+' LEVEL '+(i+1)+'</small><b>'+TEAM_RATES[i]+'%</b></span>'+(cnt[i+1]?'<em>'+cnt[i+1]+'</em>':'')+'</button>').join('')+'</div>').join('');
+ syncPyr();
+}
+function syncPyr(){const p=$('#teamPyr');if(!p)return;$$('.lv',p).forEach(b=>b.classList.toggle('sel',b.dataset.l===String(teamLevel)))}
+function pyrCount(){const el=$('#pyrTotal');if(!el)return;const t=TEAM_RATES.reduce((a,b)=>a+b,0),t0=performance.now();(function f(n){const k=Math.min(1,(n-t0)/1000);el.textContent=Math.round(t*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f)})(t0)}
+renderPolicy();
+$('#teamPyr').addEventListener('click',e=>{const b=e.target.closest('button.lv');if(!b)return;teamLevel=teamLevel===b.dataset.l?'all':b.dataset.l;$$('button',$('#teamLevelTabs')).forEach(x=>x.classList.toggle('on',x.dataset.level===String(teamLevel)));renderTeam();try{navigator.vibrate&&navigator.vibrate(12)}catch(_){}$('#teamMembers').scrollIntoView({behavior:'smooth',block:'center'})});
+if('IntersectionObserver' in window){new IntersectionObserver(es=>es.forEach(e=>{const el=e.target;if(e.isIntersecting){if(!el.classList.contains('live')){el.classList.add('live');pyrCount()}}else el.classList.remove('live')}),{threshold:.3}).observe($('#teamPolicy'))}else{$('#teamPolicy').classList.add('live')}
+function mcode(x){const c=x.referral_code||x.code||'';return '<div class="mcode"><span>🎟️ '+(c?teamEsc(c):'Code pending')+'</span>'+(c?'<button class="mcopy" data-code="'+teamEsc(c)+'">Copy</button>':'')+'</div>'}
+function renderTeam(){syncPyr();
+ const rows=teamLevel==='all'?teamRows:teamRows.filter(x=>Number(x.level)===Number(teamLevel));
+ $('#teamMemberCount').textContent=rows.length+' members';
+ $('#teamMembers').innerHTML=rows.length?rows.map(x=>'<div class="list-row"><div class="avatar" style="width:42px;height:42px;font-size:14px">L'+teamEsc(x.level)+'</div><div style="min-width:0;flex:1"><b>'+teamEsc(x.email||('Member #'+x.member_id))+'</b><div class="small muted">Member #'+teamEsc(x.member_id)+' · Joined '+teamEsc(x.joined_at?new Date(x.joined_at).toLocaleDateString():'date unavailable')+'</div>'+mcode(x)+'</div><span class="badge">'+teamEsc(x.status||'active')+'</span></div>').join(''):'<div class="small muted">No members found for this level yet.</div>';
+}
+async function loadTeam(){
+ const code=$('#teamReferralCode'),members=$('#teamMembers');
+ try{
+  const d=await apiCall('/v1/team');
+  teamCode=d.code||'';teamRows=Array.isArray(d.members)?d.members:[];
+  code.textContent=teamCode||'Not available';
+  $('#copyTeamCode').disabled=!teamCode;
+  $('#teamCodeHint').textContent='Share this code when inviting someone to Aster.';
+  $('#teamTotal').textContent=String(teamRows.length);
+  $('#teamLevels').textContent=String(new Set(teamRows.map(x=>Number(x.level))).size);
+  renderPolicy();
+  renderTeam();
+ }catch(e){
+  code.textContent='Connect account';$('#copyTeamCode').disabled=true;
+  $('#teamCodeHint').textContent=e.message||'Sign in to view your referral code.';
+  $('#teamTotal').textContent='—';$('#teamLevels').textContent='—';
+  renderPolicy();
+  members.innerHTML='<div class="small muted">Sign in to load your team members.</div>';
+ }
+}
+$('#copyTeamCode').onclick=()=>{if(!teamCode)return;if(window.AsterNative?.copyText)AsterNative.copyText(teamCode);else navigator.clipboard?.writeText(teamCode);showToast('Referral code copied')};
+$('#teamLevelTabs').addEventListener('click',e=>{const b=e.target.closest('button[data-level]');if(!b)return;teamLevel=b.dataset.level;$$('button',$('#teamLevelTabs')).forEach(x=>x.classList.toggle('on',x===b));renderTeam()});
+
+function openSheet(title,body){$('#sheet').innerHTML='<div class="grab"></div><h3>'+title+'</h3>'+body+'<button class="primary" id="closeSheet" style="margin-top:14px">Close</button>';$('#sheetBack').classList.add('on');$('#closeSheet').onclick=()=>$('#sheetBack').classList.remove('on')}
+
+$('#review').onclick=()=>{
+ const strategy=$('.invest-package.on').dataset.strategy||'Core Crypto';
+ const amount=Number($('#amtChips .chip.on')?.dataset.a||10);
+ const activationKey='ui-ai-'+idem();
+ openSheet('Review Auto-Invest','<p>Package: <b>'+strategy+'</b><br>Principal: <b>'+amount.toFixed(2)+' USDT</b></p><div class="notice">The 2.85% daily figure is an unverified illustration, not a return forecast or promise. Activation is blocked until Aster has a verified execution and valuation provider. No funds will be moved by this review.</div><button class="primary" id="activateAutoInvest" style="margin-top:12px">Request activation</button><div class="small muted" id="activationState" style="margin-top:10px" aria-live="polite"></div>');
+ $('#activateAutoInvest').onclick=async()=>{
+  const state=$('#activationState');
+  try{
+   const result=await apiCall('/v1/autoinvest',{method:'POST',headers:{'Idempotency-Key':activationKey},body:JSON.stringify({strategy,amount})});
+   state.textContent='Auto-Invest '+result.id+' · '+result.status+'.';
+   $('#activateAutoInvest').disabled=true;
+   await refreshAccountData();
+  }catch(err){state.textContent='Not activated: '+(err.message||'Provider unavailable')+'. No funds have been reserved.';}
+ };
+};
+
+
+function updateAccountIdentity(me){
+ const name=$('#profileName'), meta=$('.profile-identity-copy .small');
+ if(name)name.textContent=me?.email||'Aster member';
+ if(meta)meta.textContent=me?'Connected · KYC '+(me.kyc_status||'unknown'):'Account not connected';
+}
+function resetAccountUI(){
+ updateAccountIdentity(null);
+ const balance=$('#wallet .wallet-hero .balance');if(balance)balance.textContent='0.00';
+ const walletStatus=$('#wallet .wallet-status');if(walletStatus)walletStatus.innerHTML='<i></i> Account not connected';
+ renderWalletActivity([]);
+ const homeActive=[...$('#home').querySelectorAll('.card')].find(x=>/Active strategies/i.test(x.textContent||''));
+ if(homeActive?.querySelector('.stat'))homeActive.querySelector('.stat').textContent='0';
+ const investHead=[...$('#invest').querySelectorAll('.section-head')].find(x=>/Active strategies/i.test(x.textContent||''));
+ if(investHead?.nextElementSibling)investHead.nextElementSibling.innerHTML='<div class="small muted">Connect your account to load active strategies.</div>';
+ ['insightTotal','insightAvailable','insightInvested','insightInvestedRow'].forEach(id=>{const el=$('#'+id);if(el)el.textContent='0.00 USDT'});
+ const bar=$('#insightBar');if(bar)bar.style.width='0%';
+ const strategies=$('#insightStrategies');if(strategies)strategies.textContent='Connect your account to load strategies.';
+ const wealthValue=$('#v39WealthValue');if(wealthValue)wealthValue.textContent='— USDT';
+ const wealthBar=$('#v39WealthBar');if(wealthBar)wealthBar.style.width='0%';
+ teamRows=[];teamCode='';teamLevel='all';
+ renderTeam();
+ const code=$('#teamReferralCode');if(code)code.textContent='Connect account';
+ const hint=$('#teamCodeHint');if(hint)hint.textContent='Sign in to view your referral code.';
+ const total=$('#teamTotal');if(total)total.textContent='0';
+ const levels=$('#teamLevels');if(levels)levels.textContent='0';
+ const count=$('#teamMemberCount');if(count)count.textContent='0 members';
+ const members=$('#teamMembers');if(members)members.textContent='Connect your account to load your team.';
+ const copy=$('#copyTeamCode');if(copy)copy.disabled=true;
+}
+function renderWalletActivity(rows){
+ const host=$('#wallet .wallet-history'); if(!host)return;
+ const old=host.querySelector('.empty-activity,.activity-list');
+ if(!Array.isArray(rows)||!rows.length){
+  if(old){old.className='empty-activity';old.innerHTML='<div class="empty-orbit">◷</div><b>Your money story starts here</b><p>Verified deposits, withdrawals and account activity will appear here.</p>';}
+  return;
+ }
+ const list=document.createElement('div');list.className='activity-list';
+ rows.slice(0,12).forEach(row=>{
+  const item=document.createElement('div');item.className='list-row';
+  const left=document.createElement('div');left.style.flex='1';
+  const title=document.createElement('b');title.textContent=String(row.kind||'Account activity').replace(/_/g,' ');
+  const meta=document.createElement('div');meta.className='small muted';meta.textContent=(row.reference||'')+' · '+(row.status||'');
+  left.append(title,meta);
+  const amount=document.createElement('b');amount.textContent=(Number(row.amount)>=0?'+':'')+Number(row.amount||0).toFixed(2)+' '+(row.currency||'USDT');
+  item.append(left,amount);list.appendChild(item);
+ });
+ if(old)old.replaceWith(list);else host.appendChild(list);
+}
+async function refreshAccountData(){
+ const me=await apiCall('/v1/me');
+ const [wallet,positions,transactions]=await Promise.all([
+  apiCall('/v1/wallet'),apiCall('/v1/autoinvest/active'),apiCall('/v1/transactions')
+ ]);
+ updateAccountIdentity(me);
+ const balance=$('#wallet .wallet-hero .balance');
+ if(balance)balance.textContent=Number(wallet.available||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const walletStatus=$('#wallet .wallet-status');
+ if(walletStatus)walletStatus.innerHTML='<i></i> Account connected';
+ const total=Number(wallet.available||0)+Number(wallet.invested||0);
+ const wealthValue=$('#v39WealthValue');if(wealthValue)wealthValue.textContent=total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' USDT';
+ const wealthBar=$('#v39WealthBar');if(wealthBar)wealthBar.style.width=(total?Math.min(100,Number(wallet.invested||0)/total*100):0)+'%';
+ const active=Array.isArray(positions)?positions.filter(x=>x.status==='active').length:0;
+ const homeActive=[...$('#home').querySelectorAll('.card')].find(x=>/Active strategies/i.test(x.textContent||''));
+ if(homeActive?.querySelector('.stat'))homeActive.querySelector('.stat').textContent=String(active);
+ const investHead=[...$('#invest').querySelectorAll('.section-head')].find(x=>/Active strategies/i.test(x.textContent||''));
+ if(investHead?.nextElementSibling){
+  const host=investHead.nextElementSibling;
+  host.innerHTML=positions.length?positions.map(x=>'<div class="list-row"><div style="flex:1"><b>'+String(x.strategy||'Auto-Invest').replace(/[&<>"]/g,'')+'</b><div class="small muted">'+Number(x.amount||0).toFixed(2)+' USDT · '+String(x.status||'')+'</div></div><span class="badge">'+String(x.status||'').toUpperCase()+'</span></div>').join(''):'<div class="small muted">No active strategies yet.</div>';
+ }
+ renderWalletActivity(transactions);
+ await loadWealth();
+ return me;
+}
+function openConnectSheet(){
+ openSheet('Connect your Aster account',
+  '<p>Connect to your deployed Aster API over HTTPS. Your API address is saved on this device; your password is sent only to that API.</p>'+
+  '<div class="eyebrow">Backend API address</div><input class="input" id="apiBaseInput" type="url" autocomplete="url" placeholder="https://api.your-domain.com">'+
+  '<button class="secondary" id="testApiConnection">Test & save API address</button><div class="small muted" id="apiConnectionState" style="margin:8px 0 14px">No backend address tested yet.</div><div class="notice">Funding, withdrawals and Auto-Invest require verified identity and approved providers. An unverified account cannot move funds.</div>'+
+  '<div class="tabs" id="authModeTabs"><button type="button" class="on" data-mode="login">Sign in</button><button type="button" data-mode="register">Create account</button></div>'+
+  '<input class="input" id="authEmail" type="email" autocomplete="email" placeholder="Email address">'+
+  '<input class="input" id="authPassword" type="password" autocomplete="current-password" placeholder="Password (minimum 12 characters)">'+
+  '<input class="input" id="authReferral" type="text" autocomplete="off" placeholder="Referral code (optional)" style="display:none">'+
+  '<button class="primary" id="authSubmit">Sign in</button>'+
+  '<button class="secondary" id="authLogout" style="margin-top:8px">Sign out</button>'+
+  '<div class="small muted" id="authState" style="margin-top:10px" aria-live="polite"></div>');
+ const baseInput=$('#apiBaseInput');baseInput.value=apiBase();
+ let mode='login';
+ const state=$('#authState'),apiState=$('#apiConnectionState');
+ function setMode(next){
+  mode=next;
+  $$('button',$('#authModeTabs')).forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
+  $('#authSubmit').textContent=mode==='login'?'Sign in':'Create account';
+  $('#authReferral').style.display=mode==='register'?'block':'none';
+  $('#authPassword').autocomplete=mode==='login'?'current-password':'new-password';
+ }
+ $('#authModeTabs').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(b)setMode(b.dataset.mode)});
+ $('#testApiConnection').onclick=async()=>{
+  try{
+   const parsed=new URL(baseInput.value.trim());
+   if(parsed.protocol!=='https:')throw new Error('Use an HTTPS API address. HTTP is not accepted by the secure app.');
+   if(parsed.username||parsed.password||parsed.search||parsed.hash)throw new Error('Enter only the API base address, without credentials, query or fragment.');
+   const base=(parsed.origin+parsed.pathname).replace(/\/+$/,'');
+   const response=await fetch(base+'/health',{credentials:'include'});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok||data.ok!==true)throw new Error('The API health check did not return a healthy Aster response.');
+   if(apiBase()!==base){sessionStorage.removeItem('aster_csrf');localStorage.removeItem('aster_csrf')}
+   localStorage.setItem('aster_api_base',base);
+   let gateText='Live-money services remain disabled';
+   try{
+    const statusResponse=await fetch(base+'/v1/production/status',{credentials:'include'});
+    const gates=await statusResponse.json();
+    const missing=[];
+    if(!gates.funding_provider)missing.push('payment gateway');
+    if(!gates.kyc_aml_provider)missing.push('KYC/AML');
+    if(!gates.auto_invest_execution_provider)missing.push('investment execution');
+    if(!gates.valuation_provider)missing.push('valuation');
+    if(!gates.live_withdrawals_enabled)missing.push('live payouts');
+    gateText=missing.length?'Not configured: '+missing.join(', '):'Provider checks reported ready';
+   }catch(e){}
+   apiState.textContent='Aster API healthy · '+gateText;
+   showToast('API address saved');
+  }catch(err){apiState.textContent=err.message||'Could not reach the API';}
+ };
+ $('#authSubmit').onclick=async()=>{
+  try{
+   if(!apiBase())throw new Error('Test and save your API address first.');
+   const email=$('#authEmail').value.trim(),password=$('#authPassword').value;
+   if(!email||!password)throw new Error('Enter your email and password.');
+   if(mode==='register'&&password.length<12)throw new Error('Use a password with at least 12 characters.');
+   const payload={email,password};
+   if(mode==='register'&&$('#authReferral').value.trim())payload.referral_code=$('#authReferral').value.trim();
+   const response=await fetch(apiBase()+'/v1/auth/'+mode,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw new Error(data.detail||'Authentication failed.');
+   if(!data.csrf_token)throw new Error('The API did not return a CSRF token.');
+   sessionStorage.setItem('aster_csrf',data.csrf_token);
+   localStorage.setItem('aster_csrf',data.csrf_token);
+   const me=await refreshAccountData();
+   state.textContent='Signed in as '+(me.email||email)+' · KYC '+(me.kyc_status||'unknown');
+   showToast(mode==='login'?'Signed in':'Aster account created');
+  }catch(err){state.textContent=err.message||'Could not connect your account';}
+ };
+ $('#authLogout').onclick=async()=>{
+  try{if(apiBase())await apiCall('/v1/auth/logout',{method:'POST'});}catch(e){}
+  sessionStorage.removeItem('aster_csrf');localStorage.removeItem('aster_csrf');
+  resetAccountUI();
+  state.textContent='Signed out on this device.';
+  showToast('Signed out');
+ };
+ setMode('login');
+ if(apiBase())apiState.textContent='Saved API address · test it before signing in.';
+}
+$('#connect').onclick=openConnectSheet;
+if(apiBase())refreshAccountData().catch(()=>updateAccountIdentity(null));
+
+
+function apiBase(){return (window.ASTER_API_BASE||localStorage.getItem('aster_api_base')||'').replace(/\/$/,'')}
+function apiCall(path,opt={}){
+ const base=apiBase();if(!base)throw new Error('Connect your Aster account first.');
+ const headers={'Content-Type':'application/json',...(opt.headers||{})};const csrf=sessionStorage.getItem('aster_csrf')||localStorage.getItem('aster_csrf')||'';if(csrf)headers['X-Aster-CSRF']=csrf;
+ return fetch(base+path,{credentials:'include',...opt,headers}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Request failed');return d})
+}
+function idem(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random())}
+async function treasuryDepositSheet(){
+ let network='BEP20',address='',name='BNB Smart Chain',depositId=null,depositIntentKey='ui-deposit-'+idem();
+ // A shared treasury address is paired with a unique, expiring customer deposit ticket.
+ openSheet('Deposit USDT','<div class="sim-badge">Aster deposit ticket · shared treasury</div><div class="funding-network" id="fundingNetwork"><button class="on" data-net="BEP20"><b>BEP20</b><br><small>BNB Smart Chain</small></button><button data-net="TRC20"><b>TRC20</b><br><small>Tron</small></button></div><div class="card"><div class="eyebrow">Send USDT to</div><div class="funding-address" id="fundingAddress">Connect your account and create an intent to load the deposit address.</div><div class="small muted" id="fundingName">Address is supplied by the connected Aster backend.</div><div class="funding-actions" style="margin-top:10px"><button class="secondary" id="copyFunding" disabled>Copy address</button><button class="secondary" id="shareFunding" disabled>Share</button></div></div><div class="card"><div class="eyebrow">How much will you send? · required</div><input class="input" id="depositAmount" type="number" min="0.000001" step="0.000001" inputmode="decimal" placeholder="e.g. 250"><button class="primary" id="createDepositIntent">Create deposit ticket</button><div class="small muted" id="depositIntentState" style="margin-top:9px">Create an intent before sending when your account is connected.</div><input class="input" id="depositTxHash" autocomplete="off" spellcheck="false" placeholder="Paste transaction ID after sending"><button class="secondary" id="submitDepositTx" disabled>Submit transaction ID</button><button class="secondary" id="refreshDepositStatus" disabled style="margin-top:8px">Refresh deposit status</button></div><div class="notice"><b>Important:</b> Send the exact ticket amount on the selected network and submit the TXID before expiry. Blockchain verification confirms the transfer, but a shared receiving address cannot by itself prove who owns the sending wallet. Unclear attribution goes to review before credit.</div>');
+ const nets=$('#fundingNetwork');
+ nets.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;network=b.dataset.net;depositId=null;depositIntentKey='ui-deposit-'+idem();$('#createDepositIntent').disabled=false;address='';name=network==='BEP20'?'BNB Smart Chain':'Tron';$('button',nets).forEach(x=>x.classList.remove('on'));b.classList.add('on');$('#fundingAddress').textContent='Create a new deposit intent to load the '+name+' address.';$('#fundingName').textContent='Address is supplied by the connected Aster backend.';$('#depositIntentState').textContent='Create a new '+network+' deposit intent before sending funds.';$('#copyFunding').disabled=true;$('#shareFunding').disabled=true;$('#submitDepositTx').disabled=true;$('#refreshDepositStatus').disabled=true;$('#depositTxHash').value=''});
+ $('#copyFunding').onclick=()=>{if(!address)return;if(window.AsterNative?.copyText)AsterNative.copyText(address);else navigator.clipboard?.writeText(address);showToast('Address copied')};
+ $('#shareFunding').onclick=()=>{if(address)window.AsterNative?.shareText('Aster Financials USDT '+network+' deposit address: '+address)};
+  $('#createDepositIntent').onclick=async()=>{const button=$('#createDepositIntent');const amount=$('#depositAmount').value;if(!amount||Number(amount)<=0){$('#depositIntentState').textContent='Enter the amount you intend to send.';return}button.disabled=true;try{const d=await apiCall('/v1/wallet/deposits',{method:'POST',headers:{'Idempotency-Key':depositIntentKey},body:JSON.stringify({currency:'USDT',network,expected_amount:amount})});depositId=d.id;address=d.deposit_address||'';name=d.network_name||name;$('#fundingAddress').textContent=address||'The backend did not return a deposit address.';$('#fundingName').textContent=name+' · USDT only';$('#copyFunding').disabled=!address;$('#shareFunding').disabled=!address;const expiry=d.expires_at?new Date(d.expires_at).toLocaleTimeString():'not specified';$('#depositIntentState').textContent='Ticket '+d.ticket_id+' · Send exactly '+d.expected_amount+' USDT · expires '+expiry+'. '+(d.credit_rule||'TXID and ownership verification are required before credit.');$('#submitDepositTx').disabled=!address;$('#refreshDepositStatus').disabled=false;showToast('Deposit ticket created')}catch(e){button.disabled=false;$('#depositIntentState').textContent=e.message;showToast(e.message)}};
+  $('#submitDepositTx').onclick=async()=>{try{if(!depositId)throw new Error('Create a deposit ticket first');const tx=$('#depositTxHash').value.trim();if(!tx)throw new Error('Paste your transaction ID first');const d=await apiCall('/v1/wallet/deposits/'+depositId+'/transaction',{method:'POST',body:JSON.stringify({tx_hash:tx})});$('#depositIntentState').textContent='TXID submitted · '+d.tx_hash+' · '+d.message+' No balance is credited until attribution review is complete.';showToast('Transaction ID submitted')}catch(e){$('#depositIntentState').textContent=e.message;showToast(e.message)}};
+  $('#refreshDepositStatus').onclick=async()=>{try{if(!depositId)throw new Error('Create a deposit ticket first');const d=await apiCall('/v1/wallet/deposits/'+depositId);const expiry=d.expires_at?new Date(d.expires_at).toLocaleTimeString():'not specified';$('#depositIntentState').textContent='Ticket '+(d.ticket_id||d.id)+' · '+d.status+' · exact amount '+(d.expected_amount||'pending')+' USDT · expiry '+expiry+(d.tx_hash?' · TXID '+d.tx_hash:'')+'. Credit is shown only after independent attribution review.';await refreshAccountData().catch(()=>{});}catch(e){$('#depositIntentState').textContent=e.message}};
+}
+$('#deposit').onclick=treasuryDepositSheet;
+async function withdrawSheet(){
+ const network='BEP20',withdrawalKey='ui-withdraw-'+idem();
+ openSheet('Withdraw USDT','<div class="sim-badge">USDT · BEP20 only</div><p>Withdrawals are currently supported exclusively on BNB Smart Chain. Enter a BEP20-compatible destination address. Your request reserves the amount and remains subject to identity checks and administrator approval. Submission does not mean funds have been broadcast.</p><div class="withdraw-network" id="withdrawNetwork"><button type="button" class="on" data-net="BEP20" aria-pressed="true" disabled>BNB Smart Chain · BEP20</button></div><div class="small muted" id="withdrawNetworkHint">USDT on BNB Smart Chain · destination must be a 0x address.</div><input class="input" id="withdrawAddress" autocomplete="off" spellcheck="false" placeholder="BEP20 destination (0x…)"><input class="input" id="withdrawAmount" type="number" min="0.00000001" step="0.00000001" inputmode="decimal" placeholder="Amount in USDT"><button class="primary" id="submitWithdrawal">Submit BEP20 withdrawal</button><div class="notice">Check the destination network carefully. Sending to an incompatible network may result in permanent loss. Withdrawals require account verification and administrator approval. No blockchain transfer is broadcast by this request.</div><div class="small muted" id="withdrawState" style="margin-top:9px" aria-live="polite"></div><div class="divider"></div><div class="row"><b>Recent withdrawals</b><button class="link" id="refreshWithdrawals">Refresh</button></div><div id="withdrawHistory" class="small muted">Connect your account to load withdrawal history.</div>');
+ async function refreshWithdrawalHistory(){try{const rows=await apiCall('/v1/wallet/withdrawals');const host=$('#withdrawHistory');host.innerHTML='';if(!rows.length){host.textContent='No withdrawal requests yet.';return;}rows.slice(0,8).forEach(row=>{const line=document.createElement('div');line.className='list-row';const label=document.createElement('span');label.textContent='#'+row.id+' · '+row.network+' · '+row.status;const amount=document.createElement('b');amount.textContent=Number(row.amount).toFixed(2)+' USDT';line.append(label,amount);host.appendChild(line)});}catch(e){$('#withdrawHistory').textContent=e.message||'Could not load withdrawals.'}}
+ $('#refreshWithdrawals').onclick=refreshWithdrawalHistory;
+ refreshWithdrawalHistory();
+ $('#submitWithdrawal').onclick=async()=>{
+   try{
+     const address=$('#withdrawAddress').value.trim(),amount=$('#withdrawAmount').value.trim(),amountNumber=Number(amount);
+     if(!/^0x[a-fA-F0-9]{40}$/.test(address))throw new Error('Enter a valid 42-character BEP20 address beginning with 0x.');
+     if(!Number.isFinite(amountNumber)||amountNumber<=0)throw new Error('Enter a valid withdrawal amount greater than zero.');
+     const d=await apiCall('/v1/wallet/withdrawals',{method:'POST',headers:{'Idempotency-Key':withdrawalKey},body:JSON.stringify({currency:'USDT',network,address,amount})});
+     $('#withdrawState').textContent='BEP20 withdrawal request #'+d.id+' created · '+d.status+' · awaiting administrator review. No blockchain transfer has been broadcast.';
+     $('#submitWithdrawal').disabled=true;
+     await refreshWithdrawalHistory();
+     await refreshAccountData();
+     showToast('BEP20 withdrawal request created');
+   }catch(e){$('#withdrawState').textContent=e.message;showToast(e.message)}
+ }
+}
+$('#withdraw').onclick=withdrawSheet;
+
+$('#risk').onclick=()=>openSheet('Risk Disclosure','<p>Auto-Invest strategies can lose value. Crypto and foreign-exchange markets can be volatile. Illustrative projections are mathematical examples, not promises or forecasts. Read the final Aster legal disclosure before launch.</p>');
+$('#terms').onclick=()=>openSheet('Terms & Conditions','<p>The production Terms will define eligibility, account rules, fees, strategy operation, withdrawals, disputes and applicable law.</p>');
+$('#privacy').onclick=()=>openSheet('Privacy Policy','<p>The production Privacy Policy will describe what account, identity, wallet and usage data Aster collects, why it is used, retention and user rights.</p>');
+const THEMES=['light','dark','aurora','sunset'];const THEME_NAMES={light:'Premium Light',dark:'Midnight Dark',aurora:'Aurora Cyan',sunset:'Sunset Coral'};
+function applyTheme(t){if(!THEMES.includes(t))t='light';document.body.classList.remove('theme-dark','theme-aurora','theme-sunset');if(t!=='light')document.body.classList.add('theme-'+t);localStorage.setItem('aster-theme',t);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',t==='dark'?'#0b0a10':t==='aurora'?'#eefcff':t==='sunset'?'#fff7f3':'#f7f7fb')}
+function currentTheme(){return localStorage.getItem('aster-theme')||'dark'}function themePicker(){return '<div class="theme-picker">'+THEMES.map(t=>'<button class="theme-option '+(currentTheme()===t?'active':'')+'" data-theme-set="'+t+'"><span class="theme-dot '+t+'"></span>'+THEME_NAMES[t]+'<small>'+({light:'Clean premium',dark:'Deep OLED feel',aurora:'Cool futuristic',sunset:'Warm energetic'}[t])+'</small></button>').join('')+'</div>'}
+$('#prefs').onclick=()=>openSheet('Appearance','<p>Choose the Aster look. Your choice is saved on this device.</p>'+themePicker());document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;applyTheme(b.dataset.themeSet);openSheet('Appearance','<p>Theme changed to <b>'+THEME_NAMES[b.dataset.themeSet]+'</b>.</p>'+themePicker())});$('#theme').onclick=()=>{const i=THEMES.indexOf(currentTheme());applyTheme(THEMES[(i+1)%THEMES.length])};
+$('#bell').onclick=()=>openSheet('Notifications','<p>No account alerts yet. Once the backend is connected, this area can show deposits, strategy events, withdrawals and security alerts.</p>');
+const haptic=(kind='light')=>{try{if(window.AsterNative?.haptic)AsterNative.haptic(kind);else if(navigator.vibrate)navigator.vibrate(kind==='success'?[18,30,28]:kind==='medium'?24:10)}catch(e){}};function confetti(){const box=$('#confetti');if(!box)return;haptic('success');for(let i=0;i<28;i++){let p=document.createElement('i');p.className='confetti-piece';p.style.left=(50+(Math.random()*22-11))+'%';p.style.top='43%';p.style.setProperty('--dx',(Math.random()*320-160)+'px');p.style.setProperty('--dy',(Math.random()*420+180)+'px');p.style.setProperty('--rot',(Math.random()*900-450)+'deg');p.style.background=['#e8b84c','#8d72ff','#55e0dc','#ff7189','#fff'][i%5];box.appendChild(p);setTimeout(()=>p.remove(),1000)}}function setupTouchPolish(){document.addEventListener('pointerdown',e=>{let b=e.target.closest('button,.card,.invest-card,.market-row,.icon,.action');if(b)haptic(b.classList.contains('primary')?'medium':'light')},{passive:true});$$( '.hero,.invest-card' ).forEach(el=>{el.classList.add('tilt');el.addEventListener('pointermove',e=>{let r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;el.style.transform='perspective(900px) rotateX('+(-y*5)+'deg) rotateY('+(x*6)+'deg) translateY(-2px)'});el.addEventListener('pointerleave',()=>el.style.transform='')});document.addEventListener('click',e=>{let m=e.target.closest('.market-row');if(m){m.classList.remove('flash');void m.offsetWidth;m.classList.add('flash');confetti()}})}setTimeout(()=>{$('#splash')?.classList.add('hide');haptic('light')},1200);
+try{setupTouchPolish()}catch(e){console.error('Aster interaction polish failed safely',e)}
+try{applyTheme(currentTheme())}catch(e){console.error('Aster theme init failed',e)}
+try{roiCalc()}catch(e){console.error('Aster calculator init failed',e)}
+try{projection()}catch(e){console.error('Aster projection init failed',e)}
+try{$('#homeChart').innerHTML=line([1,1.02,1.01,1.05,1.04,1.08,1.07,1.11],'#17131c')}catch(e){console.error('Aster home chart init failed',e)}
+try{loadMarkets();loadNews('#news');loadNews('#news2')}catch(e){console.error('Aster live content init failed',e)}
+setInterval(()=>{try{loadMarkets()}catch(e){console.warn('Aster market refresh skipped',e)}},15000);
+</script>
+
+<link rel="stylesheet" href="v25-max.css">
+<script src="v25-max.js"></script>
+<script src="v26-production.js"></script><style id="genz">
+body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;background:radial-gradient(38% 28% at 18% 14%,rgba(255,92,200,.30),transparent 70%),radial-gradient(38% 28% at 88% 38%,rgba(57,198,201,.28),transparent 70%),radial-gradient(44% 34% at 38% 92%,rgba(123,97,255,.32),transparent 70%);animation:gzAur 16s ease-in-out infinite alternate}
+.screen.on{animation:none}
+.screen.on>*{animation:gzUp .65s cubic-bezier(.16,1,.3,1) backwards}
+.screen.on>*:nth-child(2){animation-delay:.06s}.screen.on>*:nth-child(3){animation-delay:.12s}.screen.on>*:nth-child(4){animation-delay:.18s}.screen.on>*:nth-child(5){animation-delay:.24s}.screen.on>*:nth-child(6){animation-delay:.3s}.screen.on>*:nth-child(n+7){animation-delay:.36s}
+.title{background:linear-gradient(90deg,var(--text) 0%,#7b61ff 45%,#ff5cc8 75%,var(--text) 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gzSh 7s linear infinite}
+.hero{background-size:220% 220%!important;animation:gzSh2 9s ease-in-out infinite;box-shadow:0 22px 60px rgba(123,97,255,.38),0 0 0 1px rgba(255,255,255,.35) inset}
+.card,.invest-card,.wallet-card{border:1px solid rgba(255,255,255,.35);box-shadow:0 14px 40px rgba(123,97,255,.14),inset 0 1px 0 rgba(255,255,255,.4)}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card{border-color:rgba(255,255,255,.1);box-shadow:0 14px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+.primary,body.theme-dark .primary{position:relative;overflow:hidden;color:#fff;background:linear-gradient(120deg,#7b61ff,#ff5cc8,#39c6c9,#7b61ff);background-size:300% 100%;animation:gzSh 6s linear infinite;box-shadow:0 10px 28px rgba(123,97,255,.5)}
+.primary::after{content:"";position:absolute;top:0;bottom:0;width:35%;left:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-130%) skewX(-20deg);animation:gzShine 3.4s ease-in-out infinite}
+.primary:active,.secondary:active,.action:active,.chip:active{transform:scale(.94)}
+.tabs button.on{background:linear-gradient(120deg,#7b61ff,#ff5cc8)!important;color:#fff!important;box-shadow:0 6px 18px rgba(123,97,255,.5)}
+.bottom{border:1px solid rgba(255,255,255,.3);box-shadow:0 18px 50px rgba(60,30,140,.35);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px)}
+.bottom button.on{background:linear-gradient(135deg,rgba(123,97,255,.28),rgba(255,92,200,.22))}
+.bottom button.on svg{animation:gzBounce .6s cubic-bezier(.34,1.56,.64,1);filter:drop-shadow(0 0 8px rgba(123,97,255,.8))}
+.avatar{background-size:200% 200%!important;animation:gzSh2 5s ease-in-out infinite}
+.art-banner{animation:gzFloat 6s ease-in-out infinite}
+#teamMembers .list-row{animation:gzSlide .55s cubic-bezier(.16,1,.3,1) backwards}
+#teamMembers .list-row:nth-child(2){animation-delay:.07s}#teamMembers .list-row:nth-child(3){animation-delay:.14s}#teamMembers .list-row:nth-child(4){animation-delay:.21s}#teamMembers .list-row:nth-child(n+5){animation-delay:.28s}
+.mcode{display:inline-flex;align-items:center;gap:8px;margin-top:6px;padding:3px 4px 3px 10px;border-radius:99px;font-size:12px;font-weight:850;letter-spacing:.03em;color:#7b61ff;background:linear-gradient(120deg,rgba(123,97,255,.14),rgba(255,92,200,.14));border:1px dashed rgba(123,97,255,.5)}
+.mcopy{padding:5px 11px;border-radius:99px;font-size:11px;font-weight:900;color:#fff;background:linear-gradient(120deg,#7b61ff,#ff5cc8)}
+.gz-rip{position:absolute;border-radius:50%;pointer-events:none;background:rgba(255,255,255,.55);transform:scale(0);animation:gzRip .6s ease-out forwards}
+.gz-b{position:fixed;z-index:999;pointer-events:none;font-size:20px;animation:gzBurst .9s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes gzAur{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(4%,3%) rotate(8deg) scale(1.1)}}
+@keyframes gzUp{from{opacity:0;transform:translateY(22px) scale(.97);filter:blur(6px)}}
+@keyframes gzSlide{from{opacity:0;transform:translateX(-24px)}}
+@keyframes gzSh{to{background-position:250% 0}}
+@keyframes gzSh2{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes gzShine{0%{transform:translateX(-130%) skewX(-20deg)}55%,100%{transform:translateX(420%) skewX(-20deg)}}
+@keyframes gzBounce{0%{transform:scale(.6) translateY(6px)}100%{transform:none}}
+@keyframes gzFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes gzRip{to{transform:scale(3.2);opacity:0}}
+@keyframes gzBurst{0%{opacity:1;transform:translate(0,0) scale(.5)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.3) rotate(var(--r))}}
+@media (prefers-reduced-motion:reduce){body::before,.screen.on>*,.title,.hero,.primary,.primary::after,.avatar,.art-banner,#teamMembers .list-row,.bottom button.on svg{animation:none!important}}
+
+/* Aster quick-start experience */
+.quickstart{position:relative;isolation:isolate;overflow:hidden;margin:18px 0 16px;padding:18px;border-radius:27px;color:#f8f6ff;background:linear-gradient(135deg,#171526 0%,#282044 55%,#40265a 100%);border:1px solid rgba(255,255,255,.12);box-shadow:0 22px 48px rgba(39,25,77,.22)}
+.quickstart:before{content:"";position:absolute;z-index:-1;width:230px;height:230px;right:-92px;top:-116px;border-radius:50%;background:radial-gradient(circle,rgba(255,92,200,.34),rgba(123,97,255,.08) 52%,transparent 70%)}
+.qs-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:112px}.qs-kicker,.qs-label{font-size:9px;font-weight:950;letter-spacing:.16em;color:#c8baff}.qs-top h2{font-size:25px;line-height:1;margin:8px 0 7px;letter-spacing:-.055em;color:#fff}.qs-top p{font-size:11px;line-height:1.5;color:rgba(245,241,255,.68);max-width:210px;margin:0}
+.qs-orbit{position:relative;flex:0 0 104px;width:104px;height:104px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.24),rgba(123,97,255,.18) 34%,rgba(255,92,200,.08) 65%,transparent 70%);display:grid;place-items:center}
+.qs-orbit:before,.qs-orbit:after{content:"";position:absolute;inset:8px;border:1px solid rgba(210,196,255,.45);border-radius:50%;transform:rotate(-28deg) scaleY(.42)}.qs-orbit:after{inset:1px;transform:rotate(55deg) scaleY(.5);border-color:rgba(255,92,200,.55)}
+.qs-orbit i,.qs-orbit b,.qs-orbit em{position:absolute;width:7px;height:7px;border-radius:50%;background:#ff78d2;box-shadow:0 0 13px #ff78d2;animation:qsOrbit 7s linear infinite}.qs-orbit i{top:10px;left:45px}.qs-orbit b{right:9px;bottom:27px;background:#6ce9e0;box-shadow:0 0 13px #6ce9e0;animation-duration:5s}.qs-orbit em{left:13px;bottom:23px;width:5px;height:5px;background:#f4d47a;animation-duration:9s}.qs-orbit-core{font-size:30px;color:#f5d77d;text-shadow:0 0 24px rgba(245,215,125,.65);animation:qsPulse 2.6s ease-in-out infinite}
+@keyframes qsOrbit{to{transform:rotate(360deg) translateX(3px)}}@keyframes qsPulse{50%{transform:scale(1.18) rotate(12deg);filter:brightness(1.25)}}
+.qs-label{margin:15px 0 8px;color:#aaa0cb}.qs-amounts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.qs-amount{padding:10px 2px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#e9e5f5;font-size:11px;font-weight:900;transition:transform .2s ease,background .2s ease,border-color .2s ease}.qs-amount.active{background:linear-gradient(120deg,#8b70ff,#d45cb8);border-color:transparent;color:white;box-shadow:0 6px 17px rgba(123,97,255,.32);transform:translateY(-2px)}
+.qs-strategies{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qs-strategy{display:flex;align-items:center;gap:9px;text-align:left;padding:10px;border-radius:14px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.10);color:#e8e3f5;min-width:0}.qs-strategy>span:first-child{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:11px;background:rgba(255,255,255,.10);font-size:17px}.qs-strategy b,.qs-strategy small{display:block}.qs-strategy b{font-size:10px}.qs-strategy small{font-size:9px;color:#aaa2bf;margin-top:3px}.qs-strategy.active{border-color:rgba(199,168,255,.72);background:linear-gradient(120deg,rgba(123,97,255,.26),rgba(255,92,200,.13));box-shadow:inset 0 0 0 1px rgba(199,168,255,.12)}
+.qs-cta{width:100%;display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding:14px 15px;border-radius:15px;background:linear-gradient(110deg,#f3d47b,#e8a9e8 52%,#8b78ff);color:#20182e;font-size:12px;font-weight:950;box-shadow:0 9px 22px rgba(123,97,255,.25);transition:transform .2s ease,filter .2s ease}.qs-cta span{font-size:18px;line-height:10px}.qs-cta:active{transform:scale(.975);filter:brightness(1.08)}
+.qs-foot{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;color:rgba(236,231,249,.55);font-size:8px;font-weight:800;letter-spacing:.04em}.qs-foot i{width:14px;height:1px;background:rgba(236,231,249,.25)}
+body.theme-dark .quickstart{box-shadow:0 22px 52px rgba(0,0,0,.4)}@media(max-width:370px){.quickstart{padding:15px}.qs-orbit{flex-basis:82px;width:82px;height:82px}.qs-top h2{font-size:22px}.qs-amounts{gap:4px}.qs-amount{font-size:10px}}@media(prefers-reduced-motion:reduce){.qs-orbit-core,.qs-orbit i,.qs-orbit b,.qs-orbit em{animation:none!important}}
+
+/* V39 all-screen interaction and visual polish */
+.screen.active{animation:asterScreenIn .36s cubic-bezier(.2,.75,.25,1) both}
+@keyframes asterScreenIn{from{opacity:.45;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card,.art-banner,.wallet-card,.team-nudge,.wallet-security{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.card:focus-within{border-color:rgba(139,112,255,.38)}
+button,.list-row,.wallet-shortcut{ -webkit-tap-highlight-color:transparent}
+button:active,.wallet-shortcut:active{transform:scale(.975)}
+.team-metric{position:relative;overflow:hidden;min-height:112px;padding-top:17px}
+.team-metric:after{content:"";position:absolute;width:90px;height:90px;border-radius:50%;right:-35px;bottom:-45px;background:radial-gradient(circle,rgba(153,119,255,.2),transparent 70%)}
+.metric-icon{width:29px;height:29px;display:grid;place-items:center;border-radius:10px;background:rgba(139,112,255,.12);color:#9577ff;font-size:16px;margin-bottom:10px}
+.metric-foot{font-size:9px;color:var(--muted,#8c8998);margin-top:3px}
+.team-nudge{display:flex;align-items:center;gap:11px;padding:12px 14px;margin:10px 0 15px;border-radius:16px;background:linear-gradient(110deg,rgba(139,112,255,.12),rgba(220,115,195,.08));border:1px solid rgba(139,112,255,.14)}
+.nudge-spark{font-size:22px;color:#a78bfa}.team-nudge b,.team-nudge small{display:block}.team-nudge b{font-size:11px}.team-nudge small{font-size:9px;color:var(--muted,#888);margin-top:3px;line-height:1.4}.nudge-arrow{margin-left:auto;color:#a78bfa;font-size:17px}
+.wallet-hero{position:relative;isolation:isolate;overflow:hidden;padding:22px;border-radius:25px;background:linear-gradient(135deg,#171d29,#24243b 58%,#183b3b);color:#fff;box-shadow:0 18px 38px rgba(23,32,48,.22)}
+.wallet-glow{position:absolute;z-index:-1;width:210px;height:210px;right:-90px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(93,231,199,.28),rgba(93,231,199,0) 70%)}
+.wallet-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.wallet-status{font-size:8px;color:#d1d2dd;white-space:nowrap}.wallet-status i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e9bd66;margin-right:4px}
+.wallet-hero .balance{font-size:36px;font-weight:900;letter-spacing:-.06em}.wallet-currency{font-size:10px;color:#a8b4c2;margin-top:2px}
+.wallet-actions{display:flex;gap:9px;margin-top:19px}.wallet-actions button{flex:1;min-height:43px;border-radius:13px;font-size:11px;font-weight:900;background:linear-gradient(110deg,#f3d47b,#d9b7ff);color:#1d2030}.wallet-actions button+button{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.wallet-actions button span{font-size:15px;margin-right:5px}
+.wallet-foot{display:flex;gap:12px;flex-wrap:wrap;margin-top:15px;color:#a9b8c2;font-size:8px;font-weight:800;letter-spacing:.04em}
+.wallet-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.wallet-shortcut{min-width:0;padding:12px 9px;border:1px solid var(--line,rgba(120,120,140,.15));border-radius:15px;background:var(--card,#fff);cursor:pointer}
+.shortcut-icon{width:28px;height:28px;border-radius:9px;background:rgba(139,112,255,.12);color:#9274f6;display:grid;place-items:center;font-size:16px;margin-bottom:8px}
+.wallet-shortcut b,.wallet-shortcut small{display:block}.wallet-shortcut b{font-size:9px}.wallet-shortcut small{font-size:8px;color:var(--muted,#888);margin-top:3px;line-height:1.35}
+.empty-activity{display:flex;flex-direction:column;align-items:center;text-align:center;padding:22px 12px 10px}.empty-orbit{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:24px;color:#9b82f7;background:radial-gradient(circle,rgba(139,112,255,.2),rgba(139,112,255,.04));border:1px solid rgba(139,112,255,.15);margin-bottom:11px;animation:qsPulse 3.2s ease-in-out infinite}.empty-activity b{font-size:11px}.empty-activity p{max-width:230px;font-size:9px;line-height:1.55;color:var(--muted,#888);margin:6px 0 0}
+.wallet-security{display:flex;align-items:center;gap:10px;padding:13px;border-radius:16px;background:rgba(83,190,158,.08);border:1px solid rgba(83,190,158,.15)}.security-mark{width:30px;height:30px;display:grid;place-items:center;border-radius:10px;background:rgba(83,190,158,.14);color:#36a989;font-size:17px}.wallet-security b,.wallet-security small{display:block}.wallet-security b{font-size:10px}.wallet-security small{font-size:8px;line-height:1.4;color:var(--muted,#888);margin-top:3px}.security-check{margin-left:auto;color:#37b18c;font-weight:900}
+.profile-identity{display:flex;align-items:center;gap:13px;padding:17px;margin:14px 0 20px;border:1px solid var(--line,rgba(120,120,140,.15));border-radius:21px;background:var(--card,#fff);box-shadow:0 10px 25px rgba(50,40,90,.06)}
+.profile-avatar-wrap{position:relative}.profile-identity .avatar{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,#29233f,#7255a8);color:#f5d77d;display:grid;place-items:center;font-size:24px;font-weight:950;box-shadow:0 8px 20px rgba(80,56,140,.2)}
+.online-dot{position:absolute;width:11px;height:11px;border:2px solid var(--card,#fff);border-radius:50%;right:-2px;bottom:0;background:#e4b95c}
+.profile-identity-copy{min-width:0;flex:1}.profile-identity-copy>b{font-size:14px}.member-pill{display:inline-block;margin-top:6px;padding:4px 7px;border-radius:6px;background:rgba(139,112,255,.10);color:#9477e9;font-size:7px;font-weight:950;letter-spacing:.1em}.profile-chevron,.row-chevron{color:#a39ab8;font-size:20px}
+.profile-section-label{margin:17px 3px 8px;font-size:9px;font-weight:950;letter-spacing:.14em;color:var(--muted,#8d8999)}
+.profile-menu{padding:2px 14px}.profile-menu .list-row{min-height:60px;cursor:pointer}.profile-menu .list-row+.list-row{border-top:1px solid var(--line,rgba(120,120,140,.12))}.profile-menu .list-row>div:nth-child(2){flex:1}.profile-menu .list-row b{font-size:11px}.profile-menu .list-icon{width:34px;height:34px;border-radius:11px;background:rgba(139,112,255,.10);color:#9477e9;display:grid;place-items:center}.profile-footer{display:flex;flex-direction:column;align-items:center;gap:5px;padding:22px 0 10px;color:var(--muted,#999);font-size:8px}.profile-footer span:first-child{font-weight:950;letter-spacing:.2em;color:#b39a60}
+body.theme-dark .profile-identity,body.theme-dark .wallet-shortcut{background:#191821;border-color:rgba(255,255,255,.08)}
+body.theme-dark .profile-menu{background:#191821}body.theme-dark .team-nudge{background:linear-gradient(110deg,rgba(139,112,255,.17),rgba(220,115,195,.10))}
+@media(max-width:360px){.wallet-head{align-items:flex-start;flex-direction:column}.wallet-hero{padding:18px}.wallet-shortcut{padding:10px 7px}.profile-identity{padding:14px}}
+@media(prefers-reduced-motion:reduce){.screen.active,.empty-orbit{animation:none!important}}
+
+/* Strategy, calculator and market-feed refinements */
+.invest-steps{display:flex;align-items:center;justify-content:center;gap:7px;padding:12px 8px;margin:10px 0 12px;border-radius:14px;background:rgba(139,112,255,.075);color:var(--muted,#8b8796);font-size:8px;font-weight:850}
+.invest-steps span{display:flex;align-items:center;gap:5px;white-space:nowrap}.invest-steps i{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;font-style:normal;background:rgba(130,120,150,.14);font-size:8px}.invest-steps .step-active{color:#9678f4}.invest-steps .step-active i{background:#9274f6;color:#fff}.invest-steps>b{width:17px;height:1px;background:rgba(140,130,160,.28)}
+.invest-cards{gap:10px}.invest-card{position:relative;overflow:hidden;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}.invest-card:after{content:"";position:absolute;width:85px;height:85px;right:-38px;top:-42px;border-radius:50%;background:radial-gradient(circle,rgba(173,143,255,.2),transparent 70%);pointer-events:none}.invest-card.on{transform:translateY(-2px);box-shadow:0 12px 25px rgba(111,84,190,.12)}
+#projChart,#roiChart{border-radius:14px;overflow:hidden}
+.market-context{display:flex;align-items:center;gap:10px;padding:12px 14px;margin:10px 0 14px;border-radius:15px;background:linear-gradient(110deg,rgba(76,190,255,.10),rgba(139,112,255,.09));border:1px solid rgba(87,175,230,.15)}
+.market-pulse-dot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:#45c8ae;box-shadow:0 0 0 4px rgba(69,200,174,.13);animation:marketPulse 2s ease-out infinite}
+@keyframes marketPulse{70%{box-shadow:0 0 0 8px rgba(69,200,174,0)}100%{box-shadow:0 0 0 3px rgba(69,200,174,0)}}
+.market-context>div{flex:1}.market-context b,.market-context small{display:block}.market-context b{font-size:10px}.market-context small{font-size:8px;line-height:1.45;color:var(--muted,#888);margin-top:3px}.context-spark{color:#9c82ed;font-size:17px}
+#marketList .market-row{transition:background .2s ease,transform .2s ease;border-radius:12px}#marketList .market-row:active{transform:scale(.99)}
+#news2>*{transition:transform .2s ease}
+body.theme-dark .invest-steps{background:rgba(153,127,255,.10)}body.theme-dark .market-context{background:linear-gradient(110deg,rgba(76,190,255,.08),rgba(139,112,255,.12))}
+</style>
+<script id="genz-js">
+(function(){
+const E=['✨','💜','🔥','💎','🚀','🎉','⚡'];
+function burst(x,y){for(let i=0;i<10;i++){const e=document.createElement('span');e.className='gz-b';e.textContent=E[i%E.length];const a=Math.PI*2*i/10+Math.random()*.5,d=60+Math.random()*60;e.style.cssText='left:'+x+'px;top:'+y+'px;--dx:'+Math.cos(a)*d+'px;--dy:'+(Math.sin(a)*d-30)+'px;--r:'+(Math.random()*160-80)+'deg';document.body.appendChild(e);setTimeout(()=>e.remove(),950)}}
+document.addEventListener('pointerdown',e=>{const t=e.target.closest('button,.action,.chip');if(!t||t.classList.contains('lv'))return;const cs=getComputedStyle(t);if(cs.position==='static')t.style.position='relative';t.style.overflow='hidden';const r=t.getBoundingClientRect(),d=Math.max(r.width,r.height),p=document.createElement('span');p.className='gz-rip';p.style.cssText='width:'+d+'px;height:'+d+'px;left:'+(e.clientX-r.left-d/2)+'px;top:'+(e.clientY-r.top-d/2)+'px';t.appendChild(p);setTimeout(()=>p.remove(),650)});
+// Lightweight screen shortcuts; financial actions still use the existing authenticated flows.
+document.querySelectorAll('.wallet-shortcut').forEach((item,index)=>item.addEventListener('click',()=>{
+ if(index===0)document.getElementById('deposit')?.click();
+ else if(index===1)document.getElementById('withdraw')?.click();
+ else document.querySelector('.wallet-history')?.scrollIntoView({behavior:'smooth',block:'center'});
+ if(typeof haptic==='function')haptic('light');
+}));
+let qsAmount=50,qsStrategy='Core Crypto';
+const qsRoot=document.getElementById('asterQuickStart');
+if(qsRoot){
+ qsRoot.addEventListener('click',e=>{
+  const amount=e.target.closest('[data-qs-amount]'),strategy=e.target.closest('[data-qs-strategy]');
+  if(amount){qsAmount=Number(amount.dataset.qsAmount);qsRoot.querySelectorAll('[data-qs-amount]').forEach(x=>x.classList.toggle('active',x===amount));}
+  if(strategy){qsStrategy=strategy.dataset.qsStrategy;qsRoot.querySelectorAll('[data-qs-strategy]').forEach(x=>x.classList.toggle('active',x===strategy));}
+ });
+ document.getElementById('qsBuild').addEventListener('click',()=>{
+  const strategyButton=document.querySelector('.invest-package[data-strategy="'+qsStrategy+'"]');if(strategyButton)strategyButton.click();
+  const amountChip=document.querySelector('#amtChips [data-a="'+qsAmount+'"]');if(amountChip)amountChip.click();
+  if(typeof go==='function')go('invest');if(typeof haptic==='function')haptic('medium');
+ });
+}
+document.addEventListener('click',e=>{const b=e.target.closest('.mcopy,#copyTeamCode');if(!b)return;const r=b.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2);if(b.classList.contains('mcopy')){const c=b.dataset.code;if(window.AsterNative&&AsterNative.copyText)AsterNative.copyText(c);else if(navigator.clipboard)navigator.clipboard.writeText(c);if(typeof showToast==='function')showToast('Member code copied')}});
+})();
+</script>
+
+<style id="aster-modern-polish">
+/* Aster modern minimal visual system */
+:root{--aster-accent:#d9b65c;--aster-violet:#9278ef;--aster-glass:rgba(255,255,255,.055)}
+body{scroll-behavior:smooth}
+.screen.on{animation:asterScreenIn .38s cubic-bezier(.2,.75,.25,1) both}
+@keyframes asterScreenIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.screen .title{letter-spacing:-.045em;line-height:1.06}
+.screen .eyebrow{letter-spacing:.15em}
+.card,.wallet-card,.profile-identity,.profile-menu,.v25-chart-card,.v25-stat,.v25-hero,.market-context{border-radius:22px;transition:transform .24s ease,border-color .24s ease,box-shadow .24s ease}
+.card{border:1px solid var(--line,rgba(140,130,160,.15));box-shadow:0 9px 26px rgba(20,16,36,.045)}
+button,.wallet-shortcut,.invest-card,.invest-package,.market-row,.list-row{ -webkit-tap-highlight-color:transparent;transition:transform .18s ease,filter .18s ease,background-color .2s ease,border-color .2s ease}
+button:active,.wallet-shortcut:active,.invest-card:active,.invest-package:active{transform:scale(.975)}
+.wallet-hero{position:relative;overflow:hidden;border:1px solid rgba(224,190,111,.24);box-shadow:0 18px 42px rgba(13,10,25,.18)}
+.wallet-glow{pointer-events:none;filter:blur(3px);opacity:.75;animation:asterGlow 8s ease-in-out infinite alternate}
+@keyframes asterGlow{from{transform:translate3d(-5px,0,0) scale(.94);opacity:.48}to{transform:translate3d(12px,8px,0) scale(1.08);opacity:.9}}
+.art-banner{border-radius:23px;overflow:hidden}
+.wallet-shortcuts{gap:9px}
+.wallet-shortcut{border:1px solid var(--line,rgba(140,130,160,.14));border-radius:18px;box-shadow:0 7px 20px rgba(20,16,36,.035)}
+.wallet-shortcut:active{border-color:rgba(217,182,92,.55)}
+.wallet-history{margin-top:15px}
+.empty-orbit{animation:asterOrbit 12s linear infinite}
+@keyframes asterOrbit{to{transform:rotate(360deg)}}
+#nav{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+#nav button{transition:color .2s ease,background .2s ease,transform .2s ease}
+#nav button:active{transform:translateY(-2px) scale(.96)}
+.v25-hero{box-shadow:0 18px 42px rgba(14,12,28,.14)}
+.v25-strategy-card{transition:transform .25s ease,filter .25s ease}
+.v25-strategy-card:active{transform:scale(.985)}
+.market-row{border-radius:15px}
+.market-row:active{background:var(--card2,rgba(140,130,160,.08))}
+.profile-menu .list-row:active{background:rgba(145,120,239,.07)}
+@media(hover:hover){.card:hover,.wallet-shortcut:hover,.profile-identity:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(20,16,36,.075)}}
+body.theme-dark .card,body.theme-dark .wallet-shortcut,body.theme-dark .profile-identity,body.theme-dark .profile-menu{border-color:rgba(255,255,255,.075);box-shadow:0 12px 30px rgba(0,0,0,.16)}
+body.theme-dark .wallet-shortcut{background:linear-gradient(145deg,#1b1923,#15141c)}
+@media(prefers-reduced-motion:reduce){.screen.on,.wallet-glow,.empty-orbit{animation:none!important}*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+</style>
+<style id="aster-site-match">
+/* Website parity: Manrope body + Unbounded display, Aster's dark neon-gold palette */
+body,button,input,select,textarea{font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3,.title,.disp,.section-title,.v25-title{font-family:Unbounded,Manrope,system-ui,sans-serif;letter-spacing:-.035em}
+body.theme-dark{
+ --bg:#070711;--card:rgba(255,255,255,.055);--card2:#10101b;
+ --text:#f4f4f6;--muted:#b7bbd0;--line:rgba(255,255,255,.13);
+ --gold:#ffe66d;--gold2:#fff2a6;--violet:#b18cff;--cyan:#63f5ff;
+ --green:#75ffd0;--red:#ff72cf;--shadow:0 18px 48px rgba(0,0,0,.38);
+ --g:#ffe66d;--g2:#fff2a6;--v:#b18cff;--c:#63f5ff;--p:#ff72cf;
+ background:radial-gradient(ellipse at 12% 8%,rgba(177,140,255,.13),transparent 31rem),
+ radial-gradient(ellipse at 91% 22%,rgba(99,245,255,.086),transparent 27rem),
+ radial-gradient(ellipse at 74% 65%,rgba(255,114,207,.07),transparent 34rem),#070711;
+ color:var(--text)
+}
+body.theme-dark .top{background:linear-gradient(#070711 55%,transparent)}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card,
+body.theme-dark .profile-identity,body.theme-dark .profile-menu,body.theme-dark .wallet-shortcut{
+ background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.13)
+}
+body.theme-dark .primary,body.theme-dark .wallet-actions button:first-child{
+ background:linear-gradient(120deg,#fff2a6,#ffe66d 55%,#e0b64f);
+ color:#101018;box-shadow:0 10px 28px rgba(224,182,79,.22);animation:none
+}
+body.theme-dark .primary::after{display:none}
+body.theme-dark .tabs button.on{background:linear-gradient(120deg,#ffe66d,#e0b64f)!important;color:#101018!important;box-shadow:0 6px 18px rgba(224,182,79,.2)}
+body.theme-dark .bottom{background:rgba(7,7,17,.88);border-color:rgba(255,255,255,.13);box-shadow:0 18px 50px rgba(0,0,0,.42)}
+body.theme-dark .bottom button.on{background:rgba(255,230,109,.13)}
+body.theme-dark .title{background:linear-gradient(105deg,#fff 4%,#ffe66d 26%,#ff72cf 54%,#b18cff 76%,#63f5ff 98%);background-clip:text;-webkit-background-clip:text;color:transparent}
+body.theme-dark .hero{box-shadow:0 18px 42px rgba(0,0,0,.32),0 0 0 1px rgba(255,255,255,.07) inset}
+body.theme-dark .wallet-hero{background:linear-gradient(135deg,#11111e,#191629 58%,#10242b);border-color:rgba(255,230,109,.22)}
+body.theme-dark .wallet-actions button:first-child{color:#101018}
+body.theme-dark .chip.on,body.theme-dark .invest-card.on{border-color:rgba(255,230,109,.72)}
+@media(prefers-reduced-motion:reduce){body.theme-dark .title{animation:none}}
+</style>
+<style id="aster-doomscroll-news">
+#v39NewsPanel{margin:15px 0 18px;padding:0;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.025));border-radius:22px;box-shadow:0 16px 38px rgba(0,0,0,.24)}
+#v39NewsPanel .news-scroll-head{display:flex;align-items:center;justify-content:space-between;padding:15px 16px 12px;border-bottom:1px solid rgba(255,255,255,.09)}
+#v39NewsPanel .news-scroll-title{font:700 13px Unbounded,Manrope,sans-serif;letter-spacing:-.025em}
+#v39NewsPanel .news-scroll-live{font:800 8px Manrope,sans-serif;letter-spacing:.12em;color:#ffe66d}
+#v39NewsPanel .news-scroll-live:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#75ffd0;margin:0 7px 1px 0;box-shadow:0 0 0 4px rgba(117,255,208,.1)}
+#v39NewsFeed{max-height:430px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(255,230,109,.35) transparent}
+#v39NewsFeed .news-scroll-item{display:flex;align-items:center;gap:11px;padding:13px 14px;text-decoration:none;color:inherit;border-bottom:1px solid rgba(255,255,255,.075);transition:background .2s ease}
+#v39NewsFeed .news-scroll-item:last-child{border-bottom:0}
+#v39NewsFeed .news-scroll-item:active{background:rgba(255,230,109,.07)}
+#v39NewsFeed .news-scroll-index{font:700 10px Unbounded,Manrope,sans-serif;color:rgba(255,230,109,.62);width:19px;flex:0 0 19px}
+#v39NewsFeed .news-scroll-copy{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+#v39NewsFeed .news-scroll-copy b{font:700 11px/1.45 Manrope,sans-serif;color:#f4f4f6}
+#v39NewsFeed .news-scroll-tag{font:800 7px Manrope,sans-serif;letter-spacing:.14em;color:#63f5ff}
+#v39NewsFeed .news-scroll-tag.forex{color:#b18cff}
+#v39NewsFeed .news-scroll-time{font:500 8px Manrope,sans-serif;color:#9293a7}
+#v39NewsFeed .news-scroll-arrow{font-size:15px;color:#ffe66d;flex:0 0 auto}
+@media(prefers-reduced-motion:no-preference){#v39NewsFeed .news-scroll-item{animation:newsIn .35s ease both}#v39NewsFeed .news-scroll-item:nth-child(2){animation-delay:.025s}#v39NewsFeed .news-scroll-item:nth-child(3){animation-delay:.05s}#v39NewsFeed .news-scroll-item:nth-child(4){animation-delay:.075s}}
+@keyframes newsIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+</style>
+<style id="aster-site-parity-refinement">
+/* Match the uploaded Aster website's actual design tokens and glass treatment. */
+:root{--aster-g:#ffe66d;--aster-g2:#fff2a6;--aster-v:#b18cff;--aster-c:#63f5ff;--aster-p:#ff72cf;--aster-mint:#75ffd0;--aster-orange:#ffad73;--aster-blue:#7ca8ff}
+body.theme-dark{--gold:var(--aster-g);--gold2:var(--aster-g2);--violet:var(--aster-v);--cyan:var(--aster-c);--green:var(--aster-mint);--red:var(--aster-p);--muted:#b7bbd0;--line:rgba(255,255,255,.13);--card:rgba(255,255,255,.055);--card2:rgba(255,255,255,.075);background:radial-gradient(ellipse at 12% 8%,rgba(177,140,255,.13),transparent 31rem),radial-gradient(ellipse at 91% 22%,rgba(99,245,255,.086),transparent 27rem),radial-gradient(ellipse at 74% 65%,rgba(255,114,207,.07),transparent 34rem),#070711}
+body.theme-dark .card,body.theme-dark .invest-card,body.theme-dark .wallet-card,body.theme-dark .profile-identity,body.theme-dark .profile-menu,body.theme-dark .wallet-shortcut{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.13);box-shadow:0 12px 34px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.045)}
+body.theme-dark .title{background-image:linear-gradient(105deg,#fff 4%,#ffe66d 26%,#ff72cf 54%,#b18cff 76%,#63f5ff 98%);background-size:100% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+body.theme-dark .primary,body.theme-dark .wallet-actions button:first-child{background:linear-gradient(110deg,#ffe66d,#fff2a6);color:#14121f;border:1px solid rgba(255,230,109,.45);box-shadow:0 8px 24px rgba(255,230,109,.16);font-weight:800}
+body.theme-dark .tabs button.on{background:linear-gradient(110deg,#ffe66d,#fff2a6)!important;color:#14121f!important}
+body.theme-dark .invest-package.on,body.theme-dark .chip.on{background:linear-gradient(110deg,rgba(255,230,109,.2),rgba(177,140,255,.16));border-color:rgba(255,230,109,.6);color:#fff}
+body.theme-dark .section-head h2,body.theme-dark .eyebrow{letter-spacing:.13em}
+body.theme-dark .bottom{background:rgba(10,0,30,.76);border-color:rgba(99,245,255,.18);box-shadow:0 18px 50px rgba(0,0,0,.42)}
+body.theme-dark .bottom button.on{background:linear-gradient(120deg,rgba(177,140,255,.18),rgba(255,114,207,.13))}
+body.theme-dark .v25-hero,body.theme-dark .hero{border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 44px rgba(0,0,0,.28)}
+body.theme-dark input,body.theme-dark select,body.theme-dark textarea{font-family:Manrope,system-ui,sans-serif}
+</style>
+
+
+<style>
+/* Compact Auto-Invest package selector */
+.invest-package-toggle{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0 18px;padding:5px;border-radius:17px;background:rgba(130,120,150,.09)}
+.invest-package{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:11px 8px;border:1px solid transparent;border-radius:13px;font-size:13px;font-weight:900;color:var(--muted);transition:all .2s ease}
+.invest-package span{font-size:17px}.invest-package.on{color:var(--text);background:var(--card2);border-color:rgba(214,165,47,.55);box-shadow:0 5px 16px rgba(27,22,56,.09)}
+body.theme-dark .invest-package-toggle{background:rgba(255,255,255,.07)}body.theme-dark .invest-package.on{background:#211e2b;color:#fff}
+</style>
+</body>
+</html>
